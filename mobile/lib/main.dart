@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:lottie/lottie.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 void main() {
   runApp(const KernellyApp());
@@ -14,7 +15,30 @@ class KernellyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Kernelly',
-      theme: ThemeData(colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal)),
+      theme: ThemeData(
+        scaffoldBackgroundColor: const Color(0xFFF6F9F9),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF00C9B7),
+          primary: const Color(0xFF00C9B7),
+        ),
+        textTheme: TextTheme(
+          headlineSmall: GoogleFonts.fredoka(
+            fontWeight: FontWeight.w600,
+            fontSize: 21,
+            color: const Color(0xFF1B2430),
+          ),
+          bodyMedium: GoogleFonts.inter(fontSize: 14),
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF00C9B7),
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            textStyle: GoogleFonts.fredoka(fontWeight: FontWeight.w600, fontSize: 16),
+          ),
+        ),
+      ),
       home: const LessonScreen(),
     );
   }
@@ -105,14 +129,38 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
           children: [
             Text(question, style: Theme.of(context).textTheme.headlineSmall),
             const SizedBox(height: 24),
-            for (final option in options)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: ElevatedButton(
-                  onPressed: () => _selectAnswer(option),
-                  child: Text(option),
+          for (final option in options)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: InkWell(
+                onTap: () => _selectAnswer(option),
+                borderRadius: BorderRadius.circular(16),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 18),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFFE1EAEA), width: 2),
+                  ),
+                  child: Row(
+                    children: [
+                      Text(
+                        '> ',
+                        style: GoogleFonts.jetBrainsMono(
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF00A896),
+                        ),
+                      ),
+                      Text(
+                        option,
+                        style: GoogleFonts.jetBrainsMono(fontWeight: FontWeight.w500),
+                      ),
+                    ],
+                  ),
                 ),
               ),
+            ),
             if (isCorrect != null)
               SizedBox(
                 height: 150,
