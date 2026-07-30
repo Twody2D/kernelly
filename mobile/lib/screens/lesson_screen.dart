@@ -19,6 +19,8 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
   bool? isCorrect;
   int attemptCount = 0;
   Map<String, dynamic>? user;
+  int correctCount = 0;
+  bool xpAwarded = false;
 
   late AnimationController _lottieController;
 
@@ -46,13 +48,14 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
 
   void _selectAnswer(String answer) async {
     final currentExercise = exercises[currentIndex];
-    final correct = await submitAnswer(currentExercise['id'], answer);
-    final userData = await fetchUser(1);
-    setState(() {
-      selectedAnswer = answer;
-      isCorrect = correct;
-      attemptCount++;
-      user = userData;
+      final correct = await submitAnswer(currentExercise['id'], answer);
+      final userData = await fetchUser(1);
+      setState(() {
+        selectedAnswer = answer;
+        isCorrect = correct;
+        attemptCount++;
+        user = userData;
+        if (correct) correctCount++;
     });
   }
 
@@ -64,13 +67,23 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
     });
   }
 
-  PreferredSizeWidget _buildAppBar() {
+  PreferredSizeWidget _buildAppBar({double? progress}) {
     return AppBar(
       leading: IconButton(
         icon: const Icon(Icons.close, color: Color(0xFF5C6B73)),
         onPressed: () {},
       ),
-      title: null,
+      title: progress != null
+          ? ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: LinearProgressIndicator(
+                value: progress,
+                minHeight: 14,
+                backgroundColor: const Color(0xFFE7EEEE),
+                valueColor: const AlwaysStoppedAnimation(Color(0xFF00C9B7)),
+              ),
+            )
+          : null,
       actions: [
         if (user != null)
           Padding(
@@ -101,9 +114,17 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
     }
 
     if (currentIndex >= exercises.length) {
+      if (!xpAwarded) {
+        xpAwarded = true;
+        awardXp(1, correctCount).then((newXp) {
+          setState(() {
+            user!['xp'] = newXp;
+          });
+        });
+      }
       return Scaffold(
         appBar: _buildAppBar(),
-        body: const Center(child: Text('Урок завершён! 🎉')),
+        body: Center(child: Text('Урок завершён! +${correctCount * 10} XP 🎉')),
       );
     }
 
@@ -113,22 +134,13 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
     final progress = currentIndex / exercises.length;
 
     return Scaffold(
-      appBar: _buildAppBar(),
+      appBar: _buildAppBar(progress: progress),
       body: Padding(
         padding: const EdgeInsets.all(24.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(20),
-              child: LinearProgressIndicator(
-                value: progress,
-                minHeight: 14,
-                backgroundColor: const Color(0xFFE7EEEE),
-                valueColor: const AlwaysStoppedAnimation(Color(0xFF00C9B7)),
-              ),
-            ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 8),
             Text(
               '\$ работа с файлами',
               style: GoogleFonts.jetBrainsMono(
@@ -161,8 +173,8 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
                 child: Row(
                   children: [
                     SizedBox(
-                      width: 60,
-                      height: 60,
+                      width: 90,
+                      height: 90,
                       child: Lottie.asset(
                         key: ValueKey(attemptCount),
                         isCorrect! ? 'assets/animations/success.json' : 'assets/animations/error.json',

@@ -93,26 +93,6 @@ def create_exercise(exercise: schemas.ExerciseCreate, db: Session = Depends(get_
     return new_exercise
 
 
-@app.post("/exercises/{exercise_id}/submit")
-def submit_answer(exercise_id: int, submission: schemas.AnswerSubmit, db: Session = Depends(get_db)):
-    exercise = db.query(models.Exercise).filter(models.Exercise.id == exercise_id).first()
-    if exercise is None:
-        raise HTTPException(status_code=404, detail="Exercise not found")
-    is_correct = submission.answer == exercise.correct_answer
-    user = db.query(models.User).filter(models.User.id == 1).first()
-    if is_correct:
-        user.xp += 10
-    today = date.today()
-    if user.last_activity_date != today:
-        if user.last_activity_date == today - timedelta(days=1):
-            user.streak += 1
-        else:
-            user.streak = 1
-        user.last_activity_date = today
-    db.commit()
-    return {"correct": is_correct}
-
-
 @app.get("/users/{user_id}", response_model=schemas.UserOut)
 def get_user(user_id: int, db: Session = Depends(get_db)):
     user = db.query(models.User).filter(models.User.id == user_id).first()
@@ -138,3 +118,36 @@ def get_lesson_exercises(lesson_id: int, db: Session = Depends(get_db)):
         .order_by(models.Exercise.order)
         .all()
     )
+
+
+@app.post("/exercises/{exercise_id}/submit")
+def submit_answer(exercise_id: int, submission: schemas.AnswerSubmit, db: Session = Depends(get_db)):
+    exercise = db.query(models.Exercise).filter(models.Exercise.id == exercise_id).first()
+    if exercise is None:
+        raise HTTPException(status_code=404, detail="Exercise not found")
+
+    is_correct = submission.answer == exercise.correct_answer
+
+    user = db.query(models.User).filter(models.User.id == 1).first()
+
+    today = date.today()
+    if user.last_activity_date != today:
+        if user.last_activity_date == today - timedelta(days=1):
+            user.streak += 1
+        else:
+            user.streak = 1
+        user.last_activity_date = today
+
+    db.commit()
+
+    return {"correct": is_correct}
+
+
+@app.post("/users/{user_id}/award-xp")
+def award_xp(user_id: int, payload: schemas.LessonComplete, db: Session = Depends(get_db)):
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    user.xp += payload.correct_count * 10
+    db.commit()
+    return {"xp": user.xp}

@@ -84,3 +84,7 @@ class UserOut(BaseModel):
 
 class UserCreate(BaseModel):
     username: str
+
+
+class LessonComplete(BaseModel):
+    correct_count: int

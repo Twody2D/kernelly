@@ -32,3 +32,13 @@ Future<Map<String, dynamic>> fetchUser(int userId) async {
     throw Exception('Failed to load user');
   }
 }
+
+Future<int> awardXp(int userId, int correctCount) async {
+  final response = await http.post(
+    Uri.parse('http://127.0.0.1:8000/users/$userId/award-xp'),
+    headers: {'Content-Type': 'application/json'},
+    body: jsonEncode({'correct_count': correctCount}),
+  );
+  final data = jsonDecode(response.body);
+  return data['xp'];
+}
