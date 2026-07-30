@@ -122,7 +122,15 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
             Text(question, style: Theme.of(context).textTheme.headlineSmall),
             const SizedBox(height: 24),
             for (final option in options)
-              OptionCard(text: option, onTap: () => _selectAnswer(option)),
+              OptionCard(
+                text: option,
+                onTap: () => _selectAnswer(option),
+                state: selectedAnswer == null
+                    ? OptionState.none
+                    : (option == selectedAnswer
+                        ? (isCorrect! ? OptionState.correct : OptionState.incorrect)
+                        : OptionState.none),
+              ),
             if (isCorrect != null)
               SizedBox(
                 height: 150,
