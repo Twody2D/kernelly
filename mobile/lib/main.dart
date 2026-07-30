@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:lottie/lottie.dart';
 
 void main() {
   runApp(const KernellyApp());
@@ -48,15 +49,24 @@ Future<Map<String, dynamic>> fetchExercise() async {
   }
 }
 
-class _LessonScreenState extends State<LessonScreen> {
+class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderStateMixin {
   Map<String, dynamic>? exercise;
   String? selectedAnswer;
   bool? isCorrect;
+  int attemptCount = 0;
+  late AnimationController _lottieController;
 
   @override
   void initState() {
     super.initState();
+    _lottieController = AnimationController(vsync: this);
     loadExercise();
+  }
+
+  @override
+  void dispose() {
+    _lottieController.dispose();
+    super.dispose();
   }
 
   Future<void> loadExercise() async {
@@ -68,9 +78,10 @@ class _LessonScreenState extends State<LessonScreen> {
 
   void _selectAnswer(String answer) async {
     final correct = await submitAnswer(exercise!['id'], answer);
-      setState(() {
-        selectedAnswer = answer;
-        isCorrect = correct;
+    setState(() {
+      selectedAnswer = answer;
+      isCorrect = correct;
+      attemptCount++;
     });
   }
 
@@ -103,11 +114,20 @@ class _LessonScreenState extends State<LessonScreen> {
                 ),
               ),
             if (isCorrect != null)
-              Text(
-                isCorrect! ? 'Правильно!' : 'Неверно, попробуйте ещё раз',
-                style: TextStyle(
-                  color: isCorrect! ? Colors.green : Colors.red,
-                  fontSize: 18,
+              SizedBox(
+                height: 150,
+                child: Lottie.asset(
+                  key: ValueKey(attemptCount),
+                  isCorrect! ? 'assets/animations/success.json' : 'assets/animations/error.json',
+                  controller: _lottieController,
+                  onLoaded: (composition) {
+                    if (isCorrect!) {
+                      _lottieController.duration = composition.duration ~/ 3;
+                    } else {
+                      _lottieController.duration = composition.duration;
+                    }
+                    _lottieController.forward(from: 0);
+                  },
                 ),
               ),
           ],
