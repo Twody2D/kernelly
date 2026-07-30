@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:lottie/lottie.dart';
 import 'package:mobile/services/api_service.dart';
 import 'package:mobile/widgets/option_card.dart';
@@ -72,7 +73,31 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
 
     if (currentIndex >= exercises.length) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Kernelly')),
+        appBar: AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.close, color: Color(0xFF5C6B73)),
+            onPressed: () {},
+          ),
+          title: null,
+          actions: [
+            if (user != null)
+              Padding(
+                padding: const EdgeInsets.only(right: 16),
+                child: Center(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text('🔥', style: TextStyle(fontSize: 16)),
+                      const SizedBox(width: 4),
+                      Text('${user!['streak']}'),
+                      const SizedBox(width: 12),
+                      Text('${user!['xp']} XP'),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        ),
         body: const Center(child: Text('Урок завершён! 🎉')),
       );
     }
@@ -119,6 +144,16 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
               ),
             ),
             const SizedBox(height: 24),
+            Text(
+              '\$ работа с файлами',
+              style: GoogleFonts.jetBrainsMono(
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
+                color: const Color(0xFF00A896),
+                letterSpacing: 0.5,
+              ),
+            ),
+            const SizedBox(height: 10),
             Text(question, style: Theme.of(context).textTheme.headlineSmall),
             const SizedBox(height: 24),
             for (final option in options)
