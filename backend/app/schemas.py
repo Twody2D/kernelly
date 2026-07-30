@@ -76,6 +76,7 @@ class UserOut(BaseModel):
     id: int
     username: str
     xp: int
+    streak: int
 
     class Config:
         from_attributes = True
