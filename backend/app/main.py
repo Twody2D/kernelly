@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from app.database import Base, engine, get_db
 from app import models, schemas
+from datetime import date, timedelta
 
 app = FastAPI()
 
@@ -97,14 +98,18 @@ def submit_answer(exercise_id: int, submission: schemas.AnswerSubmit, db: Sessio
     exercise = db.query(models.Exercise).filter(models.Exercise.id == exercise_id).first()
     if exercise is None:
         raise HTTPException(status_code=404, detail="Exercise not found")
-
     is_correct = submission.answer == exercise.correct_answer
-
+    user = db.query(models.User).filter(models.User.id == 1).first()
     if is_correct:
-        user = db.query(models.User).filter(models.User.id == 1).first()
         user.xp += 10
-        db.commit()
-
+    today = date.today()
+    if user.last_activity_date != today:
+        if user.last_activity_date == today - timedelta(days=1):
+            user.streak += 1
+        else:
+            user.streak = 1
+        user.last_activity_date = today
+    db.commit()
     return {"correct": is_correct}
 
 

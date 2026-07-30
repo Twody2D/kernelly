@@ -70,7 +70,18 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
           if (user != null)
             Padding(
               padding: const EdgeInsets.only(right: 16),
-              child: Center(child: Text('${user!['xp']} XP')),
+              child: Center(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('🔥', style: TextStyle(fontSize: 16)),
+                    const SizedBox(width: 4),
+                    Text('${user!['streak']}'),
+                    const SizedBox(width: 12),
+                    Text('${user!['xp']} XP'),
+                  ],
+                ),
+              ),
             ),
         ],
       ),

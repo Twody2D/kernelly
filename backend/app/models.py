@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, JSON, DateTime
+from sqlalchemy import Column, Integer, String, ForeignKey, JSON, DateTime, Date
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from app.database import Base
@@ -43,6 +43,8 @@ class User(Base):
     id = Column(Integer, primary_key=True)
     username = Column(String, nullable=False, unique=True)
     xp = Column(Integer, nullable=False, default=0)
+    streak = Column(Integer, nullable=False, default=0)
+    last_activity_date = Column(Date, nullable=True)
 
 
 class UserProgress(Base):
