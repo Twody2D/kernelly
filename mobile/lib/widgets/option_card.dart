@@ -1,18 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-enum OptionState { none, correct, incorrect }
+enum OptionState { none, selected, correct, incorrect }
 
 class OptionCard extends StatelessWidget {
   final String text;
   final VoidCallback onTap;
   final OptionState state;
+  final bool locked;
 
   const OptionCard({
     super.key,
     required this.text,
     required this.onTap,
     this.state = OptionState.none,
+    this.locked = false,
   });
 
   @override
@@ -20,8 +22,12 @@ class OptionCard extends StatelessWidget {
     Color borderColor = const Color(0xFFE1EAEA);
     Color backgroundColor = Colors.white;
     Color promptColor = const Color(0xFF00A896);
+    Color textColor = const Color(0xFF1B2430);
 
-    if (state == OptionState.correct) {
+    if (state == OptionState.selected) {
+      borderColor = const Color(0xFF00C9B7);
+      backgroundColor = const Color(0xFFE3F8F6);
+    } else if (state == OptionState.correct) {
       borderColor = const Color(0xFF58CC02);
       backgroundColor = const Color(0xFFEAF9DC);
       promptColor = const Color(0xFF58CC02);
@@ -29,12 +35,16 @@ class OptionCard extends StatelessWidget {
       borderColor = const Color(0xFFFF4B4B);
       backgroundColor = const Color(0xFFFFEAEA);
       promptColor = const Color(0xFFFF4B4B);
+    } else if (locked) {
+      borderColor = const Color(0xFFEDF2F2);
+      promptColor = const Color(0xFFC2CDCD);
+      textColor = const Color(0xFFC2CDCD);
     }
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: InkWell(
-        onTap: state == OptionState.none ? onTap : null,
+        onTap: locked ? null : onTap,
         borderRadius: BorderRadius.circular(16),
         child: Container(
           width: double.infinity,
@@ -47,7 +57,7 @@ class OptionCard extends StatelessWidget {
           child: Row(
             children: [
               Text('> ', style: GoogleFonts.jetBrainsMono(fontWeight: FontWeight.w600, color: promptColor)),
-              Text(text, style: GoogleFonts.jetBrainsMono(fontWeight: FontWeight.w500)),
+              Text(text, style: GoogleFonts.jetBrainsMono(fontWeight: FontWeight.w500, color: textColor)),
             ],
           ),
         ),

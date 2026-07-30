@@ -46,16 +46,21 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
     });
   }
 
-  void _selectAnswer(String answer) async {
+  void _chooseOption(String option) {
+    setState(() {
+      selectedAnswer = option;
+    });
+  }
+
+  void _checkAnswer() async {
     final currentExercise = exercises[currentIndex];
-      final correct = await submitAnswer(currentExercise['id'], answer);
-      final userData = await fetchUser(1);
-      setState(() {
-        selectedAnswer = answer;
-        isCorrect = correct;
-        attemptCount++;
-        user = userData;
-        if (correct) correctCount++;
+    final correct = await submitAnswer(currentExercise['id'], selectedAnswer!);
+    final userData = await fetchUser(1);
+    setState(() {
+      isCorrect = correct;
+      attemptCount++;
+      user = userData;
+      if (correct) correctCount++;
     });
   }
 
@@ -136,11 +141,10 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
     return Scaffold(
       appBar: _buildAppBar(progress: progress),
       body: Padding(
-        padding: const EdgeInsets.all(24.0),
+        padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const SizedBox(height: 8),
             Text(
               '\$ работа с файлами',
               style: GoogleFonts.jetBrainsMono(
@@ -151,64 +155,81 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
               ),
             ),
             const SizedBox(height: 10),
-            Text(question, style: Theme.of(context).textTheme.headlineSmall),
+            Text(
+              question,
+              style: GoogleFonts.fredoka(
+                fontWeight: FontWeight.w600,
+                fontSize: 21,
+                color: const Color(0xFF1B2430),
+              ),
+            ),
             const SizedBox(height: 24),
             for (final option in options)
               OptionCard(
                 text: option,
-                onTap: () => _selectAnswer(option),
-                state: selectedAnswer == null
-                    ? OptionState.none
-                    : (option == selectedAnswer
+                onTap: () => _chooseOption(option),
+                locked: isCorrect != null,
+                state: isCorrect != null
+                    ? (option == selectedAnswer
                         ? (isCorrect! ? OptionState.correct : OptionState.incorrect)
-                        : OptionState.none),
+                        : OptionState.none)
+                    : (option == selectedAnswer ? OptionState.selected : OptionState.none),
               ),
+            const Spacer(),
             if (isCorrect != null)
-              Stack(
-                clipBehavior: Clip.none,
-                alignment: Alignment.centerLeft,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.only(left: 74, right: 14, top: 14, bottom: 14),
-                    decoration: BoxDecoration(
-                      color: isCorrect! ? const Color(0xFFEAF9DC) : const Color(0xFFFFEAEA),
-                      borderRadius: BorderRadius.circular(18),
-                    ),
-                    width: double.infinity,
-                    child: Text(
-                      isCorrect! ? 'Правильно! +10 XP' : 'Неверно, попробуйте ещё раз',
-                      style: GoogleFonts.fredoka(
-                        fontWeight: FontWeight.w600,
-                        color: isCorrect! ? const Color(0xFF2E6E00) : const Color(0xFFB33A3A),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  alignment: Alignment.centerLeft,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.only(left: 74, right: 14, top: 14, bottom: 14),
+                      decoration: BoxDecoration(
+                        color: isCorrect! ? const Color(0xFFEAF9DC) : const Color(0xFFFFEAEA),
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                      width: double.infinity,
+                      child: Text(
+                        isCorrect! ? 'Правильно! +10 XP' : 'Неверно, попробуйте ещё раз',
+                        style: GoogleFonts.fredoka(
+                          fontWeight: FontWeight.w600,
+                          color: isCorrect! ? const Color(0xFF2E6E00) : const Color(0xFFB33A3A),
+                        ),
                       ),
                     ),
-                  ),
-                  Positioned(
-                    left: -10,
-                    top: -20,
-                    bottom: -20,
-                    child: SizedBox(
-                      width: 100,
-                      child: Lottie.asset(
-                        key: ValueKey(attemptCount),
-                        isCorrect! ? 'assets/animations/success.json' : 'assets/animations/error.json',
-                        controller: _lottieController,
-                        fit: BoxFit.contain,
-                        onLoaded: (composition) {
-                          if (isCorrect!) {
-                            _lottieController.duration = composition.duration ~/ 2;
-                          } else {
-                            _lottieController.duration = composition.duration;
-                          }
-                          _lottieController.forward(from: 0);
-                        },
+                    Positioned(
+                      left: -10,
+                      top: -20,
+                      bottom: -20,
+                      child: SizedBox(
+                        width: 100,
+                        child: Lottie.asset(
+                          key: ValueKey(attemptCount),
+                          isCorrect! ? 'assets/animations/success.json' : 'assets/animations/error.json',
+                          controller: _lottieController,
+                          fit: BoxFit.contain,
+                          onLoaded: (composition) {
+                            if (isCorrect!) {
+                              _lottieController.duration = composition.duration ~/ 2;
+                            } else {
+                              _lottieController.duration = composition.duration;
+                            }
+                            _lottieController.forward(from: 0);
+                          },
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            const SizedBox(height: 12),
-            if (isCorrect != null)
+            if (isCorrect == null)
+              PrimaryButton(
+                text: 'Проверить',
+                enabled: selectedAnswer != null,
+                onPressed: _checkAnswer,
+              )
+            else
               PrimaryButton(text: 'Продолжить', onPressed: _nextExercise),
           ],
         ),
