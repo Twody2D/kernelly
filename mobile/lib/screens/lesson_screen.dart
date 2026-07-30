@@ -164,21 +164,36 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
                         : OptionState.none),
               ),
             if (isCorrect != null)
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: isCorrect! ? const Color(0xFFEAF9DC) : const Color(0xFFFFEAEA),
-                  borderRadius: BorderRadius.circular(18),
-                ),
-                child: Row(
-                  children: [
-                    SizedBox(
-                      width: 90,
-                      height: 90,
+              Stack(
+                clipBehavior: Clip.none,
+                alignment: Alignment.centerLeft,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.only(left: 74, right: 14, top: 14, bottom: 14),
+                    decoration: BoxDecoration(
+                      color: isCorrect! ? const Color(0xFFEAF9DC) : const Color(0xFFFFEAEA),
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    width: double.infinity,
+                    child: Text(
+                      isCorrect! ? 'Правильно! +10 XP' : 'Неверно, попробуйте ещё раз',
+                      style: GoogleFonts.fredoka(
+                        fontWeight: FontWeight.w600,
+                        color: isCorrect! ? const Color(0xFF2E6E00) : const Color(0xFFB33A3A),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    left: -10,
+                    top: -20,
+                    bottom: -20,
+                    child: SizedBox(
+                      width: 100,
                       child: Lottie.asset(
                         key: ValueKey(attemptCount),
                         isCorrect! ? 'assets/animations/success.json' : 'assets/animations/error.json',
                         controller: _lottieController,
+                        fit: BoxFit.contain,
                         onLoaded: (composition) {
                           if (isCorrect!) {
                             _lottieController.duration = composition.duration ~/ 2;
@@ -189,16 +204,8 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
                         },
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    Text(
-                      isCorrect! ? 'Правильно! +10 XP' : 'Неверно, попробуйте ещё раз',
-                      style: GoogleFonts.fredoka(
-                        fontWeight: FontWeight.w600,
-                        color: isCorrect! ? const Color(0xFF2E6E00) : const Color(0xFFB33A3A),
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             const SizedBox(height: 12),
             if (isCorrect != null)
