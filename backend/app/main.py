@@ -128,3 +128,13 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(new_user)
     return new_user
+
+
+@app.get("/lessons/{lesson_id}/exercises", response_model=list[schemas.ExerciseOut])
+def get_lesson_exercises(lesson_id: int, db: Session = Depends(get_db)):
+    return (
+        db.query(models.Exercise)
+        .filter(models.Exercise.lesson_id == lesson_id)
+        .order_by(models.Exercise.order)
+        .all()
+    )

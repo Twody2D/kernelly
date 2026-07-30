@@ -1,14 +1,14 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
-Future<Map<String, dynamic>> fetchExercise() async {
-  final response = await http.get(Uri.parse('http://127.0.0.1:8000/exercises'));
+Future<List<Map<String, dynamic>>> fetchLessonExercises(int lessonId) async {
+  final response = await http.get(Uri.parse('http://127.0.0.1:8000/lessons/$lessonId/exercises'));
 
   if (response.statusCode == 200) {
-    final List<dynamic> exercises = jsonDecode(response.body);
-    return exercises.first as Map<String, dynamic>;
+    final List<dynamic> data = jsonDecode(response.body);
+    return data.cast<Map<String, dynamic>>();
   } else {
-    throw Exception('Failed to load exercise');
+    throw Exception('Failed to load lesson exercises');
   }
 }
 

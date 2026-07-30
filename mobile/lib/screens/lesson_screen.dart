@@ -11,7 +11,8 @@ class LessonScreen extends StatefulWidget {
 }
 
 class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderStateMixin {
-  Map<String, dynamic>? exercise;
+  List<Map<String, dynamic>> exercises = [];
+  int currentIndex = 0;
   String? selectedAnswer;
   bool? isCorrect;
   int attemptCount = 0;
@@ -23,7 +24,7 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
   void initState() {
     super.initState();
     _lottieController = AnimationController(vsync: this);
-    loadExercise();
+    loadLesson();
   }
 
   @override
@@ -32,17 +33,18 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
     super.dispose();
   }
 
-  Future<void> loadExercise() async {
-    final data = await fetchExercise();
+  Future<void> loadLesson() async {
+    final data = await fetchLessonExercises(1);
     final userData = await fetchUser(1);
     setState(() {
-      exercise = data;
+      exercises = data;
       user = userData;
     });
   }
 
   void _selectAnswer(String answer) async {
-    final correct = await submitAnswer(exercise!['id'], answer);
+    final currentExercise = exercises[currentIndex];
+    final correct = await submitAnswer(currentExercise['id'], answer);
     final userData = await fetchUser(1);
     setState(() {
       selectedAnswer = answer;
@@ -52,16 +54,33 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
     });
   }
 
+  void _nextExercise() {
+    setState(() {
+      currentIndex++;
+      selectedAnswer = null;
+      isCorrect = null;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    if (exercise == null) {
+    if (exercises.isEmpty) {
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
       );
     }
 
-    final question = exercise!['question'];
-    final options = List<String>.from(exercise!['content']['options']);
+    if (currentIndex >= exercises.length) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Kernelly')),
+        body: const Center(child: Text('Урок завершён! 🎉')),
+      );
+    }
+
+    final currentExercise = exercises[currentIndex];
+    final question = currentExercise['question'];
+    final options = List<String>.from(currentExercise['content']['options']);
+    final progress = (currentIndex) / exercises.length;
 
     return Scaffold(
       appBar: AppBar(
@@ -90,6 +109,16 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: LinearProgressIndicator(
+                value: progress,
+                minHeight: 14,
+                backgroundColor: const Color(0xFFE7EEEE),
+                valueColor: const AlwaysStoppedAnimation(Color(0xFF00C9B7)),
+              ),
+            ),
+            const SizedBox(height: 24),
             Text(question, style: Theme.of(context).textTheme.headlineSmall),
             const SizedBox(height: 24),
             for (final option in options)
@@ -112,6 +141,11 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
                     _lottieController.forward(from: 0);
                   },
                 ),
+              ),
+            if (isCorrect != null)
+              ElevatedButton(
+                onPressed: _nextExercise,
+                child: const Text('Продолжить'),
               ),
           ],
         ),
