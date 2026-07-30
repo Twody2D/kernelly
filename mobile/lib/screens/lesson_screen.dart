@@ -63,6 +63,34 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
     });
   }
 
+  PreferredSizeWidget _buildAppBar() {
+    return AppBar(
+      leading: IconButton(
+        icon: const Icon(Icons.close, color: Color(0xFF5C6B73)),
+        onPressed: () {},
+      ),
+      title: null,
+      actions: [
+        if (user != null)
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: Center(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('🔥', style: TextStyle(fontSize: 16)),
+                  const SizedBox(width: 4),
+                  Text('${user!['streak']}'),
+                  const SizedBox(width: 12),
+                  Text('${user!['xp']} XP'),
+                ],
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (exercises.isEmpty) {
@@ -73,31 +101,7 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
 
     if (currentIndex >= exercises.length) {
       return Scaffold(
-        appBar: AppBar(
-          leading: IconButton(
-            icon: const Icon(Icons.close, color: Color(0xFF5C6B73)),
-            onPressed: () {},
-          ),
-          title: null,
-          actions: [
-            if (user != null)
-              Padding(
-                padding: const EdgeInsets.only(right: 16),
-                child: Center(
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Text('🔥', style: TextStyle(fontSize: 16)),
-                      const SizedBox(width: 4),
-                      Text('${user!['streak']}'),
-                      const SizedBox(width: 12),
-                      Text('${user!['xp']} XP'),
-                    ],
-                  ),
-                ),
-              ),
-          ],
-        ),
+        appBar: _buildAppBar(),
         body: const Center(child: Text('Урок завершён! 🎉')),
       );
     }
@@ -105,30 +109,10 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
     final currentExercise = exercises[currentIndex];
     final question = currentExercise['question'];
     final options = List<String>.from(currentExercise['content']['options']);
-    final progress = (currentIndex) / exercises.length;
+    final progress = currentIndex / exercises.length;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Kernelly'),
-        actions: [
-          if (user != null)
-            Padding(
-              padding: const EdgeInsets.only(right: 16),
-              child: Center(
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text('🔥', style: TextStyle(fontSize: 16)),
-                    const SizedBox(width: 4),
-                    Text('${user!['streak']}'),
-                    const SizedBox(width: 12),
-                    Text('${user!['xp']} XP'),
-                  ],
-                ),
-              ),
-            ),
-        ],
-      ),
+      appBar: _buildAppBar(),
       body: Padding(
         padding: const EdgeInsets.all(24.0),
         child: Column(
@@ -167,24 +151,43 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
                         : OptionState.none),
               ),
             if (isCorrect != null)
-              SizedBox(
-                height: 150,
-                child: Lottie.asset(
-                  key: ValueKey(attemptCount),
-                  isCorrect!
-                      ? 'assets/animations/success.json'
-                      : 'assets/animations/error.json',
-                  controller: _lottieController,
-                  onLoaded: (composition) {
-                    if (isCorrect!) {
-                      _lottieController.duration = composition.duration ~/ 2;
-                    } else {
-                      _lottieController.duration = composition.duration;
-                    }
-                    _lottieController.forward(from: 0);
-                  },
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: isCorrect! ? const Color(0xFFEAF9DC) : const Color(0xFFFFEAEA),
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: 60,
+                      height: 60,
+                      child: Lottie.asset(
+                        key: ValueKey(attemptCount),
+                        isCorrect! ? 'assets/animations/success.json' : 'assets/animations/error.json',
+                        controller: _lottieController,
+                        onLoaded: (composition) {
+                          if (isCorrect!) {
+                            _lottieController.duration = composition.duration ~/ 2;
+                          } else {
+                            _lottieController.duration = composition.duration;
+                          }
+                          _lottieController.forward(from: 0);
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      isCorrect! ? 'Правильно! +10 XP' : 'Неверно, попробуйте ещё раз',
+                      style: GoogleFonts.fredoka(
+                        fontWeight: FontWeight.w600,
+                        color: isCorrect! ? const Color(0xFF2E6E00) : const Color(0xFFB33A3A),
+                      ),
+                    ),
+                  ],
                 ),
               ),
+            const SizedBox(height: 12),
             if (isCorrect != null)
               ElevatedButton(
                 onPressed: _nextExercise,
