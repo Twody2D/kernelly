@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:lottie/lottie.dart';
 import 'package:mobile/services/api_service.dart';
 import 'package:mobile/widgets/option_card.dart';
+import 'package:mobile/widgets/primary_button.dart';
 
 class LessonScreen extends StatefulWidget {
   const LessonScreen({super.key});
@@ -189,10 +190,7 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
               ),
             const SizedBox(height: 12),
             if (isCorrect != null)
-              ElevatedButton(
-                onPressed: _nextExercise,
-                child: const Text('Продолжить'),
-              ),
+              PrimaryButton(text: 'Продолжить', onPressed: _nextExercise),
           ],
         ),
       ),
