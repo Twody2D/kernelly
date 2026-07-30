@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 void main() {
   runApp(const KernellyApp());
@@ -24,23 +26,65 @@ class LessonScreen extends StatefulWidget {
   State<LessonScreen> createState() => _LessonScreenState();
 }
 
-class _LessonScreenState extends State<LessonScreen> {
-  final String question = 'Какая команда показывает содержимое текущей папки в Linux?';
-  final List<String> options = ['ls', 'cd', 'pwd', 'rm'];
-  final String correctAnswer = 'ls';
+Future<bool> submitAnswer(int exerciseId, String answer) async {
+  final response = await http.post(
+    Uri.parse('http://127.0.0.1:8000/exercises/$exerciseId/submit'),
+    headers: {'Content-Type': 'application/json'},
+    body: jsonEncode({'answer': {'answer': answer}}),
+  );
 
+  final data = jsonDecode(response.body);
+  return data['correct'];
+}
+
+Future<Map<String, dynamic>> fetchExercise() async {
+  final response = await http.get(Uri.parse('http://127.0.0.1:8000/exercises'));
+
+  if (response.statusCode == 200) {
+    final List<dynamic> exercises = jsonDecode(response.body);
+    return exercises.first as Map<String, dynamic>;
+  } else {
+    throw Exception('Failed to load exercise');
+  }
+}
+
+class _LessonScreenState extends State<LessonScreen> {
+  Map<String, dynamic>? exercise;
   String? selectedAnswer;
   bool? isCorrect;
 
-  void _selectAnswer(String answer) {
+  @override
+  void initState() {
+    super.initState();
+    loadExercise();
+  }
+
+  Future<void> loadExercise() async {
+    final data = await fetchExercise();
     setState(() {
-      selectedAnswer = answer;
-      isCorrect = answer == correctAnswer;
+      exercise = data;
+    });
+  }
+
+  void _selectAnswer(String answer) async {
+    final correct = await submitAnswer(exercise!['id'], answer);
+      setState(() {
+        selectedAnswer = answer;
+        isCorrect = correct;
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    if (exercise == null) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    final question = exercise!['question'];
+    final options = List<String>.from(exercise!['content']['options']);
+
     return Scaffold(
       appBar: AppBar(title: const Text('Kernelly')),
       body: Padding(
