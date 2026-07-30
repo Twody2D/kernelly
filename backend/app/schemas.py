@@ -70,3 +70,16 @@ class ExerciseCreate(BaseModel):
 
 class AnswerSubmit(BaseModel):
     answer: dict
+
+
+class UserOut(BaseModel):
+    id: int
+    username: str
+    xp: int
+
+    class Config:
+        from_attributes = True
+
+
+class UserCreate(BaseModel):
+    username: str

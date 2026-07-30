@@ -42,6 +42,7 @@ class User(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True)
     username = Column(String, nullable=False, unique=True)
+    xp = Column(Integer, nullable=False, default=0)
 
 
 class UserProgress(Base):

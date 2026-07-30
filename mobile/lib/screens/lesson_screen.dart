@@ -15,6 +15,7 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
   String? selectedAnswer;
   bool? isCorrect;
   int attemptCount = 0;
+  Map<String, dynamic>? user;
 
   late AnimationController _lottieController;
 
@@ -33,17 +34,21 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
 
   Future<void> loadExercise() async {
     final data = await fetchExercise();
+    final userData = await fetchUser(1);
     setState(() {
       exercise = data;
+      user = userData;
     });
   }
 
   void _selectAnswer(String answer) async {
     final correct = await submitAnswer(exercise!['id'], answer);
+    final userData = await fetchUser(1);
     setState(() {
       selectedAnswer = answer;
       isCorrect = correct;
       attemptCount++;
+      user = userData;
     });
   }
 
@@ -59,7 +64,16 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
     final options = List<String>.from(exercise!['content']['options']);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Kernelly')),
+      appBar: AppBar(
+        title: const Text('Kernelly'),
+        actions: [
+          if (user != null)
+            Padding(
+              padding: const EdgeInsets.only(right: 16),
+              child: Center(child: Text('${user!['xp']} XP')),
+            ),
+        ],
+      ),
       body: Padding(
         padding: const EdgeInsets.all(24.0),
         child: Column(

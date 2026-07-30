@@ -99,4 +99,27 @@ def submit_answer(exercise_id: int, submission: schemas.AnswerSubmit, db: Sessio
         raise HTTPException(status_code=404, detail="Exercise not found")
 
     is_correct = submission.answer == exercise.correct_answer
+
+    if is_correct:
+        user = db.query(models.User).filter(models.User.id == 1).first()
+        user.xp += 10
+        db.commit()
+
     return {"correct": is_correct}
+
+
+@app.get("/users/{user_id}", response_model=schemas.UserOut)
+def get_user(user_id: int, db: Session = Depends(get_db)):
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
+
+
+@app.post("/users", response_model=schemas.UserOut)
+def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
+    new_user = models.User(username=user.username)
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    return new_user
