@@ -66,3 +66,7 @@ class ExerciseCreate(BaseModel):
     correct_answer: dict
     order: int
     lesson_id: int
+
+
+class AnswerSubmit(BaseModel):
+    answer: dict

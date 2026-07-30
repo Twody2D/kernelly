@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.database import Base, engine, get_db
 from app import models, schemas
@@ -82,3 +82,13 @@ def create_exercise(exercise: schemas.ExerciseCreate, db: Session = Depends(get_
     db.commit()
     db.refresh(new_exercise)
     return new_exercise
+
+
+@app.post("/exercises/{exercise_id}/submit")
+def submit_answer(exercise_id: int, submission: schemas.AnswerSubmit, db: Session = Depends(get_db)):
+    exercise = db.query(models.Exercise).filter(models.Exercise.id == exercise_id).first()
+    if exercise is None:
+        raise HTTPException(status_code=404, detail="Exercise not found")
+
+    is_correct = submission.answer == exercise.correct_answer
+    return {"correct": is_correct}
