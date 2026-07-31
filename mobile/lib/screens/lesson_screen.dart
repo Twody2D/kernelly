@@ -76,7 +76,7 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
     return AppBar(
       leading: IconButton(
         icon: const Icon(Icons.close, color: Color(0xFF5C6B73)),
-        onPressed: () {},
+        onPressed: () => Navigator.pop(context),
       ),
       title: progress != null
           ? ClipRRect(
