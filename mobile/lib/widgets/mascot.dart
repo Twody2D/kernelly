@@ -61,9 +61,24 @@ class _MascotPainter extends CustomPainter {
         _drawMouth(canvas, p, s, 63, 100, 75, 107, 87, 100, facePaint);
         break;
       case MascotEmotion.surprised:
+        final impulsePaint = Paint()
+          ..color = const Color(0xFF8A9797)
+          ..strokeWidth = 3 * s
+          ..strokeCap = StrokeCap.round;
+        canvas.drawLine(p(15, 60), p(27, 65), impulsePaint);
+        canvas.drawLine(p(15, 82), p(28, 82), impulsePaint);
+        canvas.drawLine(p(135, 60), p(123, 65), impulsePaint);
+        canvas.drawLine(p(135, 82), p(122, 82), impulsePaint);
+
         canvas.drawCircle(p(59, 80), 8 * s, Paint()..color = darkColor);
         canvas.drawCircle(p(91, 80), 8 * s, Paint()..color = darkColor);
+        canvas.drawCircle(p(56.5, 76.5), 2 * s, Paint()..color = Colors.white);
+        canvas.drawCircle(p(88.5, 76.5), 2 * s, Paint()..color = Colors.white);
         canvas.drawOval(Rect.fromCenter(center: p(75, 101), width: 16 * s, height: 20 * s), Paint()..color = darkColor);
+
+        final excl = Paint()..color = const Color(0xFFFF9500);
+        canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(p(112, 26).dx, p(112, 26).dy, 5 * s, 15 * s), Radius.circular(2.5 * s)), excl);
+        canvas.drawCircle(p(114.5, 47), 3 * s, excl);
         break;
       case MascotEmotion.sleepy:
         _drawSmileEye(canvas, p, s, 50, 80, 68, facePaint, flat: true);

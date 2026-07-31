@@ -22,6 +22,7 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
   Map<String, dynamic>? user;
   int correctCount = 0;
   bool xpAwarded = false;
+  DateTime? startTime;
 
   late AnimationController _lottieController;
 
@@ -44,6 +45,7 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
     setState(() {
       exercises = data;
       user = userData;
+      startTime = DateTime.now();
     });
   }
 
@@ -132,7 +134,12 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
         sectionTitle: 'Работа с файлами',
         xpEarned: correctCount * 10,
         accuracyPercent: exercises.isEmpty ? 0 : ((correctCount / exercises.length) * 100).round(),
+        elapsed: startTime == null ? Duration.zero : DateTime.now().difference(startTime!),
+        streak: user?['streak'] ?? 0,
         onContinue: () => Navigator.pop(context),
+        onRepeat: () {
+          Navigator.pop(context);
+        },
       );
     }
 
