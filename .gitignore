@@ -1,6 +1,16 @@
+# секреты
+backend/.env
+docker/.env
+
+# Python
 __pycache__/
 *.pyc
+.venv/
 venv/
-.env
-backend/.env
-CLAUDE.md
+
+# Docker
+docker/pgdata/
+
+# IDE
+.vscode/
+.idea/
