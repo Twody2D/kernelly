@@ -139,7 +139,7 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
     final currentExercise = exercises[currentIndex];
     final question = currentExercise['question'];
     final options = List<String>.from(currentExercise['content']['options']);
-    final progress = currentIndex / exercises.length;
+    final progress = (currentIndex + (isCorrect != null ? 1 : 0)) / exercises.length;
 
     return Scaffold(
       appBar: _buildAppBar(progress: progress),
