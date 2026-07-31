@@ -4,6 +4,7 @@ import 'package:lottie/lottie.dart';
 import 'package:mobile/services/api_service.dart';
 import 'package:mobile/widgets/option_card.dart';
 import 'package:mobile/widgets/primary_button.dart';
+import 'package:mobile/screens/section_complete_screen.dart';
 
 class LessonScreen extends StatefulWidget {
   const LessonScreen({super.key});
@@ -127,9 +128,11 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
           });
         });
       }
-      return Scaffold(
-        appBar: _buildAppBar(),
-        body: Center(child: Text('Урок завершён! +${correctCount * 10} XP 🎉')),
+      return SectionCompleteScreen(
+        sectionTitle: 'Работа с файлами',
+        xpEarned: correctCount * 10,
+        accuracyPercent: exercises.isEmpty ? 0 : ((correctCount / exercises.length) * 100).round(),
+        onContinue: () => Navigator.pop(context),
       );
     }
 
