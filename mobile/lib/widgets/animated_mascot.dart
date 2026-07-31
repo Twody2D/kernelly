@@ -19,7 +19,7 @@ class _AnimatedMascotState extends State<AnimatedMascot> with TickerProviderStat
   void initState() {
     super.initState();
     _floatController = AnimationController(vsync: this, duration: const Duration(milliseconds: 3400))..repeat(reverse: true);
-    _ringController = AnimationController(vsync: this, duration: const Duration(milliseconds: 2600))..repeat(reverse: true);
+    _ringController = AnimationController(vsync: this, duration: const Duration(milliseconds: 2400))..repeat(reverse: true);
   }
 
   @override
@@ -31,7 +31,7 @@ class _AnimatedMascotState extends State<AnimatedMascot> with TickerProviderStat
 
   @override
   Widget build(BuildContext context) {
-    final glowSize = widget.size * 1.35;
+    final glowSize = widget.size * 1.55;
     return SizedBox(
       width: glowSize,
       height: glowSize,
@@ -44,7 +44,7 @@ class _AnimatedMascotState extends State<AnimatedMascot> with TickerProviderStat
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               gradient: RadialGradient(
-                colors: [const Color(0xFF00C9B7).withOpacity(0.28), const Color(0xFF00C9B7).withOpacity(0)],
+                colors: [const Color(0xFF00C9B7).withOpacity(0.22), const Color(0xFF00C9B7).withOpacity(0)],
               ),
             ),
           ),
@@ -52,11 +52,16 @@ class _AnimatedMascotState extends State<AnimatedMascot> with TickerProviderStat
             animation: _ringController,
             builder: (context, child) {
               final curved = Curves.easeInOut.transform(_ringController.value);
-              return Opacity(
-                opacity: 0.3 + curved * 0.4,
-                child: CustomPaint(
-                  size: Size(glowSize * 0.78, glowSize * 0.78),
-                  painter: _DashedCirclePainter(),
+              final opacity = 0.15 + curved * 0.65;
+              final scale = 1.0 + curved * 0.04;
+              return Transform.scale(
+                scale: scale,
+                child: Opacity(
+                  opacity: opacity,
+                  child: CustomPaint(
+                    size: Size(glowSize * 0.72, glowSize * 0.72),
+                    painter: _DashedCirclePainter(),
+                  ),
                 ),
               );
             },
