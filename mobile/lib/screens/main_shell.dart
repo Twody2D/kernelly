@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile/screens/course_overview_screen.dart';
 import 'package:mobile/screens/profile_screen.dart';
+import 'package:mobile/screens/path_screen.dart';
 
 class MainShell extends StatefulWidget {
   const MainShell({super.key});
@@ -14,7 +15,7 @@ class _MainShellState extends State<MainShell> {
   int currentIndex = 1;
 
   final List<Widget> _tabs = const [
-    _PlaceholderTab(label: 'Путь'),
+    PathScreen(sectionId: 1, sectionTitle: 'Работа с файлами'),
     CourseOverviewScreen(),
     ProfileScreen(),
   ];

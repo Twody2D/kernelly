@@ -69,11 +69,7 @@ class _PathScreenState extends State<PathScreen> {
       appBar: AppBar(
         backgroundColor: const Color(0xFFF6F9F9),
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.close, color: Color(0xFF5C6B73)),
-          onPressed: () => Navigator.pop(context),
         ),
-      ),
       body: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 20),
         children: [
