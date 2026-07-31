@@ -42,3 +42,14 @@ Future<int> awardXp(int userId, int correctCount) async {
   final data = jsonDecode(response.body);
   return data['xp'];
 }
+
+Future<List<Map<String, dynamic>>> fetchCourses() async {
+  final response = await http.get(Uri.parse('http://127.0.0.1:8000/courses'));
+
+  if (response.statusCode == 200) {
+    final List<dynamic> data = jsonDecode(response.body);
+    return data.cast<Map<String, dynamic>>();
+  } else {
+    throw Exception('Failed to load courses');
+  }
+}

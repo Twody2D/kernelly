@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:mobile/screens/lesson_screen.dart';
+import 'package:mobile/screens/course_overview_screen.dart';
 
 void main() {
   runApp(const KernellyApp());
@@ -37,7 +37,7 @@ class KernellyApp extends StatelessWidget {
           ),
         ),
       ),
-      home: const LessonScreen(),
+      home: const CourseOverviewScreen(),
     );
   }
 }

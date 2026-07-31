@@ -88,3 +88,17 @@ class UserCreate(BaseModel):
 
 class LessonComplete(BaseModel):
     correct_count: int
+
+
+class LessonProgress(BaseModel):
+    id: int
+    title: str
+    order: int
+    status: str
+
+    class Config:
+        from_attributes = True
+
+
+class LessonCompleteRequest(BaseModel):
+    lesson_id: int

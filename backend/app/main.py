@@ -151,3 +151,51 @@ def award_xp(user_id: int, payload: schemas.LessonComplete, db: Session = Depend
     user.xp += payload.correct_count * 10
     db.commit()
     return {"xp": user.xp}
+
+@app.get("/sections/{section_id}/lessons-progress")
+def get_lessons_progress(section_id: int, db: Session = Depends(get_db)):
+    lessons = (
+        db.query(models.Lesson)
+        .filter(models.Lesson.section_id == section_id)
+        .order_by(models.Lesson.order)
+        .all()
+    )
+
+    completed_lesson_ids = {
+        row.lesson_id
+        for row in db.query(models.UserProgress)
+        .filter(models.UserProgress.user_id == 1)
+        .all()
+    }
+
+    result = []
+    unlocked_found = False
+    for lesson in lessons:
+        if lesson.id in completed_lesson_ids:
+            status = "done"
+        elif not unlocked_found:
+            status = "current"
+            unlocked_found = True
+        else:
+            status = "locked"
+        result.append({
+            "id": lesson.id,
+            "title": lesson.title,
+            "order": lesson.order,
+            "status": status,
+        })
+
+    return result
+
+@app.post("/lessons/{lesson_id}/complete")
+def complete_lesson(lesson_id: int, db: Session = Depends(get_db)):
+    existing = (
+        db.query(models.UserProgress)
+        .filter(models.UserProgress.user_id == 1, models.UserProgress.lesson_id == lesson_id)
+        .first()
+    )
+    if existing is None:
+        progress = models.UserProgress(user_id=1, lesson_id=lesson_id)
+        db.add(progress)
+        db.commit()
+    return {"status": "ok"}
