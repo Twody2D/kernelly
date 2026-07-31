@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile/screens/main_shell.dart';
 
 void main() {
+  GoogleFonts.config.allowRuntimeFetching = false;
   runApp(const KernellyApp());
 }
 
