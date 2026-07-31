@@ -114,7 +114,7 @@ class _PulsingRingState extends State<_PulsingRing> with SingleTickerProviderSta
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(vsync: this, duration: const Duration(seconds: 2))..repeat(reverse: true);
+    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 1400))..repeat(reverse: true);
   }
 
   @override
@@ -125,14 +125,51 @@ class _PulsingRingState extends State<_PulsingRing> with SingleTickerProviderSta
 
   @override
   Widget build(BuildContext context) {
-    return FadeTransition(
-      opacity: Tween(begin: 0.3, end: 1.0).animate(_controller),
-      child: Container(
-        decoration: BoxDecoration(
-          border: Border.all(color: const Color(0xFF00C9B7), width: 2),
-          borderRadius: BorderRadius.circular(26),
-        ),
-      ),
+    final curved = CurvedAnimation(parent: _controller, curve: Curves.easeInOut);
+    return AnimatedBuilder(
+      animation: curved,
+      builder: (context, child) {
+        final value = curved.value;
+        final opacity = 0.3 + (value * 0.7);
+        final scale = 1.0 + (value * 0.06);
+        return Transform.scale(
+          scale: scale,
+          child: Opacity(
+            opacity: opacity,
+            child: CustomPaint(
+              painter: _DashedRingPainter(),
+            ),
+          ),
+        );
+      },
     );
   }
+}
+
+class _DashedRingPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = const Color(0xFF00C9B7)
+      ..strokeWidth = 2
+      ..style = PaintingStyle.stroke;
+
+    final rect = Offset.zero & size;
+    final radius = Radius.circular(26);
+    final path = Path()..addRRect(RRect.fromRectAndRadius(rect, radius));
+
+    const dashWidth = 5.0;
+    const dashGap = 4.0;
+    for (final metric in path.computeMetrics()) {
+      double distance = 0;
+      while (distance < metric.length) {
+        final next = distance + dashWidth;
+        canvas.drawPath(metric.extractPath(distance, next.clamp(0, metric.length)), paint);
+        distance = next + dashGap;
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _DashedRingPainter oldDelegate) => false;
 }
