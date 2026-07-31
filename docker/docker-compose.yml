@@ -2,19 +2,16 @@ services:
   postgres:
     image: postgres:16
     restart: unless-stopped
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
+    env_file:
+      - .env
     volumes:
       - pgdata:/var/lib/postgresql/data
 
   backend:
-    build:
-      context: ../backend
+    image: ${DOCKERHUB_USERNAME}/kernelly-backend:${TAG:-latest} 
     restart: unless-stopped
     env_file:
-      - ../backend/.env
+      - .env
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
     ports:
