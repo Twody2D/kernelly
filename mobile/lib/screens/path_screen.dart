@@ -56,20 +56,14 @@ class _PathScreenState extends State<PathScreen> {
     const amplitude = 70.0;
     final anchors = [0.0, -1.0, 1.0];
 
-    final points = List.generate(lessons.length, (i) {
-      final dx = 160 + anchors[i % 3] * amplitude;
-      final dy = 44.0 + i * nodeSpacingY;
-      return Offset(dx, dy);
-    });
-
-    final pathHeight = points.isEmpty ? 300.0 : points.last.dy + 100;
+    final pathHeight = lessons.isEmpty ? 300.0 : 44.0 + (lessons.length - 1) * nodeSpacingY + 100;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF6F9F9),
       appBar: AppBar(
         backgroundColor: const Color(0xFFF6F9F9),
         elevation: 0,
-        ),
+      ),
       body: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 20),
         children: [
@@ -101,30 +95,47 @@ class _PathScreenState extends State<PathScreen> {
             ),
           ),
           const SizedBox(height: 20),
-          SizedBox(
-            height: pathHeight,
-            child: Stack(
-              children: [
-                CustomPaint(size: Size.infinite, painter: PathTracePainter(points)),
-                for (int i = 0; i < lessons.length; i++)
-                  Positioned(
-                    left: points[i].dx - 34,
-                    top: points[i].dy - 34,
-                    child: LessonNode(
-                      label: lessons[i]['title'],
-                      status: _statusFor(lessons[i]['status']),
-                      onTap: lessons[i]['status'] == 'locked'
-                          ? null
-                          : () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(builder: (_) => const LessonScreen()),
-                              );
-                            },
-                    ),
-                  ),
-              ],
-            ),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final centerX = constraints.maxWidth / 2;
+              final dynamicPoints = List.generate(lessons.length, (i) {
+                final dx = centerX + anchors[i % 3] * amplitude;
+                final dy = 44.0 + i * nodeSpacingY;
+                return Offset(dx, dy);
+              });
+
+              return SizedBox(
+                height: pathHeight,
+                child: Stack(
+                  children: [
+                    CustomPaint(size: Size.infinite, painter: PathTracePainter(dynamicPoints)),
+                    for (int i = 0; i < lessons.length; i++)
+                      Positioned(
+                        left: dynamicPoints[i].dx - 34,
+                        top: dynamicPoints[i].dy - 34,
+                        child: LessonNode(
+                          label: lessons[i]['title'],
+                          status: _statusFor(lessons[i]['status']),
+                          onTap: lessons[i]['status'] == 'locked'
+                              ? null
+                              : () async {
+                                  await Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => LessonScreen(
+                                        lessonId: lessons[i]['id'],
+                                        sectionTitle: widget.sectionTitle,
+                                      ),
+                                    ),
+                                  );
+                                  load();
+                                },
+                        ),
+                      ),
+                  ],
+                ),
+              );
+            },
           ),
         ],
       ),

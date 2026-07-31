@@ -199,3 +199,13 @@ def complete_lesson(lesson_id: int, db: Session = Depends(get_db)):
         db.add(progress)
         db.commit()
     return {"status": "ok"}
+
+
+@app.get("/courses/{course_id}/sections", response_model=list[schemas.SectionOut])
+def get_course_sections(course_id: int, db: Session = Depends(get_db)):
+    return (
+        db.query(models.Section)
+        .filter(models.Section.course_id == course_id)
+        .order_by(models.Section.order)
+        .all()
+    )

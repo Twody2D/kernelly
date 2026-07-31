@@ -62,10 +62,18 @@ class _CourseOverviewScreenState extends State<CourseOverviewScreen> {
                     padding: const EdgeInsets.only(bottom: 12),
                     child: InkWell(
                       borderRadius: BorderRadius.circular(16),
-                      onTap: () {
+                      onTap: () async {
+                        final sections = await fetchCourseSections(course['id']);
+                        if (sections.isEmpty) return;
+                        final firstSection = sections.first;
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (context) => const PathScreen(sectionId: 1, sectionTitle: 'Работа с файлами')),
+                          MaterialPageRoute(
+                            builder: (context) => PathScreen(
+                              sectionId: firstSection['id'],
+                              sectionTitle: firstSection['title'],
+                            ),
+                          ),
                         );
                       },
                       child: Container(

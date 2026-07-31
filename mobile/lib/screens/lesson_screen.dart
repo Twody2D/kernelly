@@ -7,7 +7,10 @@ import 'package:mobile/widgets/primary_button.dart';
 import 'package:mobile/screens/section_complete_screen.dart';
 
 class LessonScreen extends StatefulWidget {
-  const LessonScreen({super.key});
+  final int lessonId;
+  final String sectionTitle;
+
+  const LessonScreen({super.key, required this.lessonId, required this.sectionTitle});
 
   @override
   State<LessonScreen> createState() => _LessonScreenState();
@@ -22,6 +25,7 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
   Map<String, dynamic>? user;
   int correctCount = 0;
   bool xpAwarded = false;
+  bool lessonMarkedComplete = false;
   DateTime? startTime;
 
   late AnimationController _lottieController;
@@ -40,7 +44,7 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
   }
 
   Future<void> loadLesson() async {
-    final data = await fetchLessonExercises(1);
+    final data = await fetchLessonExercises(widget.lessonId);
     final userData = await fetchUser(1);
     setState(() {
       exercises = data;
@@ -130,6 +134,10 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
           });
         });
       }
+      if (!lessonMarkedComplete) {
+        lessonMarkedComplete = true;
+        completeLesson(widget.lessonId);
+      }
       return SectionCompleteScreen(
         sectionTitle: 'Работа с файлами',
         xpEarned: correctCount * 10,
@@ -156,7 +164,7 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              '\$ работа с файлами',
+              '\$ ${widget.sectionTitle}',
               style: GoogleFonts.jetBrainsMono(
                 fontWeight: FontWeight.w600,
                 fontSize: 12,
