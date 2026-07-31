@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile/screens/course_overview_screen.dart';
+import 'package:mobile/screens/profile_screen.dart';
 
 class MainShell extends StatefulWidget {
   const MainShell({super.key});
@@ -15,7 +16,7 @@ class _MainShellState extends State<MainShell> {
   final List<Widget> _tabs = const [
     _PlaceholderTab(label: 'Путь'),
     CourseOverviewScreen(),
-    _PlaceholderTab(label: 'Профиль'),
+    ProfileScreen(),
   ];
 
   @override
