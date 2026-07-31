@@ -53,3 +53,14 @@ Future<List<Map<String, dynamic>>> fetchCourses() async {
     throw Exception('Failed to load courses');
   }
 }
+
+Future<List<Map<String, dynamic>>> fetchLessonsProgress(int sectionId) async {
+  final response = await http.get(Uri.parse('http://127.0.0.1:8000/sections/$sectionId/lessons-progress'));
+
+  if (response.statusCode == 200) {
+    final List<dynamic> data = jsonDecode(response.body);
+    return data.cast<Map<String, dynamic>>();
+  } else {
+    throw Exception('Failed to load lessons progress');
+  }
+}

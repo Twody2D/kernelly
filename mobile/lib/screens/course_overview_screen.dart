@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile/services/api_service.dart';
 import 'package:mobile/screens/lesson_screen.dart';
+import 'package:mobile/screens/path_screen.dart';
 
 class CourseOverviewScreen extends StatefulWidget {
   const CourseOverviewScreen({super.key});
@@ -64,7 +65,7 @@ class _CourseOverviewScreenState extends State<CourseOverviewScreen> {
                       onTap: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (context) => const LessonScreen()),
+                          MaterialPageRoute(builder: (context) => const PathScreen(sectionId: 1, sectionTitle: 'Работа с файлами')),
                         );
                       },
                       child: Container(
