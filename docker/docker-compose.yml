@@ -21,3 +21,5 @@ services:
 
 volumes:
   pgdata:
+    external: true
+    name: kernelly_pgdata
