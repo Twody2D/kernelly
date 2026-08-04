@@ -4,6 +4,7 @@ import 'package:mobile/services/api_service.dart';
 import 'package:mobile/widgets/lesson_node.dart';
 import 'package:mobile/widgets/path_trace_painter.dart';
 import 'package:mobile/screens/lesson_screen.dart';
+import 'package:mobile/widgets/gradient_banner.dart';
 
 class PathScreen extends StatefulWidget {
   final int sectionId;
@@ -67,32 +68,10 @@ class _PathScreenState extends State<PathScreen> {
       body: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 20),
         children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(colors: [Color(0xFF00D9C6), Color(0xFF00A896)]),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('\$ раздел', style: GoogleFonts.jetBrainsMono(color: Colors.white70, fontSize: 11)),
-                    const SizedBox(height: 4),
-                    Text(widget.sectionTitle,
-                        style: GoogleFonts.fredoka(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 16)),
-                  ],
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-                  decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(10)),
-                  child: Text('$doneCount / ${lessons.length}',
-                      style: GoogleFonts.jetBrainsMono(color: Colors.white, fontSize: 11)),
-                ),
-              ],
-            ),
+          GradientBanner(
+            eyebrow: '\$ раздел',
+            title: widget.sectionTitle,
+            badge: '$doneCount / ${lessons.length}',
           ),
           const SizedBox(height: 20),
           LayoutBuilder(

@@ -209,3 +209,79 @@ def get_course_sections(course_id: int, db: Session = Depends(get_db)):
         .order_by(models.Section.order)
         .all()
     )
+
+
+@app.get("/courses/{course_id}/progress")
+def get_course_progress(course_id: int, db: Session = Depends(get_db)):
+    lesson_ids = [
+        row.id
+        for row in db.query(models.Lesson.id)
+        .join(models.Section, models.Lesson.section_id == models.Section.id)
+        .filter(models.Section.course_id == course_id)
+        .all()
+    ]
+
+    total = len(lesson_ids)
+    completed = (
+        db.query(models.UserProgress)
+        .filter(models.UserProgress.user_id == 1, models.UserProgress.lesson_id.in_(lesson_ids))
+        .count()
+        if lesson_ids
+        else 0
+    )
+
+    return {"completed": completed, "total": total}
+
+
+@app.get("/courses/overview")
+def get_courses_overview(db: Session = Depends(get_db)):
+    courses = db.query(models.Course).all()
+    completed_ids = {
+        row.lesson_id
+        for row in db.query(models.UserProgress.lesson_id)
+        .filter(models.UserProgress.user_id == 1)
+        .all()
+    }
+
+    stats = {}
+    for c in courses:
+        lesson_ids = [
+            r.id
+            for r in db.query(models.Lesson.id)
+            .join(models.Section, models.Lesson.section_id == models.Section.id)
+            .filter(models.Section.course_id == c.id)
+            .all()
+        ]
+        total = len(lesson_ids)
+        done = len([i for i in lesson_ids if i in completed_ids])
+        stats[c.id] = {"completed": done, "total": total}
+
+    titles = {c.id: c.title for c in courses}
+
+    result = []
+    for c in courses:
+        s = stats[c.id]
+        locked = False
+        requirement = None
+
+        if c.is_coming_soon:
+            locked = True
+            requirement = "скоро"
+        elif c.required_course_id is not None:
+            req = stats.get(c.required_course_id, {"completed": 0, "total": 0})
+            pct = (req["completed"] / req["total"] * 100) if req["total"] else 0
+            need = c.required_percent or 0
+            if pct < need:
+                locked = True
+                requirement = f'нужен «{titles.get(c.required_course_id, "")}» {need}%'
+
+        result.append({
+            "id": c.id,
+            "title": c.title,
+            "completed": s["completed"],
+            "total": s["total"],
+            "locked": locked,
+            "requirement": requirement,
+        })
+
+    return result

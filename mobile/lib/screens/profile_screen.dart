@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile/services/api_service.dart';
+import 'package:mobile/widgets/gradient_banner.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -41,33 +42,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(colors: [Color(0xFF00D9C6), Color(0xFF00A896)]),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 56,
-                  height: 56,
-                  decoration: const BoxDecoration(color: Colors.white24, shape: BoxShape.circle),
-                  alignment: Alignment.center,
-                  child: Text('>_', style: GoogleFonts.jetBrainsMono(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 18)),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('\$ whoami', style: GoogleFonts.jetBrainsMono(color: Colors.white70, fontSize: 11)),
-                      Text(user!['username'], style: GoogleFonts.fredoka(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 18)),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+          GradientBanner(
+            eyebrow: '\$ whoami',
+            title: user!['username'],
           ),
           const SizedBox(height: 16),
           Row(

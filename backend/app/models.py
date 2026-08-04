@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, JSON, DateTime, Date
+from sqlalchemy import Column, Integer, String, ForeignKey, JSON, DateTime, Date, Boolean
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from app.database import Base
@@ -9,6 +9,9 @@ class Course(Base):
     id = Column(Integer, primary_key=True)
     title = Column(String, nullable=False)
     description = Column(String)
+    required_course_id = Column(Integer, ForeignKey("courses.id"), nullable=True)
+    required_percent = Column(Integer, nullable=True)
+    is_coming_soon = Column(Boolean, nullable=False, default=False)
 
 
 class Section(Base):

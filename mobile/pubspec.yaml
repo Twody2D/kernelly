@@ -74,6 +74,8 @@ flutter:
           weight: 500
         - asset: assets/fonts/JetBrainsMono-SemiBold.ttf
           weight: 600
+        - asset: assets/fonts/JetBrainsMono-Bold.ttf
+          weight: 700
     - family: Inter
       fonts:
         - asset: assets/fonts/Inter-Regular.ttf
