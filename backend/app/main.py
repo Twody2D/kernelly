@@ -5,7 +5,7 @@ from app.database import Base, engine, get_db
 from app import models, schemas
 from datetime import date, timedelta
 
-app = FastAPI()
+app = FastAPI() #test backend
 
 app.add_middleware(
     CORSMiddleware,
