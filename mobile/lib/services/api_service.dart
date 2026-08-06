@@ -90,6 +90,36 @@ Future<Map<String, dynamic>> fetchCourseProgress(int courseId) async {
   }
 }
 
+Future<Map<String, dynamic>> fetchUserStats(int userId) async {
+  final response = await http.get(Uri.parse('http://127.0.0.1:8000/users/$userId/stats'));
+
+  if (response.statusCode == 200) {
+    return jsonDecode(utf8.decode(response.bodyBytes));
+  } else {
+    throw Exception('Failed to load user stats');
+  }
+}
+
+Future<Map<String, dynamic>> fetchUserActivity(int userId) async {
+  final response = await http.get(Uri.parse('http://127.0.0.1:8000/users/$userId/activity'));
+
+  if (response.statusCode == 200) {
+    return jsonDecode(utf8.decode(response.bodyBytes));
+  } else {
+    throw Exception('Failed to load user activity');
+  }
+}
+
+Future<Map<String, dynamic>> fetchUserAchievements(int userId) async {
+  final response = await http.get(Uri.parse('http://127.0.0.1:8000/users/$userId/achievements'));
+
+  if (response.statusCode == 200) {
+    return jsonDecode(utf8.decode(response.bodyBytes));
+  } else {
+    throw Exception('Failed to load achievements');
+  }
+}
+
 Future<List<Map<String, dynamic>>> fetchCoursesOverview() async {
   final response = await http.get(Uri.parse('http://127.0.0.1:8000/courses/overview'));
 

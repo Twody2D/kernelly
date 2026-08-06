@@ -2,7 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile/services/api_service.dart';
 import 'package:mobile/screens/settings_screen.dart';
-import 'package:mobile/widgets/gradient_banner.dart';
+import 'package:mobile/widgets/mascot.dart';
+
+const _months = [
+  'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
+  'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря',
+];
+
+const _weekdays = ['пн', 'вт', 'ср', 'чт', 'пт', 'сб', 'вс'];
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -12,7 +19,10 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  Map<String, dynamic>? user;
+  Map<String, dynamic>? stats;
+  Map<String, dynamic>? activity;
+  Map<String, dynamic>? achievements;
+  bool loading = true;
 
   @override
   void initState() {
@@ -21,70 +31,412 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> load() async {
-    final data = await fetchUser(1);
-    setState(() {
-      user = data;
-    });
+    try {
+      final results = await Future.wait([
+        fetchUserStats(1),
+        fetchUserActivity(1),
+        fetchUserAchievements(1),
+      ]);
+      setState(() {
+        stats = results[0];
+        activity = results[1];
+        achievements = results[2];
+        loading = false;
+      });
+    } catch (e) {
+      debugPrint('Ошибка загрузки профиля: $e');
+      setState(() => loading = false);
+    }
+  }
+
+  String _formatNumber(int value) {
+    final digits = value.toString();
+    final buffer = StringBuffer();
+    for (int i = 0; i < digits.length; i++) {
+      if (i > 0 && (digits.length - i) % 3 == 0) buffer.write(' ');
+      buffer.write(digits[i]);
+    }
+    return buffer.toString();
+  }
+
+  String _memberSince(String? isoDate) {
+    if (isoDate == null) return '';
+    final parsed = DateTime.tryParse(isoDate);
+    if (parsed == null) return '';
+    return 'в Kernelly с ${_months[parsed.month - 1]} ${parsed.year}';
   }
 
   @override
   Widget build(BuildContext context) {
-    if (user == null) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    if (loading) {
+      return const Scaffold(
+        backgroundColor: Color(0xFFF6F9F9),
+        body: Center(child: CircularProgressIndicator()),
+      );
     }
+
+    if (stats == null) {
+      return Scaffold(
+        backgroundColor: const Color(0xFFF6F9F9),
+        appBar: _appBar(),
+        body: Center(
+          child: Text(
+            'Не удалось загрузить профиль',
+            style: GoogleFonts.fredoka(fontSize: 15, color: const Color(0xFF5C6B73)),
+          ),
+        ),
+      );
+    }
+
+    final accuracy = stats!['accuracy'];
 
     return Scaffold(
       backgroundColor: const Color(0xFFF6F9F9),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFFF6F9F9),
-        elevation: 0,
-        title: Text('Профиль', style: GoogleFonts.fredoka(fontWeight: FontWeight.w600, fontSize: 18, color: const Color(0xFF1B2430))),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.settings_outlined, color: Color(0xFF5C6B73)),
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const SettingsScreen()),
-            ),
-          ),
-        ],
-      ),
+      appBar: _appBar(),
       body: ListView(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
         children: [
-          GradientBanner(
-            eyebrow: '\$ whoami',
-            title: user!['username'],
-          ),
-          const SizedBox(height: 16),
+          _banner(),
+          const SizedBox(height: 18),
           Row(
             children: [
-              Expanded(child: _statCard('ВСЕГО XP', '${user!['xp']}')),
-              const SizedBox(width: 12),
-              Expanded(child: _statCard('STREAK', '🔥 ${user!['streak']}')),
+              Expanded(child: _statCard('ВСЕГО XP', _formatNumber(stats!['xp']))),
+              const SizedBox(width: 10),
+              Expanded(child: _statCard('STREAK', '🔥 ${stats!['streak']}', valueColor: const Color(0xFFFF9500))),
             ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(child: _statCard('УРОКОВ', '${stats!['lessons_completed']}')),
+              const SizedBox(width: 10),
+              Expanded(child: _statCard(
+                'ТОЧНОСТЬ',
+                accuracy == null ? '—' : '$accuracy%',
+                valueColor: accuracy == null ? const Color(0xFFC2CDCD) : const Color(0xFF58CC02),
+              )),
+            ],
+          ),
+          const SizedBox(height: 14),
+          _activityCard(),
+          const SizedBox(height: 14),
+          _achievementsSection(),
+        ],
+      ),
+    );
+  }
+
+  PreferredSizeWidget _appBar() {
+    return AppBar(
+      backgroundColor: const Color(0xFFF6F9F9),
+      elevation: 0,
+      title: Text(
+        'Профиль',
+        style: GoogleFonts.fredoka(fontWeight: FontWeight.w600, fontSize: 17, color: const Color(0xFF1B2430)),
+      ),
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.settings_outlined, color: Color(0xFF5C6B73)),
+          onPressed: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const SettingsScreen()),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _banner() {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF00C9B7), Color(0xFF00A896)],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: const [BoxShadow(color: Color(0x4000A896), blurRadius: 16, offset: Offset(0, 6))],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Stack(
+        children: [
+          Positioned(
+            right: -10,
+            bottom: -24,
+            child: Transform.rotate(
+              angle: -8 * 3.1415926535 / 180,
+              child: const Text(
+                '</>',
+                style: TextStyle(
+                  fontFamily: 'JetBrains Mono',
+                  fontSize: 64,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0x1FFFFFFF),
+                  height: 1.2,
+                ),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(18),
+            child: Row(
+              children: [
+                Container(
+                  width: 62,
+                  height: 62,
+                  decoration: BoxDecoration(
+                    color: const Color(0x38FFFFFF),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  alignment: Alignment.bottomCenter,
+                  child: const Mascot(size: 52),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '\$ whoami',
+                        style: GoogleFonts.jetBrainsMono(color: const Color(0xD9FFFFFF), fontSize: 11),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        stats!['username'],
+                        style: GoogleFonts.fredoka(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 19),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        _memberSince(stats!['created_at']),
+                        style: GoogleFonts.jetBrainsMono(color: const Color(0xE6FFFFFF), fontSize: 10.5),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _statCard(String label, String value) {
+  Widget _statCard(String label, String value, {Color valueColor = const Color(0xFF1B2430)}) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE1EAEA), width: 2),
+        border: Border.all(color: const Color(0xFFDCE8E7), width: 1.5),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: GoogleFonts.jetBrainsMono(fontSize: 10, color: const Color(0xFF5C6B73))),
+          Text(label, style: GoogleFonts.jetBrainsMono(fontSize: 10, color: const Color(0xFF9AAAAA))),
           const SizedBox(height: 6),
-          Text(value, style: GoogleFonts.fredoka(fontWeight: FontWeight.w600, fontSize: 22, color: const Color(0xFF1B2430))),
+          Text(value, style: GoogleFonts.fredoka(fontWeight: FontWeight.w600, fontSize: 22, color: valueColor)),
         ],
       ),
+    );
+  }
+
+  Widget _activityCard() {
+    final days = List<Map<String, dynamic>>.from(activity?['days'] ?? []);
+    final totalXp = activity?['total_xp'] ?? 0;
+    final maxXp = days.isEmpty ? 0 : days.map((d) => d['xp'] as int).reduce((a, b) => a > b ? a : b);
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFDCE8E7), width: 1.5),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Активность за неделю',
+                style: GoogleFonts.fredoka(fontWeight: FontWeight.w600, fontSize: 14, color: const Color(0xFF1B2430)),
+              ),
+              Text(
+                '$totalXp XP',
+                style: GoogleFonts.jetBrainsMono(fontSize: 10, color: const Color(0xFF9AAAAA)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            height: 66,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                for (int i = 0; i < days.length; i++) ...[
+                  if (i > 0) const SizedBox(width: 9),
+                  Expanded(child: _activityBar(days[i], maxXp, isToday: i == days.length - 1)),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _activityBar(Map<String, dynamic> day, int maxXp, {required bool isToday}) {
+    final xp = day['xp'] as int;
+    final parsed = DateTime.tryParse(day['date']);
+    final label = parsed == null ? '' : _weekdays[parsed.weekday - 1];
+
+    final ratio = maxXp == 0 ? 0.0 : xp / maxXp;
+    final height = xp == 0 ? 8.0 : 8 + ratio * 38;
+
+    Color color;
+    if (xp == 0) {
+      color = const Color(0xFFE7EEEE);
+    } else if (ratio >= 0.75) {
+      color = const Color(0xFF00C9B7);
+    } else if (ratio >= 0.4) {
+      color = const Color(0xFF8FE4DA);
+    } else {
+      color = const Color(0xFFCFEFEB);
+    }
+
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [
+        Container(
+          height: height,
+          decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(6)),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          label,
+          style: GoogleFonts.jetBrainsMono(
+            fontSize: 9.5,
+            fontWeight: isToday ? FontWeight.w600 : FontWeight.w400,
+            color: isToday ? const Color(0xFF00A896) : const Color(0xFF9AAAAA),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _achievementsSection() {
+    final items = List<Map<String, dynamic>>.from(achievements?['items'] ?? []);
+    final unlockedCount = achievements?['unlocked'] ?? 0;
+    final total = achievements?['total'] ?? 0;
+
+    final sorted = [...items]..sort((a, b) {
+      if (a['unlocked'] == b['unlocked']) return 0;
+      return a['unlocked'] == true ? -1 : 1;
+    });
+    final visible = sorted.take(8).toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Достижения',
+              style: GoogleFonts.fredoka(fontWeight: FontWeight.w600, fontSize: 14, color: const Color(0xFF1B2430)),
+            ),
+            Text(
+              '$unlockedCount / $total',
+              style: GoogleFonts.jetBrainsMono(fontSize: 10, color: const Color(0xFF00A896)),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        for (int row = 0; row < (visible.length / 4).ceil(); row++) ...[
+          if (row > 0) const SizedBox(height: 10),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (int col = 0; col < 4; col++) ...[
+                if (col > 0) const SizedBox(width: 10),
+                Expanded(
+                  child: row * 4 + col < visible.length
+                      ? _achievementBadge(visible[row * 4 + col])
+                      : const SizedBox.shrink(),
+                ),
+              ],
+            ],
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _achievementBadge(Map<String, dynamic> item) {
+    final unlocked = item['unlocked'] == true;
+    final icon = item['icon'] as String;
+
+    List<Color> gradient;
+    Color shadow;
+    switch (item['style']) {
+      case 'gold':
+        gradient = [const Color(0xFFFFE7B8), const Color(0xFFFFD98A)];
+        shadow = const Color(0xFFE8BC66);
+        break;
+      case 'green':
+        gradient = [const Color(0xFF6EDB1F), const Color(0xFF58CC02)];
+        shadow = const Color(0xFF3F9200);
+        break;
+      default:
+        gradient = [const Color(0xFF29DFCB), const Color(0xFF00C9B7)];
+        shadow = const Color(0xFF00A896);
+    }
+
+    return Column(
+      children: [
+        AspectRatio(
+          aspectRatio: 1,
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: unlocked
+                  ? LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: gradient)
+                  : null,
+              color: unlocked ? null : const Color(0xFFE7EEEE),
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [BoxShadow(color: unlocked ? shadow : const Color(0xFFD3DEDE), offset: const Offset(0, 3))],
+            ),
+            alignment: Alignment.center,
+            child: unlocked
+                ? (icon.length > 2
+                    ? Text(
+                        icon,
+                        style: GoogleFonts.jetBrainsMono(
+                            fontWeight: FontWeight.w600, fontSize: 13, color: Colors.white),
+                      )
+                    : Text(icon, style: const TextStyle(fontSize: 20, color: Colors.white)))
+                : const Icon(Icons.lock, size: 17, color: Color(0xFFC2CDCD)),
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          item['title'],
+          textAlign: TextAlign.center,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: GoogleFonts.jetBrainsMono(
+            fontSize: 8.5,
+            color: unlocked ? const Color(0xFF5C6B73) : const Color(0xFF9AAAAA),
+          ),
+        ),
+      ],
     );
   }
 }
