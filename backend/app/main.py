@@ -130,6 +130,8 @@ def submit_answer(exercise_id: int, submission: schemas.AnswerSubmit, db: Sessio
 
     user = db.query(models.User).filter(models.User.id == 1).first()
 
+    db.add(models.Answer(user_id=1, exercise_id=exercise_id, is_correct=is_correct))
+
     today = date.today()
     if user.last_activity_date != today:
         if user.last_activity_date == today - timedelta(days=1):

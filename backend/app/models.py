@@ -48,6 +48,16 @@ class User(Base):
     xp = Column(Integer, nullable=False, default=0)
     streak = Column(Integer, nullable=False, default=0)
     last_activity_date = Column(Date, nullable=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+
+class Answer(Base):
+    __tablename__ = "answers"
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    exercise_id = Column(Integer, ForeignKey("exercises.id"), nullable=False)
+    is_correct = Column(Boolean, nullable=False)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
 
 class UserProgress(Base):
