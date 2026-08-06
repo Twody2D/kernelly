@@ -1,9 +1,12 @@
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from app.database import Base, engine, get_db
 from app import models, schemas
 from datetime import date, timedelta
+
+XP_PER_CORRECT = 10
 
 app = FastAPI() #test backend
 
@@ -150,7 +153,7 @@ def award_xp(user_id: int, payload: schemas.LessonComplete, db: Session = Depend
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
-    user.xp += payload.correct_count * 10
+    user.xp += payload.correct_count * XP_PER_CORRECT
     db.commit()
     return {"xp": user.xp}
 
@@ -287,3 +290,158 @@ def get_courses_overview(db: Session = Depends(get_db)):
         })
 
     return result
+
+
+# точность считается только когда ответов достаточно, иначе один верный ответ даёт 100%
+MIN_ANSWERS_FOR_ACCURACY = 20
+
+ACHIEVEMENTS = [
+    {"code": "streak_3", "title": "3 дня", "description": "Три дня подряд", "icon": "🔥", "style": "gold", "metric": "streak", "target": 3},
+    {"code": "streak_7", "title": "7 дней", "description": "Неделя без пропусков", "icon": "🔥", "style": "gold", "metric": "streak", "target": 7},
+    {"code": "streak_14", "title": "14 дней", "description": "Две недели подряд", "icon": "🔥", "style": "gold", "metric": "streak", "target": 14},
+    {"code": "streak_30", "title": "30 дней", "description": "Месяц без пропусков", "icon": "🔥", "style": "gold", "metric": "streak", "target": 30},
+    {"code": "streak_60", "title": "60 дней", "description": "Два месяца подряд", "icon": "🔥", "style": "gold", "metric": "streak", "target": 60},
+    {"code": "streak_100", "title": "100 дней", "description": "Сто дней подряд", "icon": "🔥", "style": "gold", "metric": "streak", "target": 100},
+
+    {"code": "lessons_1", "title": "первый", "description": "Первый пройденный урок", "icon": "✓", "style": "green", "metric": "lessons", "target": 1},
+    {"code": "lessons_5", "title": "5 уроков", "description": "Пять пройденных уроков", "icon": "✓", "style": "green", "metric": "lessons", "target": 5},
+    {"code": "lessons_10", "title": "10 уроков", "description": "Десять пройденных уроков", "icon": "✓", "style": "green", "metric": "lessons", "target": 10},
+    {"code": "lessons_25", "title": "25 уроков", "description": "Двадцать пять уроков", "icon": "✓", "style": "green", "metric": "lessons", "target": 25},
+    {"code": "lessons_50", "title": "50 уроков", "description": "Полсотни уроков", "icon": "✓", "style": "green", "metric": "lessons", "target": 50},
+    {"code": "lessons_100", "title": "100 уроков", "description": "Сто пройденных уроков", "icon": "✓", "style": "green", "metric": "lessons", "target": 100},
+
+    {"code": "xp_100", "title": "старт", "description": "Первые 100 XP", "icon": "100", "style": "teal", "metric": "xp", "target": 100},
+    {"code": "xp_500", "title": "разгон", "description": "500 XP", "icon": "500", "style": "teal", "metric": "xp", "target": 500},
+    {"code": "xp_1000", "title": "root", "description": "1000 XP", "icon": "sudo", "style": "teal", "metric": "xp", "target": 1000},
+    {"code": "xp_2500", "title": "2.5k", "description": "2500 XP", "icon": "2.5k", "style": "teal", "metric": "xp", "target": 2500},
+    {"code": "xp_5000", "title": "5k", "description": "5000 XP", "icon": "5k", "style": "teal", "metric": "xp", "target": 5000},
+    {"code": "xp_10000", "title": "10k", "description": "10000 XP", "icon": "10k", "style": "teal", "metric": "xp", "target": 10000},
+
+    {"code": "acc_70", "title": "70%", "description": "Точность 70%", "icon": "🎯", "style": "teal", "metric": "accuracy", "target": 70},
+    {"code": "acc_80", "title": "80%", "description": "Точность 80%", "icon": "🎯", "style": "teal", "metric": "accuracy", "target": 80},
+    {"code": "acc_90", "title": "90%", "description": "Точность 90%", "icon": "🎯", "style": "teal", "metric": "accuracy", "target": 90},
+    {"code": "acc_95", "title": "95%", "description": "Точность 95%", "icon": "🎯", "style": "teal", "metric": "accuracy", "target": 95},
+    {"code": "acc_99", "title": "99%", "description": "Точность 99%", "icon": "🎯", "style": "teal", "metric": "accuracy", "target": 99},
+    {"code": "acc_100", "title": "без ошибок", "description": "Точность 100%", "icon": "🎯", "style": "teal", "metric": "accuracy", "target": 100},
+]
+
+
+def _collect_stats(user: models.User, db: Session) -> dict:
+    lessons_completed = (
+        db.query(models.UserProgress)
+        .filter(models.UserProgress.user_id == user.id)
+        .count()
+    )
+
+    total_answers = (
+        db.query(models.Answer)
+        .filter(models.Answer.user_id == user.id)
+        .count()
+    )
+    correct_answers = (
+        db.query(models.Answer)
+        .filter(models.Answer.user_id == user.id, models.Answer.is_correct.is_(True))
+        .count()
+    )
+
+    accuracy = round(correct_answers / total_answers * 100) if total_answers else None
+
+    return {
+        "lessons_completed": lessons_completed,
+        "total_answers": total_answers,
+        "accuracy": accuracy,
+    }
+
+
+@app.get("/users/{user_id}/stats")
+def get_user_stats(user_id: int, db: Session = Depends(get_db)):
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    stats = _collect_stats(user, db)
+
+    return {
+        "id": user.id,
+        "username": user.username,
+        "xp": user.xp,
+        "streak": user.streak,
+        "lessons_completed": stats["lessons_completed"],
+        "accuracy": stats["accuracy"],
+        "created_at": user.created_at,
+    }
+
+
+@app.get("/users/{user_id}/activity")
+def get_user_activity(user_id: int, db: Session = Depends(get_db)):
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    today = date.today()
+    start = today - timedelta(days=6)
+
+    rows = (
+        db.query(
+            func.date(models.Answer.created_at).label("day"),
+            func.count(models.Answer.id).label("correct"),
+        )
+        .filter(
+            models.Answer.user_id == user_id,
+            models.Answer.is_correct.is_(True),
+            func.date(models.Answer.created_at) >= start,
+        )
+        .group_by(func.date(models.Answer.created_at))
+        .all()
+    )
+    by_day = {row.day: row.correct for row in rows}
+
+    days = []
+    for offset in range(7):
+        day = start + timedelta(days=offset)
+        days.append({
+            "date": day.isoformat(),
+            "xp": by_day.get(day, 0) * XP_PER_CORRECT,
+        })
+
+    return {"total_xp": sum(d["xp"] for d in days), "days": days}
+
+
+@app.get("/users/{user_id}/achievements")
+def get_user_achievements(user_id: int, db: Session = Depends(get_db)):
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    stats = _collect_stats(user, db)
+    values = {
+        "streak": user.streak,
+        "xp": user.xp,
+        "lessons": stats["lessons_completed"],
+        "accuracy": stats["accuracy"] or 0,
+    }
+
+    enough_answers = stats["total_answers"] >= MIN_ANSWERS_FOR_ACCURACY
+
+    items = []
+    for achievement in ACHIEVEMENTS:
+        metric = achievement["metric"]
+        value = values[metric]
+        unlocked = value >= achievement["target"]
+        if metric == "accuracy" and not enough_answers:
+            unlocked = False
+
+        items.append({
+            "code": achievement["code"],
+            "title": achievement["title"],
+            "description": achievement["description"],
+            "icon": achievement["icon"],
+            "style": achievement["style"],
+            "unlocked": unlocked,
+        })
+
+    return {
+        "unlocked": sum(1 for i in items if i["unlocked"]),
+        "total": len(items),
+        "items": items,
+    }
