@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile/services/api_service.dart';
+import 'package:mobile/screens/settings_screen.dart';
 import 'package:mobile/widgets/gradient_banner.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -38,6 +39,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
         backgroundColor: const Color(0xFFF6F9F9),
         elevation: 0,
         title: Text('Профиль', style: GoogleFonts.fredoka(fontWeight: FontWeight.w600, fontSize: 18, color: const Color(0xFF1B2430))),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings_outlined, color: Color(0xFF5C6B73)),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const SettingsScreen()),
+            ),
+          ),
+        ],
       ),
       body: ListView(
         padding: const EdgeInsets.all(20),
