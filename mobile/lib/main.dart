@@ -4,6 +4,24 @@ import 'package:mobile/screens/main_shell.dart';
 import 'package:mobile/screens/onboarding_screen.dart';
 import 'package:mobile/services/user_prefs.dart';
 
+/// На Android 12+ Flutter по умолчанию растягивает контент при овер-скролле
+/// (StretchingOverscrollIndicator) — визуально ломает жёстко заданные по
+/// макету экраны. Возвращаем классический «glow»-индикатор.
+class _AppScrollBehavior extends MaterialScrollBehavior {
+  @override
+  Widget buildOverscrollIndicator(BuildContext context, Widget child, ScrollableDetails details) {
+    return GlowingOverscrollIndicator(
+      axisDirection: details.direction,
+      color: const Color(0xFF00C9B7),
+      // Если контент и так помещается на экран (нечего скроллить), не
+      // показываем индикатор — иначе он "загорается" от любого свайпа.
+      notificationPredicate: (notification) =>
+          notification.metrics.maxScrollExtent > 0 && defaultScrollNotificationPredicate(notification),
+      child: child,
+    );
+  }
+}
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -24,6 +42,7 @@ class KernellyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Kernelly',
+      scrollBehavior: _AppScrollBehavior(),
       theme: ThemeData(
         scaffoldBackgroundColor: const Color(0xFFF6F9F9),
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF00C9B7), primary: const Color(0xFF00C9B7)),
