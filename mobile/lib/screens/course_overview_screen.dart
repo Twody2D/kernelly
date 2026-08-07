@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mobile/services/api_service.dart';
-import 'package:mobile/screens/path_screen.dart';
+import 'package:mobile/screens/sections_screen.dart';
 import 'package:mobile/widgets/gradient_banner.dart';
 
 class CourseOverviewScreen extends StatefulWidget {
@@ -210,13 +210,10 @@ class CourseOverviewScreenState extends State<CourseOverviewScreen> {
     return InkWell(
       borderRadius: BorderRadius.circular(16),
       onTap: () async {
-        final sections = await fetchCourseSections(course['id']);
-        if (sections.isEmpty || !mounted) return;
-        final first = sections.first;
         await Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) => PathScreen(sectionId: first['id'], sectionTitle: first['title']),
+            builder: (_) => SectionsScreen(courseId: course['id'], courseTitle: course['title']),
           ),
         );
         load();

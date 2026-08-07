@@ -216,6 +216,64 @@ def get_course_sections(course_id: int, db: Session = Depends(get_db)):
     )
 
 
+@app.get("/courses/{course_id}/sections-progress")
+def get_sections_progress(course_id: int, db: Session = Depends(get_db)):
+    course = db.query(models.Course).filter(models.Course.id == course_id).first()
+    if course is None:
+        raise HTTPException(status_code=404, detail="Course not found")
+
+    sections = (
+        db.query(models.Section)
+        .filter(models.Section.course_id == course_id)
+        .order_by(models.Section.order)
+        .all()
+    )
+
+    # все уроки курса одним запросом, чтобы не ходить в базу за каждым разделом
+    lessons = (
+        db.query(models.Lesson)
+        .join(models.Section, models.Lesson.section_id == models.Section.id)
+        .filter(models.Section.course_id == course_id)
+        .all()
+    )
+    lessons_by_section = {}
+    for lesson in lessons:
+        lessons_by_section.setdefault(lesson.section_id, []).append(lesson.id)
+
+    completed_lesson_ids = {
+        row.lesson_id
+        for row in db.query(models.UserProgress.lesson_id)
+        .filter(models.UserProgress.user_id == 1)
+        .all()
+    }
+
+    result = []
+    current_found = False
+    for section in sections:
+        section_lesson_ids = lessons_by_section.get(section.id, [])
+        total = len(section_lesson_ids)
+        completed = len([i for i in section_lesson_ids if i in completed_lesson_ids])
+
+        if total > 0 and completed == total:
+            status = "done"
+        elif not current_found:
+            status = "current"
+            current_found = True
+        else:
+            status = "locked"
+
+        result.append({
+            "id": section.id,
+            "title": section.title,
+            "order": section.order,
+            "completed": completed,
+            "total": total,
+            "status": status,
+        })
+
+    return {"course_title": course.title, "sections": result}
+
+
 @app.get("/courses/{course_id}/progress")
 def get_course_progress(course_id: int, db: Session = Depends(get_db)):
     lesson_ids = [
