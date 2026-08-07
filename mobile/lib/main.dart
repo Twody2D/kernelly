@@ -1,14 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mobile/screens/main_shell.dart';
+import 'package:mobile/screens/onboarding_screen.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
   GoogleFonts.config.allowRuntimeFetching = false;
-  runApp(const KernellyApp());
+
+  final prefs = await SharedPreferences.getInstance();
+  final onboardingDone = prefs.getBool('onboarding_done') ?? false;
+
+  runApp(KernellyApp(onboardingDone: onboardingDone));
 }
 
 class KernellyApp extends StatelessWidget {
-  const KernellyApp({super.key});
+  final bool onboardingDone;
+
+  const KernellyApp({super.key, required this.onboardingDone});
 
   @override
   Widget build(BuildContext context) {
@@ -38,7 +47,7 @@ class KernellyApp extends StatelessWidget {
           ),
         ),
       ),
-      home: const MainShell(),
+      home: onboardingDone ? const MainShell() : const OnboardingScreen(),
     );
   }
 }
