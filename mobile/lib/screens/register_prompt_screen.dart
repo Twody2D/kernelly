@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:mobile/widgets/mascot.dart';
+import 'package:mobile/widgets/animated_mascot.dart';
 import 'package:mobile/widgets/primary_button.dart';
 
 void _showRegisterComingSoon(BuildContext context) {
@@ -29,11 +29,65 @@ void _showRegisterComingSoon(BuildContext context) {
 /// заголовок/подзаголовок и кнопка регистрации (пока ведёт на заглушку «скоро»,
 /// самой регистрации ещё нет). Без Scaffold — годится и для полноэкранной
 /// навигации, и для встраивания прямо в экран профиля.
-class RegisterPromptContent extends StatelessWidget {
+///
+/// Появление анимировано по стадиям (маскот → заголовок → подзаголовок →
+/// кнопка), в духе экрана завершения урока/раздела.
+class RegisterPromptContent extends StatefulWidget {
   final String title;
   final String subtitle;
 
   const RegisterPromptContent({super.key, required this.title, required this.subtitle});
+
+  @override
+  State<RegisterPromptContent> createState() => _RegisterPromptContentState();
+}
+
+class _RegisterPromptContentState extends State<RegisterPromptContent> with TickerProviderStateMixin {
+  late final AnimationController _introController;
+  late final AnimationController _pulseController;
+
+  late final Animation<double> _mascotScale;
+  late final Animation<double> _titleFade;
+  late final Animation<Offset> _titleSlide;
+  late final Animation<double> _subtitleFade;
+  late final Animation<Offset> _subtitleSlide;
+  late final Animation<double> _buttonFade;
+  late final Animation<double> _buttonScale;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _introController = AnimationController(vsync: this, duration: const Duration(milliseconds: 900));
+
+    _mascotScale = CurvedAnimation(parent: _introController, curve: const Interval(0.0, 0.55, curve: Curves.easeOutBack));
+
+    const titleInterval = Interval(0.3, 0.72, curve: Curves.easeOut);
+    _titleFade = CurvedAnimation(parent: _introController, curve: titleInterval);
+    _titleSlide = Tween(begin: const Offset(0, 0.25), end: Offset.zero)
+        .animate(CurvedAnimation(parent: _introController, curve: titleInterval));
+
+    const subtitleInterval = Interval(0.42, 0.84, curve: Curves.easeOut);
+    _subtitleFade = CurvedAnimation(parent: _introController, curve: subtitleInterval);
+    _subtitleSlide = Tween(begin: const Offset(0, 0.25), end: Offset.zero)
+        .animate(CurvedAnimation(parent: _introController, curve: subtitleInterval));
+
+    _buttonFade = CurvedAnimation(parent: _introController, curve: const Interval(0.6, 1.0, curve: Curves.easeOut));
+    _buttonScale = CurvedAnimation(parent: _introController, curve: const Interval(0.6, 1.0, curve: Curves.easeOutBack));
+
+    _introController.forward();
+
+    // лёгкое «дыхание» кнопки — приглашает нажать, пока пользователь смотрит на экран
+    _pulseController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1100))
+      ..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _introController.dispose();
+    _pulseController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -42,28 +96,46 @@ class RegisterPromptContent extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            width: 140,
-            height: 140,
-            decoration: BoxDecoration(color: const Color(0xFFEAF9DC), shape: BoxShape.circle),
-            alignment: Alignment.bottomCenter,
-            clipBehavior: Clip.antiAlias,
-            child: const Padding(padding: EdgeInsets.only(bottom: 10), child: Mascot(size: 110)),
-          ),
-          const SizedBox(height: 28),
-          Text(
-            title,
-            textAlign: TextAlign.center,
-            style: TextStyle(fontFamily: 'Fredoka', fontWeight: FontWeight.w600, fontSize: 21, color: const Color(0xFF1B2430)),
+          ScaleTransition(scale: _mascotScale, child: const AnimatedMascot(size: 110)),
+          const SizedBox(height: 12),
+          FadeTransition(
+            opacity: _titleFade,
+            child: SlideTransition(
+              position: _titleSlide,
+              child: Text(
+                widget.title,
+                textAlign: TextAlign.center,
+                style: TextStyle(fontFamily: 'Fredoka', fontWeight: FontWeight.w600, fontSize: 21, color: const Color(0xFF1B2430)),
+              ),
+            ),
           ),
           const SizedBox(height: 10),
-          Text(
-            subtitle,
-            textAlign: TextAlign.center,
-            style: TextStyle(fontFamily: 'Inter', fontSize: 14, height: 1.4, color: const Color(0xFF5C6B73)),
+          FadeTransition(
+            opacity: _subtitleFade,
+            child: SlideTransition(
+              position: _subtitleSlide,
+              child: Text(
+                widget.subtitle,
+                textAlign: TextAlign.center,
+                style: TextStyle(fontFamily: 'Inter', fontSize: 14, height: 1.4, color: const Color(0xFF5C6B73)),
+              ),
+            ),
           ),
           const SizedBox(height: 28),
-          PrimaryButton(text: 'Зарегистрироваться', onPressed: () => _showRegisterComingSoon(context)),
+          FadeTransition(
+            opacity: _buttonFade,
+            child: ScaleTransition(
+              scale: _buttonScale,
+              child: AnimatedBuilder(
+                animation: _pulseController,
+                builder: (context, child) {
+                  final pulse = 1.0 + Curves.easeInOut.transform(_pulseController.value) * 0.025;
+                  return Transform.scale(scale: pulse, child: child);
+                },
+                child: PrimaryButton(text: 'Зарегистрироваться', onPressed: () => _showRegisterComingSoon(context)),
+              ),
+            ),
+          ),
         ],
       ),
     );
