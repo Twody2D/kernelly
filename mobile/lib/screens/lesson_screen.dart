@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mobile/services/api_service.dart';
+import 'package:mobile/services/user_prefs.dart';
 import 'package:mobile/widgets/option_card.dart';
 import 'package:mobile/widgets/primary_button.dart';
 import 'package:mobile/screens/section_complete_screen.dart';
@@ -34,6 +36,10 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
 
   /// Ответ на завершение урока: прогресс раздела, курса и что дальше
   Map<String, dynamic>? completion;
+
+  /// Дневная цель на момент завершения урока
+  int dailyCompleted = 0;
+  int dailyGoal = defaultDailyGoal;
 
   late AnimationController _lottieController;
 
@@ -118,9 +124,13 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
         if (mounted) setState(() => user?['xp'] = newXp);
       }
       final data = await completeLesson(widget.lessonId);
+      final daily = await fetchDailyProgress(1);
+      final prefs = await SharedPreferences.getInstance();
       if (!mounted) return;
       setState(() {
         completion = data;
+        dailyCompleted = daily['lessons_completed'] ?? 0;
+        dailyGoal = prefs.getInt(PrefKeys.dailyGoal) ?? defaultDailyGoal;
         finishing = false;
       });
     } catch (e) {
@@ -178,6 +188,8 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
     if (completion != null) {
       return SectionCompleteScreen(
         completion: completion!,
+        dailyCompleted: dailyCompleted,
+        dailyGoal: dailyGoal,
         xpEarned: isRepeat ? 0 : correctCount * 10,
         accuracyPercent: exercises.isEmpty ? 0 : ((correctCount / exercises.length) * 100).round(),
         elapsed: startTime == null ? Duration.zero : DateTime.now().difference(startTime!),
