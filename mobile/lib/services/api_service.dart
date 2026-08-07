@@ -5,7 +5,7 @@ Future<List<Map<String, dynamic>>> fetchLessonExercises(int lessonId) async {
   final response = await http.get(Uri.parse('http://127.0.0.1:8000/lessons/$lessonId/exercises'));
 
   if (response.statusCode == 200) {
-    final List<dynamic> data = jsonDecode(response.body);
+    final List<dynamic> data = jsonDecode(utf8.decode(response.bodyBytes));
     return data.cast<Map<String, dynamic>>();
   } else {
     throw Exception('Failed to load lesson exercises');
@@ -34,7 +34,7 @@ Future<Map<String, dynamic>> fetchUser(int userId) async {
   final response = await http.get(Uri.parse('http://127.0.0.1:8000/users/$userId'));
 
   if (response.statusCode == 200) {
-    return jsonDecode(response.body);
+    return jsonDecode(utf8.decode(response.bodyBytes));
   } else {
     throw Exception('Failed to load user');
   }
@@ -46,40 +46,18 @@ Future<int> awardXp(int userId, int correctCount) async {
     headers: {'Content-Type': 'application/json'},
     body: jsonEncode({'correct_count': correctCount}),
   );
-  final data = jsonDecode(response.body);
+  final data = jsonDecode(utf8.decode(response.bodyBytes));
   return data['xp'];
-}
-
-Future<List<Map<String, dynamic>>> fetchCourses() async {
-  final response = await http.get(Uri.parse('http://127.0.0.1:8000/courses'));
-
-  if (response.statusCode == 200) {
-    final List<dynamic> data = jsonDecode(response.body);
-    return data.cast<Map<String, dynamic>>();
-  } else {
-    throw Exception('Failed to load courses');
-  }
 }
 
 Future<List<Map<String, dynamic>>> fetchLessonsProgress(int sectionId) async {
   final response = await http.get(Uri.parse('http://127.0.0.1:8000/sections/$sectionId/lessons-progress'));
 
   if (response.statusCode == 200) {
-    final List<dynamic> data = jsonDecode(response.body);
+    final List<dynamic> data = jsonDecode(utf8.decode(response.bodyBytes));
     return data.cast<Map<String, dynamic>>();
   } else {
     throw Exception('Failed to load lessons progress');
-  }
-}
-
-Future<List<Map<String, dynamic>>> fetchCourseSections(int courseId) async {
-  final response = await http.get(Uri.parse('http://127.0.0.1:8000/courses/$courseId/sections'));
-
-  if (response.statusCode == 200) {
-    final List<dynamic> data = jsonDecode(response.body);
-    return data.cast<Map<String, dynamic>>();
-  } else {
-    throw Exception('Failed to load course sections');
   }
 }
 
@@ -91,16 +69,6 @@ Future<Map<String, dynamic>> completeLesson(int lessonId) async {
     return jsonDecode(utf8.decode(response.bodyBytes));
   } else {
     throw Exception('Failed to complete lesson');
-  }
-}
-
-Future<Map<String, dynamic>> fetchCourseProgress(int courseId) async {
-  final response = await http.get(Uri.parse('http://127.0.0.1:8000/courses/$courseId/progress'));
-
-  if (response.statusCode == 200) {
-    return jsonDecode(response.body);
-  } else {
-    throw Exception('Failed to load course progress');
   }
 }
 
@@ -160,7 +128,7 @@ Future<List<Map<String, dynamic>>> fetchCoursesOverview() async {
   final response = await http.get(Uri.parse('http://127.0.0.1:8000/courses/overview'));
 
   if (response.statusCode == 200) {
-    final List<dynamic> data = jsonDecode(response.body);
+    final List<dynamic> data = jsonDecode(utf8.decode(response.bodyBytes));
     return data.cast<Map<String, dynamic>>();
   } else {
     throw Exception('Failed to load courses overview');
