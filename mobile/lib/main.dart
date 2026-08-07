@@ -10,6 +10,8 @@ Future<void> main() async {
   final prefs = await SharedPreferences.getInstance();
   final onboardingDone = prefs.getBool(PrefKeys.onboardingDone) ?? false;
 
+  await ensureUserId();
+
   runApp(KernellyApp(onboardingDone: onboardingDone));
 }
 

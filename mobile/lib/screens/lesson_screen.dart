@@ -58,7 +58,7 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
 
   Future<void> loadLesson() async {
     final data = await fetchLessonExercises(widget.lessonId);
-    final userData = await fetchUser(1);
+    final userData = await fetchUser(currentUserId);
     setState(() {
       exercises = data;
       user = userData;
@@ -74,8 +74,8 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
 
   void _checkAnswer() async {
     final currentExercise = exercises[currentIndex];
-    final result = await submitAnswer(currentExercise['id'], selectedAnswer!);
-    final userData = await fetchUser(1);
+    final result = await submitAnswer(currentExercise['id'], currentUserId, selectedAnswer!);
+    final userData = await fetchUser(currentUserId);
     if (!mounted) return;
 
     final correct = result['correct'] == true;
@@ -120,11 +120,11 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
 
     try {
       if (!isRepeat) {
-        final newXp = await awardXp(1, correctCount);
+        final newXp = await awardXp(currentUserId, correctCount);
         if (mounted) setState(() => user?['xp'] = newXp);
       }
-      final data = await completeLesson(widget.lessonId);
-      final daily = await fetchDailyProgress(1);
+      final data = await completeLesson(widget.lessonId, currentUserId);
+      final daily = await fetchDailyProgress(currentUserId);
       final prefs = await SharedPreferences.getInstance();
       if (!mounted) return;
       setState(() {

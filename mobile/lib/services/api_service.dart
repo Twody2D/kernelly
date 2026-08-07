@@ -13,14 +13,30 @@ Future<List<Map<String, dynamic>>> fetchLessonExercises(int lessonId) async {
   }
 }
 
+/// Находит или заводит гостевого пользователя по device_token устройства.
+Future<Map<String, dynamic>> fetchOrCreateGuest(String deviceToken) async {
+  final response = await http.post(
+    Uri.parse('$apiBaseUrl/users/guest'),
+    headers: {'Content-Type': 'application/json'},
+    body: jsonEncode({'device_token': deviceToken}),
+  );
+
+  if (response.statusCode == 200) {
+    return jsonDecode(utf8.decode(response.bodyBytes));
+  } else {
+    throw Exception('Failed to create guest user');
+  }
+}
+
 /// Возвращает {correct: bool, correct_answer: String} — правильный вариант
 /// приходит уже после ответа, чтобы его нельзя было подсмотреть заранее.
-Future<Map<String, dynamic>> submitAnswer(int exerciseId, String answer) async {
+Future<Map<String, dynamic>> submitAnswer(int exerciseId, int userId, String answer) async {
   final response = await http.post(
     Uri.parse('$apiBaseUrl/exercises/$exerciseId/submit'),
     headers: {'Content-Type': 'application/json'},
     body: jsonEncode({
       'answer': {'answer': answer},
+      'user_id': userId,
     }),
   );
 
@@ -51,8 +67,8 @@ Future<int> awardXp(int userId, int correctCount) async {
   return data['xp'];
 }
 
-Future<List<Map<String, dynamic>>> fetchLessonsProgress(int sectionId) async {
-  final response = await http.get(Uri.parse('$apiBaseUrl/sections/$sectionId/lessons-progress'));
+Future<List<Map<String, dynamic>>> fetchLessonsProgress(int sectionId, int userId) async {
+  final response = await http.get(Uri.parse('$apiBaseUrl/sections/$sectionId/lessons-progress?user_id=$userId'));
 
   if (response.statusCode == 200) {
     final List<dynamic> data = jsonDecode(utf8.decode(response.bodyBytes));
@@ -63,8 +79,8 @@ Future<List<Map<String, dynamic>>> fetchLessonsProgress(int sectionId) async {
 }
 
 /// Возвращает контекст завершения: прогресс раздела, курса и что дальше.
-Future<Map<String, dynamic>> completeLesson(int lessonId) async {
-  final response = await http.post(Uri.parse('$apiBaseUrl/lessons/$lessonId/complete'));
+Future<Map<String, dynamic>> completeLesson(int lessonId, int userId) async {
+  final response = await http.post(Uri.parse('$apiBaseUrl/lessons/$lessonId/complete?user_id=$userId'));
 
   if (response.statusCode == 200) {
     return jsonDecode(utf8.decode(response.bodyBytes));
@@ -85,8 +101,8 @@ Future<Map<String, dynamic>?> fetchCurrentSection(int userId) async {
   }
 }
 
-Future<Map<String, dynamic>> fetchSectionsProgress(int courseId) async {
-  final response = await http.get(Uri.parse('$apiBaseUrl/courses/$courseId/sections-progress'));
+Future<Map<String, dynamic>> fetchSectionsProgress(int courseId, int userId) async {
+  final response = await http.get(Uri.parse('$apiBaseUrl/courses/$courseId/sections-progress?user_id=$userId'));
 
   if (response.statusCode == 200) {
     return jsonDecode(utf8.decode(response.bodyBytes));
@@ -136,8 +152,8 @@ Future<Map<String, dynamic>> fetchUserAchievements(int userId) async {
   }
 }
 
-Future<List<Map<String, dynamic>>> fetchCoursesOverview() async {
-  final response = await http.get(Uri.parse('$apiBaseUrl/courses/overview'));
+Future<List<Map<String, dynamic>>> fetchCoursesOverview(int userId) async {
+  final response = await http.get(Uri.parse('$apiBaseUrl/courses/overview?user_id=$userId'));
 
   if (response.statusCode == 200) {
     final List<dynamic> data = jsonDecode(utf8.decode(response.bodyBytes));

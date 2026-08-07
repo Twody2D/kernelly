@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mobile/services/api_service.dart';
+import 'package:mobile/services/user_prefs.dart';
 import 'package:mobile/screens/path_screen.dart';
 import 'package:mobile/widgets/gradient_banner.dart';
 
@@ -25,7 +26,7 @@ class _SectionsScreenState extends State<SectionsScreen> {
 
   Future<void> load() async {
     try {
-      final data = await fetchSectionsProgress(widget.courseId);
+      final data = await fetchSectionsProgress(widget.courseId, currentUserId);
       if (!mounted) return;
       setState(() {
         sections = List<Map<String, dynamic>>.from(data['sections'] ?? []);

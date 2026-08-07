@@ -70,6 +70,7 @@ class ExerciseCreate(BaseModel):
 
 class AnswerSubmit(BaseModel):
     answer: dict
+    user_id: int
 
 
 class UserOut(BaseModel):

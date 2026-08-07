@@ -29,9 +29,9 @@ class CourseOverviewScreenState extends State<CourseOverviewScreen> {
 
   Future<void> load() async {
     try {
-      final data = await fetchCoursesOverview();
-      final userData = await fetchUser(1);
-      final daily = await fetchDailyProgress(1);
+      final data = await fetchCoursesOverview(currentUserId);
+      final userData = await fetchUser(currentUserId);
+      final daily = await fetchDailyProgress(currentUserId);
       final prefs = await SharedPreferences.getInstance();
       if (!mounted) return;
       setState(() {

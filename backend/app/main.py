@@ -144,11 +144,11 @@ def submit_answer(exercise_id: int, submission: schemas.AnswerSubmit, db: Sessio
 
     is_correct = submission.answer == exercise.correct_answer
 
-    user = db.query(models.User).filter(models.User.id == 1).first()
+    user = db.query(models.User).filter(models.User.id == submission.user_id).first()
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
 
-    db.add(models.Answer(user_id=1, exercise_id=exercise_id, is_correct=is_correct))
+    db.add(models.Answer(user_id=submission.user_id, exercise_id=exercise_id, is_correct=is_correct))
 
     # день засчитывается в streak только за верный ответ
     if is_correct:
@@ -180,7 +180,7 @@ def award_xp(user_id: int, payload: schemas.LessonComplete, db: Session = Depend
     return {"xp": user.xp}
 
 @app.get("/sections/{section_id}/lessons-progress")
-def get_lessons_progress(section_id: int, db: Session = Depends(get_db)):
+def get_lessons_progress(section_id: int, user_id: int, db: Session = Depends(get_db)):
     lessons = (
         db.query(models.Lesson)
         .filter(models.Lesson.section_id == section_id)
@@ -191,7 +191,7 @@ def get_lessons_progress(section_id: int, db: Session = Depends(get_db)):
     completed_lesson_ids = {
         row.lesson_id
         for row in db.query(models.UserProgress)
-        .filter(models.UserProgress.user_id == 1)
+        .filter(models.UserProgress.user_id == user_id)
         .all()
     }
 
@@ -215,25 +215,25 @@ def get_lessons_progress(section_id: int, db: Session = Depends(get_db)):
     return result
 
 @app.post("/lessons/{lesson_id}/complete")
-def complete_lesson(lesson_id: int, db: Session = Depends(get_db)):
+def complete_lesson(lesson_id: int, user_id: int, db: Session = Depends(get_db)):
     lesson = db.query(models.Lesson).filter(models.Lesson.id == lesson_id).first()
     if lesson is None:
         raise HTTPException(status_code=404, detail="Lesson not found")
 
     existing = (
         db.query(models.UserProgress)
-        .filter(models.UserProgress.user_id == 1, models.UserProgress.lesson_id == lesson_id)
+        .filter(models.UserProgress.user_id == user_id, models.UserProgress.lesson_id == lesson_id)
         .first()
     )
     if existing is None:
-        progress = models.UserProgress(user_id=1, lesson_id=lesson_id)
+        progress = models.UserProgress(user_id=user_id, lesson_id=lesson_id)
         db.add(progress)
         db.commit()
 
     completed_lesson_ids = {
         row.lesson_id
         for row in db.query(models.UserProgress.lesson_id)
-        .filter(models.UserProgress.user_id == 1)
+        .filter(models.UserProgress.user_id == user_id)
         .all()
     }
 
@@ -312,7 +312,7 @@ def get_course_sections(course_id: int, db: Session = Depends(get_db)):
 
 
 @app.get("/courses/{course_id}/sections-progress")
-def get_sections_progress(course_id: int, db: Session = Depends(get_db)):
+def get_sections_progress(course_id: int, user_id: int, db: Session = Depends(get_db)):
     course = db.query(models.Course).filter(models.Course.id == course_id).first()
     if course is None:
         raise HTTPException(status_code=404, detail="Course not found")
@@ -338,7 +338,7 @@ def get_sections_progress(course_id: int, db: Session = Depends(get_db)):
     completed_lesson_ids = {
         row.lesson_id
         for row in db.query(models.UserProgress.lesson_id)
-        .filter(models.UserProgress.user_id == 1)
+        .filter(models.UserProgress.user_id == user_id)
         .all()
     }
 
@@ -370,7 +370,7 @@ def get_sections_progress(course_id: int, db: Session = Depends(get_db)):
 
 
 @app.get("/courses/{course_id}/progress")
-def get_course_progress(course_id: int, db: Session = Depends(get_db)):
+def get_course_progress(course_id: int, user_id: int, db: Session = Depends(get_db)):
     lesson_ids = [
         row.id
         for row in db.query(models.Lesson.id)
@@ -382,7 +382,7 @@ def get_course_progress(course_id: int, db: Session = Depends(get_db)):
     total = len(lesson_ids)
     completed = (
         db.query(models.UserProgress)
-        .filter(models.UserProgress.user_id == 1, models.UserProgress.lesson_id.in_(lesson_ids))
+        .filter(models.UserProgress.user_id == user_id, models.UserProgress.lesson_id.in_(lesson_ids))
         .count()
         if lesson_ids
         else 0
@@ -391,7 +391,7 @@ def get_course_progress(course_id: int, db: Session = Depends(get_db)):
     return {"completed": completed, "total": total}
 
 
-def _courses_with_status(db: Session, user_id: int = 1) -> list[dict]:
+def _courses_with_status(db: Session, user_id: int) -> list[dict]:
     """Курсы с прогрессом и статусом блокировки. Общая основа для списка курсов
     и поиска текущего раздела."""
     courses = db.query(models.Course).all()
@@ -447,8 +447,8 @@ def _courses_with_status(db: Session, user_id: int = 1) -> list[dict]:
 
 
 @app.get("/courses/overview")
-def get_courses_overview(db: Session = Depends(get_db)):
-    return _courses_with_status(db)
+def get_courses_overview(user_id: int, db: Session = Depends(get_db)):
+    return _courses_with_status(db, user_id)
 
 
 @app.get("/users/{user_id}/current-section")

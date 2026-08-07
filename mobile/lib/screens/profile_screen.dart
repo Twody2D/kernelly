@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mobile/services/api_service.dart';
+import 'package:mobile/services/user_prefs.dart';
 import 'package:mobile/screens/settings_screen.dart';
 import 'package:mobile/widgets/mascot.dart';
 
@@ -41,7 +42,11 @@ class ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> load() async {
     try {
-      final results = await Future.wait([fetchUserStats(1), fetchUserActivity(1), fetchUserAchievements(1)]);
+      final results = await Future.wait([
+        fetchUserStats(currentUserId),
+        fetchUserActivity(currentUserId),
+        fetchUserAchievements(currentUserId),
+      ]);
       setState(() {
         stats = results[0];
         activity = results[1];

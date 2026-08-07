@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mobile/services/api_service.dart';
+import 'package:mobile/services/user_prefs.dart';
 import 'package:mobile/widgets/lesson_node.dart';
 import 'package:mobile/widgets/path_trace_painter.dart';
 import 'package:mobile/screens/lesson_screen.dart';
@@ -40,7 +41,7 @@ class PathScreenState extends State<PathScreen> {
   }
 
   Future<void> load() async {
-    final data = await fetchLessonsProgress(widget.sectionId);
+    final data = await fetchLessonsProgress(widget.sectionId, currentUserId);
     setState(() {
       lessons = data;
       loading = false;

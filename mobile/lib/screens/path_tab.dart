@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mobile/services/api_service.dart';
+import 'package:mobile/services/user_prefs.dart';
 import 'package:mobile/screens/path_screen.dart';
 
 /// Вкладка «Путь»: сама находит раздел, с которого пользователю продолжать,
@@ -25,7 +26,7 @@ class PathTabState extends State<PathTab> {
 
   Future<void> load() async {
     try {
-      final data = await fetchCurrentSection(1);
+      final data = await fetchCurrentSection(currentUserId);
       if (!mounted) return;
 
       final sameSection = current != null && data != null && current!['section_id'] == data['section_id'];
