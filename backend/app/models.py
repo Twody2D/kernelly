@@ -12,6 +12,7 @@ class Course(Base):
     required_course_id = Column(Integer, ForeignKey("courses.id"), nullable=True)
     required_percent = Column(Integer, nullable=True)
     is_coming_soon = Column(Boolean, nullable=False, default=False)
+    requires_account = Column(Boolean, nullable=False, default=False)
 
 
 class Section(Base):

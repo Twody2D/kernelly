@@ -25,6 +25,7 @@ COURSES = [
     {
         "title": "Linux и терминал",
         "description": "Команды, файлы, права и пайпы — база, без которой никуда",
+        "requires_account": True,
         "sections": [
             {
                 "title": "Работа с файлами",
@@ -81,6 +82,7 @@ COURSES = [
     {
         "title": "Git и GitHub",
         "description": "Версии, ветки и совместная работа над кодом",
+        "requires_account": True,
         "sections": [
             {
                 "title": "Основы Git",
@@ -108,6 +110,7 @@ COURSES = [
     {
         "title": "Python с нуля",
         "description": "Синтаксис, типы данных и первые скрипты",
+        "requires_account": True,
         "sections": [
             {
                 "title": "Первые шаги",
@@ -137,6 +140,7 @@ COURSES = [
         "description": "Автоматизация рутины на shell",
         "required_course": "Linux и терминал",
         "required_percent": 70,
+        "requires_account": True,
         "sections": [
             {
                 "title": "Основы скриптов",
@@ -157,6 +161,7 @@ COURSES = [
         "description": "Запросы, выборки и связи между таблицами",
         "required_course": "Python с нуля",
         "required_percent": 40,
+        "requires_account": True,
         "sections": [
             {
                 "title": "Выборка данных",
@@ -200,6 +205,7 @@ def seed():
                 description=course_data.get("description"),
                 is_coming_soon=course_data.get("is_coming_soon", False),
                 required_percent=course_data.get("required_percent"),
+                requires_account=course_data.get("requires_account", False),
             )
             db.add(course)
             db.flush()

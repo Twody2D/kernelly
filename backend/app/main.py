@@ -394,6 +394,9 @@ def get_course_progress(course_id: int, user_id: int, db: Session = Depends(get_
 def _courses_with_status(db: Session, user_id: int) -> list[dict]:
     """Курсы с прогрессом и статусом блокировки. Общая основа для списка курсов
     и поиска текущего раздела."""
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    is_guest = user is None or user.auth_provider == "guest"
+
     courses = db.query(models.Course).all()
     completed_ids = {
         row.lesson_id
@@ -422,10 +425,16 @@ def _courses_with_status(db: Session, user_id: int) -> list[dict]:
         s = stats[c.id]
         locked = False
         requirement = None
+        reason = None
 
         if c.is_coming_soon:
             locked = True
             requirement = "скоро"
+            reason = "coming_soon"
+        elif c.requires_account and is_guest:
+            locked = True
+            requirement = "нужна регистрация"
+            reason = "requires_account"
         elif c.required_course_id is not None:
             req = stats.get(c.required_course_id, {"completed": 0, "total": 0})
             pct = (req["completed"] / req["total"] * 100) if req["total"] else 0
@@ -433,6 +442,7 @@ def _courses_with_status(db: Session, user_id: int) -> list[dict]:
             if pct < need:
                 locked = True
                 requirement = f'нужен «{titles.get(c.required_course_id, "")}» {need}%'
+                reason = "prerequisite"
 
         result.append({
             "id": c.id,
@@ -441,6 +451,7 @@ def _courses_with_status(db: Session, user_id: int) -> list[dict]:
             "total": s["total"],
             "locked": locked,
             "requirement": requirement,
+            "reason": reason,
         })
 
     return result
@@ -590,6 +601,7 @@ def get_user_stats(user_id: int, db: Session = Depends(get_db)):
         "lessons_completed": stats["lessons_completed"],
         "accuracy": stats["accuracy"],
         "created_at": user.created_at,
+        "auth_provider": user.auth_provider,
     }
 
 
