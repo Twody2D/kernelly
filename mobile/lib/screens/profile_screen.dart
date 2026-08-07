@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mobile/services/api_service.dart';
 import 'package:mobile/services/user_prefs.dart';
 import 'package:mobile/screens/settings_screen.dart';
+import 'package:mobile/screens/register_prompt_screen.dart';
 import 'package:mobile/widgets/mascot.dart';
 
 const _months = [
@@ -93,6 +94,19 @@ class ProfileScreenState extends State<ProfileScreen> {
           child: Text(
             'Не удалось загрузить профиль',
             style: const TextStyle(fontFamily: 'Fredoka', fontWeight: FontWeight.w500, fontSize: 15, color: Color(0xFF5C6B73)),
+          ),
+        ),
+      );
+    }
+
+    if (stats!['auth_provider'] == 'guest') {
+      return Scaffold(
+        backgroundColor: const Color(0xFFF6F9F9),
+        appBar: _appBar(),
+        body: const Center(
+          child: RegisterPromptContent(
+            title: 'Сохрани свой прогресс',
+            subtitle: 'Сейчас прогресс привязан только к этому устройству. Зарегистрируйся, чтобы не потерять его.',
           ),
         ),
       );

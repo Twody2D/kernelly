@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mobile/services/api_service.dart';
 import 'package:mobile/services/user_prefs.dart';
 import 'package:mobile/screens/sections_screen.dart';
+import 'package:mobile/screens/register_prompt_screen.dart';
 import 'package:mobile/widgets/daily_goal_card.dart';
 import 'package:mobile/widgets/gradient_banner.dart';
 
@@ -327,52 +328,70 @@ class CourseOverviewScreenState extends State<CourseOverviewScreen> {
     );
   }
 
-  Widget _lockedCard(Map<String, dynamic> course) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF0F5F5),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE7EEEE), width: 1.5),
+  void _openRegisterPrompt(Map<String, dynamic> course) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => RegisterPromptScreen(
+          title: 'Курс «${course['title']}» ждёт тебя',
+          subtitle: 'Зарегистрируйся, чтобы открыть все курсы и не потерять прогресс, если сменишь устройство.',
+        ),
       ),
-      child: Row(
-        children: [
-          Container(
-            width: 46,
-            height: 46,
-            decoration: BoxDecoration(
-              color: const Color(0xFFE7EEEE),
-              borderRadius: BorderRadius.circular(14),
-              boxShadow: const [BoxShadow(color: Color(0xFFD3DEDE), offset: Offset(0, 3))],
+    );
+  }
+
+  Widget _lockedCard(Map<String, dynamic> course) {
+    final needsAccount = course['reason'] == 'requires_account';
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: needsAccount ? () => _openRegisterPrompt(course) : null,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF0F5F5),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFE7EEEE), width: 1.5),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                color: const Color(0xFFE7EEEE),
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: const [BoxShadow(color: Color(0xFFD3DEDE), offset: Offset(0, 3))],
+              ),
+              alignment: Alignment.center,
+              child: const Icon(Icons.lock, size: 20, color: Color(0xFFC2CDCD)),
             ),
-            alignment: Alignment.center,
-            child: const Icon(Icons.lock, size: 20, color: Color(0xFFC2CDCD)),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  course['title'],
-                  style: TextStyle(
-                    fontFamily: 'Fredoka',
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14.5,
-                    color: const Color(0xFF8D9C9C),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    course['title'],
+                    style: TextStyle(
+                      fontFamily: 'Fredoka',
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14.5,
+                      color: const Color(0xFF8D9C9C),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 5),
-                Text(
-                  course['requirement'] ?? '',
-                  style: TextStyle(fontFamily: 'JetBrains Mono', fontSize: 10.5, color: const Color(0xFF9AAAAA)),
-                ),
-              ],
+                  const SizedBox(height: 5),
+                  Text(
+                    course['requirement'] ?? '',
+                    style: TextStyle(fontFamily: 'JetBrains Mono', fontSize: 10.5, color: const Color(0xFF9AAAAA)),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
