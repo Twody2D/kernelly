@@ -8,10 +8,10 @@ class CourseOverviewScreen extends StatefulWidget {
   const CourseOverviewScreen({super.key});
 
   @override
-  State<CourseOverviewScreen> createState() => _CourseOverviewScreenState();
+  State<CourseOverviewScreen> createState() => CourseOverviewScreenState();
 }
 
-class _CourseOverviewScreenState extends State<CourseOverviewScreen> {
+class CourseOverviewScreenState extends State<CourseOverviewScreen> {
   List<Map<String, dynamic>> courses = [];
   Map<String, dynamic>? user;
   bool loading = true;
@@ -178,12 +178,13 @@ class _CourseOverviewScreenState extends State<CourseOverviewScreen> {
       borderRadius: BorderRadius.circular(16),
       onTap: () async {
         final sections = await fetchCourseSections(course['id']);
-        if (sections.isEmpty) return;
+        if (sections.isEmpty || !mounted) return;
         final first = sections.first;
-        Navigator.push(
+        await Navigator.push(
           context,
           MaterialPageRoute(builder: (_) => PathScreen(sectionId: first['id'], sectionTitle: first['title'])),
         );
+        load();
       },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),

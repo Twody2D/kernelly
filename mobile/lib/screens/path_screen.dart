@@ -13,10 +13,10 @@ class PathScreen extends StatefulWidget {
   const PathScreen({super.key, required this.sectionId, required this.sectionTitle});
 
   @override
-  State<PathScreen> createState() => _PathScreenState();
+  State<PathScreen> createState() => PathScreenState();
 }
 
-class _PathScreenState extends State<PathScreen> {
+class PathScreenState extends State<PathScreen> {
   List<Map<String, dynamic>> lessons = [];
   bool loading = true;
 

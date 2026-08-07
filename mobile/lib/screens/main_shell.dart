@@ -14,11 +14,31 @@ class MainShell extends StatefulWidget {
 class _MainShellState extends State<MainShell> {
   int currentIndex = 1;
 
-  final List<Widget> _tabs = const [
-    PathScreen(sectionId: 1, sectionTitle: 'Работа с файлами'),
-    CourseOverviewScreen(),
-    ProfileScreen(),
+  final _pathKey = GlobalKey<PathScreenState>();
+  final _coursesKey = GlobalKey<CourseOverviewScreenState>();
+  final _profileKey = GlobalKey<ProfileScreenState>();
+
+  late final List<Widget> _tabs = [
+    PathScreen(key: _pathKey, sectionId: 1, sectionTitle: 'Работа с файлами'),
+    CourseOverviewScreen(key: _coursesKey),
+    ProfileScreen(key: _profileKey),
   ];
+
+  // IndexedStack сохраняет состояние вкладок, поэтому initState при переключении
+  // больше не срабатывает — обновляем данные вручную
+  void _reloadTab(int index) {
+    switch (index) {
+      case 0:
+        _pathKey.currentState?.load();
+        break;
+      case 1:
+        _coursesKey.currentState?.load();
+        break;
+      case 2:
+        _profileKey.currentState?.load();
+        break;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -29,7 +49,10 @@ class _MainShellState extends State<MainShell> {
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: currentIndex,
-        onTap: (index) => setState(() => currentIndex = index),
+        onTap: (index) {
+          setState(() => currentIndex = index);
+          _reloadTab(index);
+        },
         selectedItemColor: const Color(0xFF00A896),
         unselectedItemColor: const Color(0xFF5C6B73),
         selectedLabelStyle: GoogleFonts.jetBrainsMono(fontSize: 11, fontWeight: FontWeight.w600),
@@ -39,21 +62,6 @@ class _MainShellState extends State<MainShell> {
           BottomNavigationBarItem(icon: Icon(Icons.menu_book), label: 'Курсы'),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Профиль'),
         ],
-      ),
-    );
-  }
-}
-
-class _PlaceholderTab extends StatelessWidget {
-  final String label;
-  const _PlaceholderTab({required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF6F9F9),
-      body: Center(
-        child: Text('$label — скоро', style: GoogleFonts.fredoka(fontSize: 16, color: const Color(0xFF5C6B73))),
       ),
     );
   }
