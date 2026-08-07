@@ -1,8 +1,9 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:mobile/services/api_config.dart';
 
 Future<List<Map<String, dynamic>>> fetchLessonExercises(int lessonId) async {
-  final response = await http.get(Uri.parse('http://127.0.0.1:8000/lessons/$lessonId/exercises'));
+  final response = await http.get(Uri.parse('$apiBaseUrl/lessons/$lessonId/exercises'));
 
   if (response.statusCode == 200) {
     final List<dynamic> data = jsonDecode(utf8.decode(response.bodyBytes));
@@ -16,7 +17,7 @@ Future<List<Map<String, dynamic>>> fetchLessonExercises(int lessonId) async {
 /// приходит уже после ответа, чтобы его нельзя было подсмотреть заранее.
 Future<Map<String, dynamic>> submitAnswer(int exerciseId, String answer) async {
   final response = await http.post(
-    Uri.parse('http://127.0.0.1:8000/exercises/$exerciseId/submit'),
+    Uri.parse('$apiBaseUrl/exercises/$exerciseId/submit'),
     headers: {'Content-Type': 'application/json'},
     body: jsonEncode({
       'answer': {'answer': answer},
@@ -31,7 +32,7 @@ Future<Map<String, dynamic>> submitAnswer(int exerciseId, String answer) async {
 }
 
 Future<Map<String, dynamic>> fetchUser(int userId) async {
-  final response = await http.get(Uri.parse('http://127.0.0.1:8000/users/$userId'));
+  final response = await http.get(Uri.parse('$apiBaseUrl/users/$userId'));
 
   if (response.statusCode == 200) {
     return jsonDecode(utf8.decode(response.bodyBytes));
@@ -42,7 +43,7 @@ Future<Map<String, dynamic>> fetchUser(int userId) async {
 
 Future<int> awardXp(int userId, int correctCount) async {
   final response = await http.post(
-    Uri.parse('http://127.0.0.1:8000/users/$userId/award-xp'),
+    Uri.parse('$apiBaseUrl/users/$userId/award-xp'),
     headers: {'Content-Type': 'application/json'},
     body: jsonEncode({'correct_count': correctCount}),
   );
@@ -51,7 +52,7 @@ Future<int> awardXp(int userId, int correctCount) async {
 }
 
 Future<List<Map<String, dynamic>>> fetchLessonsProgress(int sectionId) async {
-  final response = await http.get(Uri.parse('http://127.0.0.1:8000/sections/$sectionId/lessons-progress'));
+  final response = await http.get(Uri.parse('$apiBaseUrl/sections/$sectionId/lessons-progress'));
 
   if (response.statusCode == 200) {
     final List<dynamic> data = jsonDecode(utf8.decode(response.bodyBytes));
@@ -63,7 +64,7 @@ Future<List<Map<String, dynamic>>> fetchLessonsProgress(int sectionId) async {
 
 /// Возвращает контекст завершения: прогресс раздела, курса и что дальше.
 Future<Map<String, dynamic>> completeLesson(int lessonId) async {
-  final response = await http.post(Uri.parse('http://127.0.0.1:8000/lessons/$lessonId/complete'));
+  final response = await http.post(Uri.parse('$apiBaseUrl/lessons/$lessonId/complete'));
 
   if (response.statusCode == 200) {
     return jsonDecode(utf8.decode(response.bodyBytes));
@@ -74,7 +75,7 @@ Future<Map<String, dynamic>> completeLesson(int lessonId) async {
 
 /// Раздел, с которого продолжать. null — если проходить нечего.
 Future<Map<String, dynamic>?> fetchCurrentSection(int userId) async {
-  final response = await http.get(Uri.parse('http://127.0.0.1:8000/users/$userId/current-section'));
+  final response = await http.get(Uri.parse('$apiBaseUrl/users/$userId/current-section'));
 
   if (response.statusCode == 200) {
     final decoded = jsonDecode(utf8.decode(response.bodyBytes));
@@ -85,7 +86,7 @@ Future<Map<String, dynamic>?> fetchCurrentSection(int userId) async {
 }
 
 Future<Map<String, dynamic>> fetchSectionsProgress(int courseId) async {
-  final response = await http.get(Uri.parse('http://127.0.0.1:8000/courses/$courseId/sections-progress'));
+  final response = await http.get(Uri.parse('$apiBaseUrl/courses/$courseId/sections-progress'));
 
   if (response.statusCode == 200) {
     return jsonDecode(utf8.decode(response.bodyBytes));
@@ -96,7 +97,7 @@ Future<Map<String, dynamic>> fetchSectionsProgress(int courseId) async {
 
 /// Сколько уроков пройдено сегодня — для дневной цели.
 Future<Map<String, dynamic>> fetchDailyProgress(int userId) async {
-  final response = await http.get(Uri.parse('http://127.0.0.1:8000/users/$userId/daily-progress'));
+  final response = await http.get(Uri.parse('$apiBaseUrl/users/$userId/daily-progress'));
 
   if (response.statusCode == 200) {
     return jsonDecode(utf8.decode(response.bodyBytes));
@@ -106,7 +107,7 @@ Future<Map<String, dynamic>> fetchDailyProgress(int userId) async {
 }
 
 Future<Map<String, dynamic>> fetchUserStats(int userId) async {
-  final response = await http.get(Uri.parse('http://127.0.0.1:8000/users/$userId/stats'));
+  final response = await http.get(Uri.parse('$apiBaseUrl/users/$userId/stats'));
 
   if (response.statusCode == 200) {
     return jsonDecode(utf8.decode(response.bodyBytes));
@@ -116,7 +117,7 @@ Future<Map<String, dynamic>> fetchUserStats(int userId) async {
 }
 
 Future<Map<String, dynamic>> fetchUserActivity(int userId) async {
-  final response = await http.get(Uri.parse('http://127.0.0.1:8000/users/$userId/activity'));
+  final response = await http.get(Uri.parse('$apiBaseUrl/users/$userId/activity'));
 
   if (response.statusCode == 200) {
     return jsonDecode(utf8.decode(response.bodyBytes));
@@ -126,7 +127,7 @@ Future<Map<String, dynamic>> fetchUserActivity(int userId) async {
 }
 
 Future<Map<String, dynamic>> fetchUserAchievements(int userId) async {
-  final response = await http.get(Uri.parse('http://127.0.0.1:8000/users/$userId/achievements'));
+  final response = await http.get(Uri.parse('$apiBaseUrl/users/$userId/achievements'));
 
   if (response.statusCode == 200) {
     return jsonDecode(utf8.decode(response.bodyBytes));
@@ -136,7 +137,7 @@ Future<Map<String, dynamic>> fetchUserAchievements(int userId) async {
 }
 
 Future<List<Map<String, dynamic>>> fetchCoursesOverview() async {
-  final response = await http.get(Uri.parse('http://127.0.0.1:8000/courses/overview'));
+  final response = await http.get(Uri.parse('$apiBaseUrl/courses/overview'));
 
   if (response.statusCode == 200) {
     final List<dynamic> data = jsonDecode(utf8.decode(response.bodyBytes));
