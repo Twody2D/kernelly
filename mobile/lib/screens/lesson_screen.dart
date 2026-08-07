@@ -23,9 +23,11 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
   int attemptCount = 0;
   Map<String, dynamic>? user;
   int correctCount = 0;
-  bool xpAwarded = false;
-  bool lessonMarkedComplete = false;
+  bool finishing = false;
   DateTime? startTime;
+
+  /// Ответ на завершение урока: прогресс раздела, курса и что дальше
+  Map<String, dynamic>? completion;
 
   late AnimationController _lottieController;
 
@@ -71,11 +73,36 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
   }
 
   void _nextExercise() {
+    if (currentIndex + 1 >= exercises.length) {
+      _finishLesson();
+      return;
+    }
     setState(() {
       currentIndex++;
       selectedAnswer = null;
       isCorrect = null;
     });
+  }
+
+  Future<void> _finishLesson() async {
+    if (finishing || completion != null) return;
+    setState(() => finishing = true);
+
+    try {
+      final newXp = await awardXp(1, correctCount);
+      final data = await completeLesson(widget.lessonId);
+      if (!mounted) return;
+      setState(() {
+        user?['xp'] = newXp;
+        completion = data;
+        finishing = false;
+      });
+    } catch (e) {
+      debugPrint('Ошибка завершения урока: $e');
+      if (!mounted) return;
+      setState(() => finishing = false);
+      Navigator.pop(context);
+    }
   }
 
   PreferredSizeWidget _buildAppBar({double? progress}) {
@@ -122,29 +149,22 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    if (currentIndex >= exercises.length) {
-      if (!xpAwarded) {
-        xpAwarded = true;
-        awardXp(1, correctCount).then((newXp) {
-          setState(() {
-            user!['xp'] = newXp;
-          });
-        });
-      }
-      if (!lessonMarkedComplete) {
-        lessonMarkedComplete = true;
-        completeLesson(widget.lessonId);
-      }
+    if (completion != null) {
       return SectionCompleteScreen(
-        sectionTitle: 'Работа с файлами',
+        completion: completion!,
         xpEarned: correctCount * 10,
         accuracyPercent: exercises.isEmpty ? 0 : ((correctCount / exercises.length) * 100).round(),
         elapsed: startTime == null ? Duration.zero : DateTime.now().difference(startTime!),
         streak: user?['streak'] ?? 0,
         onContinue: () => Navigator.pop(context),
-        onRepeat: () {
-          Navigator.pop(context);
-        },
+        onRepeat: () => Navigator.pop(context),
+      );
+    }
+
+    if (finishing) {
+      return const Scaffold(
+        backgroundColor: Color(0xFFF6F9F9),
+        body: Center(child: CircularProgressIndicator()),
       );
     }
 

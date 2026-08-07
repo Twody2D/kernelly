@@ -78,8 +78,15 @@ Future<List<Map<String, dynamic>>> fetchCourseSections(int courseId) async {
   }
 }
 
-Future<void> completeLesson(int lessonId) async {
-  await http.post(Uri.parse('http://127.0.0.1:8000/lessons/$lessonId/complete'));
+/// Возвращает контекст завершения: прогресс раздела, курса и что дальше.
+Future<Map<String, dynamic>> completeLesson(int lessonId) async {
+  final response = await http.post(Uri.parse('http://127.0.0.1:8000/lessons/$lessonId/complete'));
+
+  if (response.statusCode == 200) {
+    return jsonDecode(utf8.decode(response.bodyBytes));
+  } else {
+    throw Exception('Failed to complete lesson');
+  }
 }
 
 Future<Map<String, dynamic>> fetchCourseProgress(int courseId) async {

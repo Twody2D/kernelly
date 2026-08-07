@@ -194,6 +194,10 @@ def get_lessons_progress(section_id: int, db: Session = Depends(get_db)):
 
 @app.post("/lessons/{lesson_id}/complete")
 def complete_lesson(lesson_id: int, db: Session = Depends(get_db)):
+    lesson = db.query(models.Lesson).filter(models.Lesson.id == lesson_id).first()
+    if lesson is None:
+        raise HTTPException(status_code=404, detail="Lesson not found")
+
     existing = (
         db.query(models.UserProgress)
         .filter(models.UserProgress.user_id == 1, models.UserProgress.lesson_id == lesson_id)
@@ -203,7 +207,76 @@ def complete_lesson(lesson_id: int, db: Session = Depends(get_db)):
         progress = models.UserProgress(user_id=1, lesson_id=lesson_id)
         db.add(progress)
         db.commit()
-    return {"status": "ok"}
+
+    completed_lesson_ids = {
+        row.lesson_id
+        for row in db.query(models.UserProgress.lesson_id)
+        .filter(models.UserProgress.user_id == 1)
+        .all()
+    }
+
+    section = db.query(models.Section).filter(models.Section.id == lesson.section_id).first()
+    course = db.query(models.Course).filter(models.Course.id == section.course_id).first()
+
+    section_lessons = (
+        db.query(models.Lesson)
+        .filter(models.Lesson.section_id == section.id)
+        .order_by(models.Lesson.order)
+        .all()
+    )
+    section_done = len([l for l in section_lessons if l.id in completed_lesson_ids])
+    section_complete = section_done == len(section_lessons)
+
+    course_sections = (
+        db.query(models.Section)
+        .filter(models.Section.course_id == course.id)
+        .order_by(models.Section.order)
+        .all()
+    )
+
+    # что показать пользователю как «дальше»
+    next_up = None
+    if section_complete:
+        for candidate in course_sections:
+            if candidate.order <= section.order:
+                continue
+            candidate_lessons = (
+                db.query(models.Lesson).filter(models.Lesson.section_id == candidate.id).all()
+            )
+            if any(l.id not in completed_lesson_ids for l in candidate_lessons):
+                next_up = {"type": "section", "order": candidate.order, "title": candidate.title}
+                break
+    else:
+        for candidate in section_lessons:
+            if candidate.id not in completed_lesson_ids:
+                next_up = {"type": "lesson", "order": candidate.order, "title": candidate.title}
+                break
+
+    sections_done = 0
+    for candidate in course_sections:
+        candidate_lessons = db.query(models.Lesson).filter(models.Lesson.section_id == candidate.id).all()
+        if candidate_lessons and all(l.id in completed_lesson_ids for l in candidate_lessons):
+            sections_done += 1
+
+    return {
+        "status": "ok",
+        "lesson_title": lesson.title,
+        "section": {
+            "id": section.id,
+            "title": section.title,
+            "order": section.order,
+            "completed": section_done,
+            "total": len(section_lessons),
+            "is_complete": section_complete,
+        },
+        "course": {
+            "id": course.id,
+            "title": course.title,
+            "sections_total": len(course_sections),
+            "sections_done": sections_done,
+        },
+        "next": next_up,
+    }
 
 
 @app.get("/courses/{course_id}/sections", response_model=list[schemas.SectionOut])

@@ -3,7 +3,8 @@ import 'package:mobile/widgets/mascot.dart';
 import 'package:mobile/widgets/soft_star.dart';
 
 class SectionCompleteScreen extends StatelessWidget {
-  final String sectionTitle;
+  /// Ответ POST /lessons/{id}/complete: прогресс раздела, курса и что дальше
+  final Map<String, dynamic> completion;
   final int xpEarned;
   final int accuracyPercent;
   final Duration elapsed;
@@ -13,7 +14,7 @@ class SectionCompleteScreen extends StatelessWidget {
 
   const SectionCompleteScreen({
     super.key,
-    required this.sectionTitle,
+    required this.completion,
     required this.xpEarned,
     required this.accuracyPercent,
     required this.elapsed,
@@ -21,6 +22,31 @@ class SectionCompleteScreen extends StatelessWidget {
     required this.onContinue,
     required this.onRepeat,
   });
+
+  Map<String, dynamic> get _section => Map<String, dynamic>.from(completion['section'] ?? {});
+
+  Map<String, dynamic> get _course => Map<String, dynamic>.from(completion['course'] ?? {});
+
+  Map<String, dynamic>? get _next =>
+      completion['next'] == null ? null : Map<String, dynamic>.from(completion['next']);
+
+  bool get _isSectionComplete => _section['is_complete'] == true;
+
+  String get _eyebrow => _isSectionComplete
+      ? '\$ раздел ${_section['order']} / ${_course['sections_total']} · завершён'
+      : '\$ урок ${_section['completed']} / ${_section['total']} · пройден';
+
+  String get _headline => _isSectionComplete ? 'Раздел пройден!' : 'Урок пройден!';
+
+  String get _subject =>
+      _isSectionComplete ? '${_section['title']}' : '${completion['lesson_title'] ?? ''}';
+
+  /// Три звезды за точность от 90%, две от 70%, иначе одна
+  int get _earnedStars {
+    if (accuracyPercent >= 90) return 3;
+    if (accuracyPercent >= 70) return 2;
+    return 1;
+  }
 
   String get _formattedTime {
     final minutes = elapsed.inMinutes;
@@ -153,7 +179,7 @@ class SectionCompleteScreen extends StatelessWidget {
                                 ),
                               ),
                               Text(
-                                '\$ раздел 1 / 4 · завершён',
+                                _eyebrow,
                                 style: TextStyle(
                                   fontFamily: 'JetBrains Mono',
                                   fontSize: 11,
@@ -162,14 +188,25 @@ class SectionCompleteScreen extends StatelessWidget {
                               ),
                               const SizedBox(height: 8),
                               Text(
-                                '$sectionTitle\nпройдена!',
+                                _headline,
                                 textAlign: TextAlign.center,
-                                style: TextStyle(
+                                style: const TextStyle(
                                   fontFamily: 'Fredoka',
                                   fontWeight: FontWeight.w600,
                                   fontSize: 26,
                                   height: 1.15,
-                                  color: const Color(0xFF1B2430),
+                                  color: Color(0xFF1B2430),
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                _subject,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  fontFamily: 'Fredoka',
+                                  fontWeight: FontWeight.w500,
+                                  fontSize: 15,
+                                  color: Color(0xFF5C6B73),
                                 ),
                               ),
                               const SizedBox(height: 14),
@@ -177,9 +214,12 @@ class SectionCompleteScreen extends StatelessWidget {
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: List.generate(
                                   3,
-                                  (i) => const Padding(
-                                    padding: EdgeInsets.symmetric(horizontal: 4),
-                                    child: SoftStar(size: 38),
+                                  (i) => Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                                    child: SoftStar(
+                                      size: 38,
+                                      color: i < _earnedStars ? const Color(0xFFFFD98A) : const Color(0xFFE7EEEE),
+                                    ),
                                   ),
                                 ),
                               ),
@@ -193,99 +233,103 @@ class SectionCompleteScreen extends StatelessWidget {
                                   Expanded(child: _statCard('ВРЕМЯ', _formattedTime)),
                                 ],
                               ),
-                              const SizedBox(height: 14),
-                              Container(
-                                width: double.infinity,
-                                padding: const EdgeInsets.all(14),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(color: const Color(0xFFDCE8E7), width: 1.5),
-                                ),
-                                child: Row(
-                                  children: [
-                                    Stack(
-                                      clipBehavior: Clip.none,
-                                      children: [
-                                        Container(
-                                          width: 46,
-                                          height: 46,
-                                          decoration: BoxDecoration(
-                                            gradient: const LinearGradient(
-                                              begin: Alignment.topLeft,
-                                              end: Alignment.bottomRight,
-                                              colors: [Color(0xFF29DFCB), Color(0xFF00C9B7)],
-                                            ),
-                                            borderRadius: BorderRadius.circular(14),
-                                            boxShadow: const [
-                                              BoxShadow(color: Color(0xFF00A896), offset: Offset(0, 3)),
-                                            ],
-                                          ),
-                                          alignment: Alignment.center,
-                                          child: Text(
-                                            '>_',
-                                            style: TextStyle(
-                                              fontFamily: 'JetBrains Mono',
-                                              color: Colors.white,
-                                              fontWeight: FontWeight.w600,
-                                              fontSize: 15,
-                                            ),
-                                          ),
-                                        ),
-                                        Positioned(
-                                          bottom: -9,
-                                          left: 14,
-                                          child: Container(
-                                            width: 4,
-                                            height: 9,
-                                            decoration: BoxDecoration(
-                                              color: Colors.white.withOpacity(0.55),
-                                              borderRadius: BorderRadius.circular(2),
-                                            ),
-                                          ),
-                                        ),
-                                        Positioned(
-                                          bottom: -9,
-                                          right: 14,
-                                          child: Container(
-                                            width: 4,
-                                            height: 9,
-                                            decoration: BoxDecoration(
-                                              color: Colors.white.withOpacity(0.55),
-                                              borderRadius: BorderRadius.circular(2),
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                              if (_next != null) ...[
+                                const SizedBox(height: 14),
+                                Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.all(14),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(color: const Color(0xFFDCE8E7), width: 1.5),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Stack(
+                                        clipBehavior: Clip.none,
                                         children: [
-                                          Text(
-                                            'РАЗБЛОКИРОВАНО',
-                                            style: TextStyle(
-                                              fontFamily: 'JetBrains Mono',
-                                              fontSize: 10,
-                                              color: const Color(0xFF9AAAAA),
+                                          Container(
+                                            width: 46,
+                                            height: 46,
+                                            decoration: BoxDecoration(
+                                              gradient: const LinearGradient(
+                                                begin: Alignment.topLeft,
+                                                end: Alignment.bottomRight,
+                                                colors: [Color(0xFF29DFCB), Color(0xFF00C9B7)],
+                                              ),
+                                              borderRadius: BorderRadius.circular(14),
+                                              boxShadow: const [
+                                                BoxShadow(color: Color(0xFF00A896), offset: Offset(0, 3)),
+                                              ],
+                                            ),
+                                            alignment: Alignment.center,
+                                            child: Text(
+                                              '>_',
+                                              style: TextStyle(
+                                                fontFamily: 'JetBrains Mono',
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.w600,
+                                                fontSize: 15,
+                                              ),
                                             ),
                                           ),
-                                          Text(
-                                            'Раздел 2 · Права доступа',
-                                            style: TextStyle(
-                                              fontFamily: 'Fredoka',
-                                              fontWeight: FontWeight.w600,
-                                              fontSize: 14.5,
-                                              color: const Color(0xFF1B2430),
+                                          Positioned(
+                                            bottom: -9,
+                                            left: 14,
+                                            child: Container(
+                                              width: 4,
+                                              height: 9,
+                                              decoration: BoxDecoration(
+                                                color: Colors.white.withOpacity(0.55),
+                                                borderRadius: BorderRadius.circular(2),
+                                              ),
+                                            ),
+                                          ),
+                                          Positioned(
+                                            bottom: -9,
+                                            right: 14,
+                                            child: Container(
+                                              width: 4,
+                                              height: 9,
+                                              decoration: BoxDecoration(
+                                                color: Colors.white.withOpacity(0.55),
+                                                borderRadius: BorderRadius.circular(2),
+                                              ),
                                             ),
                                           ),
                                         ],
                                       ),
-                                    ),
-                                  ],
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              _isSectionComplete ? 'РАЗБЛОКИРОВАНО' : 'ДАЛЬШЕ',
+                                              style: TextStyle(
+                                                fontFamily: 'JetBrains Mono',
+                                                fontSize: 10,
+                                                color: const Color(0xFF9AAAAA),
+                                              ),
+                                            ),
+                                            Text(
+                                              _next == null
+                                                  ? ''
+                                                  : '${_next!['type'] == 'section' ? 'Раздел' : 'Урок'} ${_next!['order']} · ${_next!['title']}',
+                                              style: TextStyle(
+                                                fontFamily: 'Fredoka',
+                                                fontWeight: FontWeight.w600,
+                                                fontSize: 14.5,
+                                                color: const Color(0xFF1B2430),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ),
+                              ],
                               const SizedBox(height: 20),
                               GestureDetector(
                                 onTap: onContinue,
