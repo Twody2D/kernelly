@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:mobile/widgets/animated_mascot.dart';
 import 'package:mobile/widgets/mascot.dart';
 import 'package:mobile/widgets/soft_star.dart';
 
@@ -77,14 +75,28 @@ class SectionCompleteScreen extends StatelessWidget {
                                     decoration: BoxDecoration(
                                       color: Colors.white,
                                       borderRadius: BorderRadius.circular(14),
-                                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 6, offset: const Offset(0, 2))],
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withOpacity(0.06),
+                                          blurRadius: 6,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ],
                                     ),
                                     child: Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
                                         const Text('🔥', style: TextStyle(fontSize: 14)),
                                         const SizedBox(width: 5),
-                                        Text('$streak', style: GoogleFonts.fredoka(fontWeight: FontWeight.w600, fontSize: 14, color: const Color(0xFFFF9500))),
+                                        Text(
+                                          '$streak',
+                                          style: TextStyle(
+                                            fontFamily: 'Fredoka',
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 14,
+                                            color: const Color(0xFFFF9500),
+                                          ),
+                                        ),
                                       ],
                                     ),
                                   ),
@@ -103,8 +115,15 @@ class SectionCompleteScreen extends StatelessWidget {
                                         top: 26,
                                         child: Transform.rotate(
                                           angle: -14 * 3.1415926535 / 180,
-                                          child: Text('</>',
-                                              style: GoogleFonts.jetBrainsMono(color: const Color(0xFF00C9B7), fontWeight: FontWeight.w600, fontSize: 15)),
+                                          child: Text(
+                                            '</>',
+                                            style: TextStyle(
+                                              fontFamily: 'JetBrains Mono',
+                                              color: const Color(0xFF00C9B7),
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 15,
+                                            ),
+                                          ),
                                         ),
                                       ),
                                       const Positioned(
@@ -117,8 +136,15 @@ class SectionCompleteScreen extends StatelessWidget {
                                         bottom: 18,
                                         child: Transform.rotate(
                                           angle: 12 * 3.1415926535 / 180,
-                                          child: Text('\$',
-                                              style: GoogleFonts.jetBrainsMono(color: const Color(0xFFFFD98A), fontWeight: FontWeight.w600, fontSize: 13)),
+                                          child: Text(
+                                            '\$',
+                                            style: TextStyle(
+                                              fontFamily: 'JetBrains Mono',
+                                              color: const Color(0xFFFFD98A),
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 13,
+                                            ),
+                                          ),
                                         ),
                                       ),
                                       _FloatingMascot(),
@@ -128,21 +154,34 @@ class SectionCompleteScreen extends StatelessWidget {
                               ),
                               Text(
                                 '\$ раздел 1 / 4 · завершён',
-                                style: GoogleFonts.jetBrainsMono(fontSize: 11, color: const Color(0xFF00A896)),
+                                style: TextStyle(
+                                  fontFamily: 'JetBrains Mono',
+                                  fontSize: 11,
+                                  color: const Color(0xFF00A896),
+                                ),
                               ),
                               const SizedBox(height: 8),
                               Text(
                                 '$sectionTitle\nпройдена!',
                                 textAlign: TextAlign.center,
-                                style: GoogleFonts.fredoka(fontWeight: FontWeight.w600, fontSize: 26, height: 1.15, color: const Color(0xFF1B2430)),
+                                style: TextStyle(
+                                  fontFamily: 'Fredoka',
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 26,
+                                  height: 1.15,
+                                  color: const Color(0xFF1B2430),
+                                ),
                               ),
                               const SizedBox(height: 14),
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
-                                children: List.generate(3, (i) => const Padding(
-                                      padding: EdgeInsets.symmetric(horizontal: 4),
-                                      child: SoftStar(size: 38),
-                                    )),
+                                children: List.generate(
+                                  3,
+                                  (i) => const Padding(
+                                    padding: EdgeInsets.symmetric(horizontal: 4),
+                                    child: SoftStar(size: 38),
+                                  ),
+                                ),
                               ),
                               const SizedBox(height: 20),
                               Row(
@@ -178,13 +217,45 @@ class SectionCompleteScreen extends StatelessWidget {
                                               colors: [Color(0xFF29DFCB), Color(0xFF00C9B7)],
                                             ),
                                             borderRadius: BorderRadius.circular(14),
-                                            boxShadow: const [BoxShadow(color: Color(0xFF00A896), offset: Offset(0, 3))],
+                                            boxShadow: const [
+                                              BoxShadow(color: Color(0xFF00A896), offset: Offset(0, 3)),
+                                            ],
                                           ),
                                           alignment: Alignment.center,
-                                          child: Text('>_', style: GoogleFonts.jetBrainsMono(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 15)),
+                                          child: Text(
+                                            '>_',
+                                            style: TextStyle(
+                                              fontFamily: 'JetBrains Mono',
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 15,
+                                            ),
+                                          ),
                                         ),
-                                        Positioned(bottom: -9, left: 14, child: Container(width: 4, height: 9, decoration: BoxDecoration(color: Colors.white.withOpacity(0.55), borderRadius: BorderRadius.circular(2)))),
-                                        Positioned(bottom: -9, right: 14, child: Container(width: 4, height: 9, decoration: BoxDecoration(color: Colors.white.withOpacity(0.55), borderRadius: BorderRadius.circular(2)))),
+                                        Positioned(
+                                          bottom: -9,
+                                          left: 14,
+                                          child: Container(
+                                            width: 4,
+                                            height: 9,
+                                            decoration: BoxDecoration(
+                                              color: Colors.white.withOpacity(0.55),
+                                              borderRadius: BorderRadius.circular(2),
+                                            ),
+                                          ),
+                                        ),
+                                        Positioned(
+                                          bottom: -9,
+                                          right: 14,
+                                          child: Container(
+                                            width: 4,
+                                            height: 9,
+                                            decoration: BoxDecoration(
+                                              color: Colors.white.withOpacity(0.55),
+                                              borderRadius: BorderRadius.circular(2),
+                                            ),
+                                          ),
+                                        ),
                                       ],
                                     ),
                                     const SizedBox(width: 12),
@@ -192,9 +263,23 @@ class SectionCompleteScreen extends StatelessWidget {
                                       child: Column(
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
-                                          Text('РАЗБЛОКИРОВАНО', style: GoogleFonts.jetBrainsMono(fontSize: 10, color: const Color(0xFF9AAAAA))),
-                                          Text('Раздел 2 · Права доступа',
-                                              style: GoogleFonts.fredoka(fontWeight: FontWeight.w600, fontSize: 14.5, color: const Color(0xFF1B2430))),
+                                          Text(
+                                            'РАЗБЛОКИРОВАНО',
+                                            style: TextStyle(
+                                              fontFamily: 'JetBrains Mono',
+                                              fontSize: 10,
+                                              color: const Color(0xFF9AAAAA),
+                                            ),
+                                          ),
+                                          Text(
+                                            'Раздел 2 · Права доступа',
+                                            style: TextStyle(
+                                              fontFamily: 'Fredoka',
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 14.5,
+                                              color: const Color(0xFF1B2430),
+                                            ),
+                                          ),
                                         ],
                                       ),
                                     ),
@@ -213,14 +298,29 @@ class SectionCompleteScreen extends StatelessWidget {
                                     boxShadow: const [BoxShadow(color: Color(0xFF00A896), offset: Offset(0, 4))],
                                   ),
                                   alignment: Alignment.center,
-                                  child: Text('Продолжить', style: GoogleFonts.fredoka(fontWeight: FontWeight.w600, fontSize: 17, color: Colors.white)),
+                                  child: Text(
+                                    'Продолжить',
+                                    style: TextStyle(
+                                      fontFamily: 'Fredoka',
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 17,
+                                      color: Colors.white,
+                                    ),
+                                  ),
                                 ),
                               ),
                               const SizedBox(height: 10),
                               GestureDetector(
                                 onTap: onRepeat,
-                                child: Text('Повторить раздел',
-                                    style: GoogleFonts.fredoka(fontWeight: FontWeight.w600, fontSize: 14, color: const Color(0xFF5C6B73))),
+                                child: Text(
+                                  'Повторить раздел',
+                                  style: TextStyle(
+                                    fontFamily: 'Fredoka',
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 14,
+                                    color: const Color(0xFF5C6B73),
+                                  ),
+                                ),
                               ),
                             ],
                           ),
@@ -247,9 +347,24 @@ class SectionCompleteScreen extends StatelessWidget {
       ),
       child: Column(
         children: [
-          Text(label, style: GoogleFonts.jetBrainsMono(fontSize: 9.5, color: highlight ? const Color(0xFF4B8A18) : const Color(0xFF9AAAAA))),
+          Text(
+            label,
+            style: TextStyle(
+              fontFamily: 'JetBrains Mono',
+              fontSize: 9.5,
+              color: highlight ? const Color(0xFF4B8A18) : const Color(0xFF9AAAAA),
+            ),
+          ),
           const SizedBox(height: 5),
-          Text(value, style: GoogleFonts.fredoka(fontWeight: FontWeight.w600, fontSize: 18, color: highlight ? const Color(0xFF3F9200) : const Color(0xFF1B2430))),
+          Text(
+            value,
+            style: TextStyle(
+              fontFamily: 'Fredoka',
+              fontWeight: FontWeight.w600,
+              fontSize: 18,
+              color: highlight ? const Color(0xFF3F9200) : const Color(0xFF1B2430),
+            ),
+          ),
         ],
       ),
     );
@@ -271,7 +386,8 @@ class _PulsingOvalState extends State<_PulsingOval> with SingleTickerProviderSta
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200))..repeat(reverse: true); //Анимация круга
+    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200))
+      ..repeat(reverse: true); //Анимация круга
   }
 
   @override
@@ -292,10 +408,7 @@ class _PulsingOvalState extends State<_PulsingOval> with SingleTickerProviderSta
           scale: scale,
           child: Opacity(
             opacity: opacity,
-            child: CustomPaint(
-              size: Size(widget.width, widget.height),
-              painter: _DashedOvalPainter(),
-            ),
+            child: CustomPaint(size: Size(widget.width, widget.height), painter: _DashedOvalPainter()),
           ),
         );
       },
@@ -338,7 +451,8 @@ class _FloatingMascotState extends State<_FloatingMascot> with SingleTickerProvi
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 1500))..repeat(reverse: true); //Покачивание маскота
+    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 1500))
+      ..repeat(reverse: true); //Покачивание маскота
   }
 
   @override

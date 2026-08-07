@@ -18,8 +18,10 @@ class _AnimatedMascotState extends State<AnimatedMascot> with TickerProviderStat
   @override
   void initState() {
     super.initState();
-    _floatController = AnimationController(vsync: this, duration: const Duration(milliseconds: 3400))..repeat(reverse: true);
-    _ringController = AnimationController(vsync: this, duration: const Duration(milliseconds: 2400))..repeat(reverse: true);
+    _floatController = AnimationController(vsync: this, duration: const Duration(milliseconds: 3400))
+      ..repeat(reverse: true);
+    _ringController = AnimationController(vsync: this, duration: const Duration(milliseconds: 2400))
+      ..repeat(reverse: true);
   }
 
   @override
@@ -58,10 +60,7 @@ class _AnimatedMascotState extends State<AnimatedMascot> with TickerProviderStat
                 scale: scale,
                 child: Opacity(
                   opacity: opacity,
-                  child: CustomPaint(
-                    size: Size(glowSize * 0.72, glowSize * 0.72),
-                    painter: _DashedCirclePainter(),
-                  ),
+                  child: CustomPaint(size: Size(glowSize * 0.72, glowSize * 0.72), painter: _DashedCirclePainter()),
                 ),
               );
             },

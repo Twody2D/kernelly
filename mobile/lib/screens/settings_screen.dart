@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mobile/screens/onboarding_screen.dart';
 import 'package:mobile/services/user_prefs.dart';
@@ -61,7 +60,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ..hideCurrentSnackBar()
       ..showSnackBar(
         SnackBar(
-          content: Text(message, style: GoogleFonts.fredoka(fontWeight: FontWeight.w500, fontSize: 14)),
+          content: Text(
+            message,
+            style: TextStyle(fontFamily: 'Fredoka', fontWeight: FontWeight.w500, fontSize: 14),
+          ),
           backgroundColor: const Color(0xFF1B2430),
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -85,21 +87,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
             Container(
               width: 38,
               height: 4,
-              decoration: BoxDecoration(
-                color: const Color(0xFFDCE8E7),
-                borderRadius: BorderRadius.circular(2),
-              ),
+              decoration: BoxDecoration(color: const Color(0xFFDCE8E7), borderRadius: BorderRadius.circular(2)),
             ),
             const SizedBox(height: 16),
             Text(
               'Цель на день',
-              style: GoogleFonts.fredoka(fontWeight: FontWeight.w600, fontSize: 17, color: const Color(0xFF1B2430)),
+              style: TextStyle(
+                fontFamily: 'Fredoka',
+                fontWeight: FontWeight.w600,
+                fontSize: 17,
+                color: const Color(0xFF1B2430),
+              ),
             ),
             const SizedBox(height: 14),
-            for (final item in dailyGoals) ...[
-              _goalOption(sheetContext, item),
-              const SizedBox(height: 10),
-            ],
+            for (final item in dailyGoals) ...[_goalOption(sheetContext, item), const SizedBox(height: 10)],
           ],
         ),
       ),
@@ -132,13 +133,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 children: [
                   Text(
                     item['title'] as String,
-                    style: GoogleFonts.fredoka(
-                        fontWeight: FontWeight.w600, fontSize: 15, color: const Color(0xFF1B2430)),
+                    style: TextStyle(
+                      fontFamily: 'Fredoka',
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                      color: const Color(0xFF1B2430),
+                    ),
                   ),
                   const SizedBox(height: 3),
                   Text(
                     item['subtitle'] as String,
-                    style: GoogleFonts.jetBrainsMono(fontSize: 11.5, color: const Color(0xFF5C6B73)),
+                    style: TextStyle(fontFamily: 'JetBrains Mono', fontSize: 11.5, color: const Color(0xFF5C6B73)),
                   ),
                 ],
               ),
@@ -185,7 +190,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
         title: Text(
           'Настройки',
-          style: GoogleFonts.fredoka(fontWeight: FontWeight.w600, fontSize: 17, color: const Color(0xFF1B2430)),
+          style: TextStyle(
+            fontFamily: 'Fredoka',
+            fontWeight: FontWeight.w600,
+            fontSize: 17,
+            color: const Color(0xFF1B2430),
+          ),
         ),
       ),
       body: ListView(
@@ -193,18 +203,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
         children: [
           _sectionLabel('\$ обучение'),
           _card([
-            _row(
-              title: 'Цель на день',
-              subtitle: goalSubtitle(goal),
-              trailing: _pill('изменить', _pickGoal),
-            ),
+            _row(title: 'Цель на день', subtitle: goalSubtitle(goal), trailing: _pill('изменить', _pickGoal)),
             _row(
               title: 'Напоминание',
               subtitle: 'каждый день в 20:00',
-              trailing: _Toggle(
-                value: remind,
-                onChanged: (v) => _saveBool(PrefKeys.remind, v, (x) => remind = x),
-              ),
+              trailing: _Toggle(value: remind, onChanged: (v) => _saveBool(PrefKeys.remind, v, (x) => remind = x)),
             ),
             _row(
               title: 'Защита streak',
@@ -227,10 +230,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             _themeRow(),
             _row(
               title: 'Звуки',
-              trailing: _Toggle(
-                value: sound,
-                onChanged: (v) => _saveBool(PrefKeys.sound, v, (x) => sound = x),
-              ),
+              trailing: _Toggle(value: sound, onChanged: (v) => _saveBool(PrefKeys.sound, v, (x) => sound = x)),
             ),
             _row(
               title: 'Анимации Kernel',
@@ -248,7 +248,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               title: 'Почта',
               trailing: Text(
                 'не привязана',
-                style: GoogleFonts.jetBrainsMono(fontSize: 11, color: const Color(0xFF5C6B73)),
+                style: TextStyle(fontFamily: 'JetBrains Mono', fontSize: 11, color: const Color(0xFF5C6B73)),
               ),
               onTap: () => _soon('Вход в аккаунт появится позже'),
             ),
@@ -264,13 +264,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: Container(
               padding: const EdgeInsets.symmetric(vertical: 13),
               alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFEAEA),
-                borderRadius: BorderRadius.circular(16),
-              ),
+              decoration: BoxDecoration(color: const Color(0xFFFFEAEA), borderRadius: BorderRadius.circular(16)),
               child: Text(
                 'Удалить аккаунт',
-                style: GoogleFonts.fredoka(fontWeight: FontWeight.w600, fontSize: 13.5, color: const Color(0xFFFF4B4B)),
+                style: TextStyle(
+                  fontFamily: 'Fredoka',
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13.5,
+                  color: const Color(0xFFFF4B4B),
+                ),
               ),
             ),
           ),
@@ -278,7 +280,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           Text(
             'kernelly 1.0.0 · build 1',
             textAlign: TextAlign.center,
-            style: GoogleFonts.jetBrainsMono(fontSize: 10, color: const Color(0xFF9AAAAA)),
+            style: TextStyle(fontFamily: 'JetBrains Mono', fontSize: 10, color: const Color(0xFF9AAAAA)),
           ),
         ],
       ),
@@ -290,7 +292,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
       child: Text(
         text,
-        style: GoogleFonts.jetBrainsMono(fontSize: 10.5, color: const Color(0xFF00A896)),
+        style: TextStyle(fontFamily: 'JetBrains Mono', fontSize: 10.5, color: const Color(0xFF00A896)),
       ),
     );
   }
@@ -328,13 +330,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 children: [
                   Text(
                     title,
-                    style: GoogleFonts.fredoka(fontWeight: FontWeight.w600, fontSize: 14, color: const Color(0xFF1B2430)),
+                    style: TextStyle(
+                      fontFamily: 'Fredoka',
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                      color: const Color(0xFF1B2430),
+                    ),
                   ),
                   if (subtitle != null) ...[
                     const SizedBox(height: 2),
                     Text(
                       subtitle,
-                      style: GoogleFonts.inter(fontSize: 11.5, color: const Color(0xFF5C6B73)),
+                      style: TextStyle(fontFamily: 'Inter', fontSize: 11.5, color: const Color(0xFF5C6B73)),
                     ),
                   ],
                 ],
@@ -353,13 +360,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          color: const Color(0xFFE6F8F6),
-          borderRadius: BorderRadius.circular(11),
-        ),
+        decoration: BoxDecoration(color: const Color(0xFFE6F8F6), borderRadius: BorderRadius.circular(11)),
         child: Text(
           text,
-          style: GoogleFonts.jetBrainsMono(fontSize: 11, fontWeight: FontWeight.w600, color: const Color(0xFF00A896)),
+          style: TextStyle(
+            fontFamily: 'JetBrains Mono',
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: const Color(0xFF00A896),
+          ),
         ),
       ),
     );
@@ -373,7 +382,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
         children: [
           Text(
             'Тема',
-            style: GoogleFonts.fredoka(fontWeight: FontWeight.w600, fontSize: 14, color: const Color(0xFF1B2430)),
+            style: TextStyle(
+              fontFamily: 'Fredoka',
+              fontWeight: FontWeight.w600,
+              fontSize: 14,
+              color: const Color(0xFF1B2430),
+            ),
           ),
           const SizedBox(height: 10),
           Row(
@@ -404,7 +418,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
         child: Text(
           label,
-          style: GoogleFonts.jetBrainsMono(
+          style: TextStyle(
+            fontFamily: 'JetBrains Mono',
             fontSize: 11,
             fontWeight: FontWeight.w600,
             color: selected ? const Color(0xFF00A896) : const Color(0xFF8D9C9C),

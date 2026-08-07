@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:lottie/lottie.dart';
 import 'package:mobile/services/api_service.dart';
 import 'package:mobile/widgets/option_card.dart';
@@ -120,9 +119,7 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
   @override
   Widget build(BuildContext context) {
     if (exercises.isEmpty) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     if (currentIndex >= exercises.length) {
@@ -165,7 +162,8 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
           children: [
             Text(
               '\$ ${widget.sectionTitle}',
-              style: GoogleFonts.jetBrainsMono(
+              style: TextStyle(
+                fontFamily: 'JetBrains Mono',
                 fontWeight: FontWeight.w600,
                 fontSize: 12,
                 color: const Color(0xFF00A896),
@@ -175,7 +173,8 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
             const SizedBox(height: 10),
             Text(
               question,
-              style: GoogleFonts.fredoka(
+              style: TextStyle(
+                fontFamily: 'Fredoka',
                 fontWeight: FontWeight.w600,
                 fontSize: 21,
                 color: const Color(0xFF1B2430),
@@ -189,8 +188,8 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
                 locked: isCorrect != null,
                 state: isCorrect != null
                     ? (option == selectedAnswer
-                        ? (isCorrect! ? OptionState.correct : OptionState.incorrect)
-                        : OptionState.none)
+                          ? (isCorrect! ? OptionState.correct : OptionState.incorrect)
+                          : OptionState.none)
                     : (option == selectedAnswer ? OptionState.selected : OptionState.none),
               ),
             const Spacer(),
@@ -210,7 +209,8 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
                       width: double.infinity,
                       child: Text(
                         isCorrect! ? 'Правильно! +10 XP' : 'Неверно, попробуйте ещё раз',
-                        style: GoogleFonts.fredoka(
+                        style: TextStyle(
+                          fontFamily: 'Fredoka',
                           fontWeight: FontWeight.w600,
                           color: isCorrect! ? const Color(0xFF2E6E00) : const Color(0xFFB33A3A),
                         ),
@@ -242,11 +242,7 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
                 ),
               ),
             if (isCorrect == null)
-              PrimaryButton(
-                text: 'Проверить',
-                enabled: selectedAnswer != null,
-                onPressed: _checkAnswer,
-              )
+              PrimaryButton(text: 'Проверить', enabled: selectedAnswer != null, onPressed: _checkAnswer)
             else
               PrimaryButton(text: 'Продолжить', onPressed: _nextExercise),
           ],

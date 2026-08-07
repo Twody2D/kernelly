@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile/screens/course_overview_screen.dart';
 import 'package:mobile/screens/profile_screen.dart';
 import 'package:mobile/screens/path_screen.dart';
@@ -43,10 +42,7 @@ class _MainShellState extends State<MainShell> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: IndexedStack(
-        index: currentIndex,
-        children: _tabs,
-      ),
+      body: IndexedStack(index: currentIndex, children: _tabs),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: currentIndex,
         onTap: (index) {
@@ -55,8 +51,8 @@ class _MainShellState extends State<MainShell> {
         },
         selectedItemColor: const Color(0xFF00A896),
         unselectedItemColor: const Color(0xFF5C6B73),
-        selectedLabelStyle: GoogleFonts.jetBrainsMono(fontSize: 11, fontWeight: FontWeight.w600),
-        unselectedLabelStyle: GoogleFonts.jetBrainsMono(fontSize: 11),
+        selectedLabelStyle: TextStyle(fontFamily: 'JetBrains Mono', fontSize: 11, fontWeight: FontWeight.w600),
+        unselectedLabelStyle: TextStyle(fontFamily: 'JetBrains Mono', fontSize: 11),
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.route), label: 'Путь'),
           BottomNavigationBarItem(icon: Icon(Icons.menu_book), label: 'Курсы'),

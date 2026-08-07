@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mobile/screens/main_shell.dart';
 import 'package:mobile/services/user_prefs.dart';
@@ -9,7 +8,6 @@ import 'package:mobile/widgets/primary_button.dart';
 const _introTopics = ['bash', 'git', 'python', 'sql'];
 
 const _topics = ['linux', 'bash', 'git', 'docker', 'python', 'sql'];
-
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -53,7 +51,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       ..hideCurrentSnackBar()
       ..showSnackBar(
         SnackBar(
-          content: Text(message, style: GoogleFonts.fredoka(fontWeight: FontWeight.w500, fontSize: 14)),
+          content: Text(
+            message,
+            style: TextStyle(fontFamily: 'Fredoka', fontWeight: FontWeight.w500, fontSize: 14),
+          ),
           backgroundColor: const Color(0xFF1B2430),
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -91,15 +92,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                             decoration: const BoxDecoration(
                               color: Color(0xFF58CC02),
                               shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(color: Color(0x3358CC02), spreadRadius: 3, blurRadius: 0),
-                              ],
+                              boxShadow: [BoxShadow(color: Color(0x3358CC02), spreadRadius: 3, blurRadius: 0)],
                             ),
                           ),
                           const SizedBox(width: 6),
                           Text(
                             'Kernelly',
-                            style: GoogleFonts.fredoka(
+                            style: TextStyle(
+                              fontFamily: 'Fredoka',
                               fontWeight: FontWeight.w700,
                               fontSize: 18,
                               color: const Color(0xFF1B2430),
@@ -109,7 +109,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       ),
                       Text(
                         'v1.0',
-                        style: GoogleFonts.jetBrainsMono(fontSize: 12, color: const Color(0xFF5C6B73)),
+                        style: TextStyle(fontFamily: 'JetBrains Mono', fontSize: 12, color: const Color(0xFF5C6B73)),
                       ),
                     ],
                   ),
@@ -133,7 +133,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           onTap: () => _soon('Вход в аккаунт появится позже'),
                           child: Text(
                             'У меня уже есть аккаунт',
-                            style: GoogleFonts.fredoka(
+                            style: TextStyle(
+                              fontFamily: 'Fredoka',
                               fontWeight: FontWeight.w600,
                               fontSize: 15.5,
                               color: const Color(0xFF5C6B73),
@@ -183,13 +184,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               const Center(child: AnimatedMascot(size: 152)),
               Text(
                 '\$ whoami',
-                style: GoogleFonts.jetBrainsMono(fontSize: 12.5, color: const Color(0xFF00A896)),
+                style: TextStyle(fontFamily: 'JetBrains Mono', fontSize: 12.5, color: const Color(0xFF00A896)),
               ),
               const SizedBox(height: 8),
               Text(
                 'Привет! Я Kernel',
                 textAlign: TextAlign.center,
-                style: GoogleFonts.fredoka(
+                style: TextStyle(
+                  fontFamily: 'Fredoka',
                   fontWeight: FontWeight.w600,
                   fontSize: 28,
                   height: 1.2,
@@ -201,7 +203,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 'Научу тебя терминалу, Linux и коду — по 5 минут в день. '
                 'Без лекций: только команды, которые правда пригодятся.',
                 textAlign: TextAlign.center,
-                style: GoogleFonts.inter(fontSize: 15.5, height: 1.5, color: const Color(0xFF5C6B73)),
+                style: TextStyle(fontFamily: 'Inter', fontSize: 15.5, height: 1.5, color: const Color(0xFF5C6B73)),
               ),
               const SizedBox(height: 18),
               Wrap(
@@ -229,13 +231,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               const SizedBox(height: 20),
               Text(
                 '\$ выбери направление',
-                style: GoogleFonts.jetBrainsMono(fontSize: 12.5, color: const Color(0xFF00A896)),
+                style: TextStyle(fontFamily: 'JetBrains Mono', fontSize: 12.5, color: const Color(0xFF00A896)),
               ),
               const SizedBox(height: 8),
               Text(
                 'Что хочешь изучать?',
                 textAlign: TextAlign.center,
-                style: GoogleFonts.fredoka(
+                style: TextStyle(
+                  fontFamily: 'Fredoka',
                   fontWeight: FontWeight.w600,
                   fontSize: 28,
                   height: 1.2,
@@ -246,7 +249,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               Text(
                 'Отметь всё, что интересно. Это можно поменять потом в настройках.',
                 textAlign: TextAlign.center,
-                style: GoogleFonts.inter(fontSize: 15.5, height: 1.5, color: const Color(0xFF5C6B73)),
+                style: TextStyle(fontFamily: 'Inter', fontSize: 15.5, height: 1.5, color: const Color(0xFF5C6B73)),
               ),
               const SizedBox(height: 22),
               Wrap(
@@ -282,13 +285,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               const SizedBox(height: 20),
               Text(
                 '\$ цель на день',
-                style: GoogleFonts.jetBrainsMono(fontSize: 12.5, color: const Color(0xFF00A896)),
+                style: TextStyle(fontFamily: 'JetBrains Mono', fontSize: 12.5, color: const Color(0xFF00A896)),
               ),
               const SizedBox(height: 8),
               Text(
                 'Сколько занимаемся?',
                 textAlign: TextAlign.center,
-                style: GoogleFonts.fredoka(
+                style: TextStyle(
+                  fontFamily: 'Fredoka',
                   fontWeight: FontWeight.w600,
                   fontSize: 28,
                   height: 1.2,
@@ -299,7 +303,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               Text(
                 'Небольшая цель, которую легко держать каждый день.',
                 textAlign: TextAlign.center,
-                style: GoogleFonts.inter(fontSize: 15.5, height: 1.5, color: const Color(0xFF5C6B73)),
+                style: TextStyle(fontFamily: 'Inter', fontSize: 15.5, height: 1.5, color: const Color(0xFF5C6B73)),
               ),
               const SizedBox(height: 20),
               for (final item in dailyGoals) ...[_goalCard(item), const SizedBox(height: 10)],
@@ -334,7 +338,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 children: [
                   Text(
                     item['title'] as String,
-                    style: GoogleFonts.fredoka(
+                    style: TextStyle(
+                      fontFamily: 'Fredoka',
                       fontWeight: FontWeight.w600,
                       fontSize: 16,
                       color: const Color(0xFF1B2430),
@@ -343,7 +348,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   const SizedBox(height: 3),
                   Text(
                     item['subtitle'] as String,
-                    style: GoogleFonts.jetBrainsMono(fontSize: 12, color: const Color(0xFF5C6B73)),
+                    style: TextStyle(fontFamily: 'JetBrains Mono', fontSize: 12, color: const Color(0xFF5C6B73)),
                   ),
                 ],
               ),
@@ -369,7 +374,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       ),
       child: Text(
         label,
-        style: GoogleFonts.jetBrainsMono(
+        style: TextStyle(
+          fontFamily: 'JetBrains Mono',
           fontSize: 12,
           fontWeight: FontWeight.w600,
           color: const Color(0xFF00A896),

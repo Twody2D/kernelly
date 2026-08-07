@@ -21,9 +21,6 @@ const dailyGoals = [
 ];
 
 String goalSubtitle(int lessons) {
-  final goal = dailyGoals.firstWhere(
-    (g) => g['lessons'] == lessons,
-    orElse: () => dailyGoals[1],
-  );
+  final goal = dailyGoals.firstWhere((g) => g['lessons'] == lessons, orElse: () => dailyGoals[1]);
   return goal['subtitle'] as String;
 }

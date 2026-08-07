@@ -1,17 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 class PrimaryButton extends StatelessWidget {
   final String text;
   final VoidCallback onPressed;
   final bool enabled;
 
-  const PrimaryButton({
-    super.key,
-    required this.text,
-    required this.onPressed,
-    this.enabled = true,
-  });
+  const PrimaryButton({super.key, required this.text, required this.onPressed, this.enabled = true});
 
   @override
   Widget build(BuildContext context) {
@@ -30,13 +24,11 @@ class PrimaryButton extends StatelessWidget {
           decoration: BoxDecoration(
             color: bgColor,
             borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(color: shadowColor, offset: const Offset(0, 4), blurRadius: 0),
-            ],
+            boxShadow: [BoxShadow(color: shadowColor, offset: const Offset(0, 4), blurRadius: 0)],
           ),
           child: Text(
             text,
-            style: GoogleFonts.fredoka(fontWeight: FontWeight.w600, fontSize: 16, color: textColor),
+            style: TextStyle(fontFamily: 'Fredoka', fontWeight: FontWeight.w600, fontSize: 16, color: textColor),
           ),
         ),
       ),

@@ -1,17 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 class GradientBanner extends StatelessWidget {
   final String eyebrow;
   final String title;
   final String? badge;
 
-  const GradientBanner({
-    super.key,
-    required this.eyebrow,
-    required this.title,
-    this.badge,
-  });
+  const GradientBanner({super.key, required this.eyebrow, required this.title, this.badge});
 
   @override
   Widget build(BuildContext context) {
@@ -55,12 +49,23 @@ class GradientBanner extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(eyebrow,
-                          style: GoogleFonts.jetBrainsMono(color: Colors.white.withOpacity(0.85), fontSize: 11)),
+                      Text(
+                        eyebrow,
+                        style: TextStyle(
+                          fontFamily: 'JetBrains Mono',
+                          color: Colors.white.withOpacity(0.85),
+                          fontSize: 11,
+                        ),
+                      ),
                       const SizedBox(height: 4),
                       Text(
                         title,
-                        style: GoogleFonts.fredoka(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 16),
+                        style: TextStyle(
+                          fontFamily: 'Fredoka',
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 16,
+                        ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -71,8 +76,14 @@ class GradientBanner extends StatelessWidget {
                   const SizedBox(width: 10),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-                    decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(10)),
-                    child: Text(badge!, style: GoogleFonts.jetBrainsMono(color: Colors.white, fontSize: 11)),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      badge!,
+                      style: TextStyle(fontFamily: 'JetBrains Mono', color: Colors.white, fontSize: 11),
+                    ),
                   ),
                 ],
               ],

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 enum OptionState { none, selected, correct, incorrect }
 
@@ -56,8 +55,14 @@ class OptionCard extends StatelessWidget {
           ),
           child: Row(
             children: [
-              Text('> ', style: GoogleFonts.jetBrainsMono(fontWeight: FontWeight.w600, color: promptColor)),
-              Text(text, style: GoogleFonts.jetBrainsMono(fontWeight: FontWeight.w500, color: textColor)),
+              Text(
+                '> ',
+                style: TextStyle(fontFamily: 'JetBrains Mono', fontWeight: FontWeight.w600, color: promptColor),
+              ),
+              Text(
+                text,
+                style: TextStyle(fontFamily: 'JetBrains Mono', fontWeight: FontWeight.w500, color: textColor),
+              ),
             ],
           ),
         ),

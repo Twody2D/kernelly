@@ -1,12 +1,21 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile/services/api_service.dart';
 import 'package:mobile/screens/settings_screen.dart';
 import 'package:mobile/widgets/mascot.dart';
 
 const _months = [
-  'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
-  'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря',
+  'января',
+  'февраля',
+  'марта',
+  'апреля',
+  'мая',
+  'июня',
+  'июля',
+  'августа',
+  'сентября',
+  'октября',
+  'ноября',
+  'декабря',
 ];
 
 const _weekdays = ['пн', 'вт', 'ср', 'чт', 'пт', 'сб', 'вс'];
@@ -32,11 +41,7 @@ class ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> load() async {
     try {
-      final results = await Future.wait([
-        fetchUserStats(1),
-        fetchUserActivity(1),
-        fetchUserAchievements(1),
-      ]);
+      final results = await Future.wait([fetchUserStats(1), fetchUserActivity(1), fetchUserAchievements(1)]);
       setState(() {
         stats = results[0];
         activity = results[1];
@@ -82,7 +87,7 @@ class ProfileScreenState extends State<ProfileScreen> {
         body: Center(
           child: Text(
             'Не удалось загрузить профиль',
-            style: GoogleFonts.fredoka(fontSize: 15, color: const Color(0xFF5C6B73)),
+            style: const TextStyle(fontFamily: 'Fredoka', fontWeight: FontWeight.w500, fontSize: 15, color: Color(0xFF5C6B73)),
           ),
         ),
       );
@@ -110,11 +115,13 @@ class ProfileScreenState extends State<ProfileScreen> {
             children: [
               Expanded(child: _statCard('УРОКОВ', '${stats!['lessons_completed']}')),
               const SizedBox(width: 10),
-              Expanded(child: _statCard(
-                'ТОЧНОСТЬ',
-                accuracy == null ? '—' : '$accuracy%',
-                valueColor: accuracy == null ? const Color(0xFFC2CDCD) : const Color(0xFF58CC02),
-              )),
+              Expanded(
+                child: _statCard(
+                  'ТОЧНОСТЬ',
+                  accuracy == null ? '—' : '$accuracy%',
+                  valueColor: accuracy == null ? const Color(0xFFC2CDCD) : const Color(0xFF58CC02),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 14),
@@ -132,15 +139,17 @@ class ProfileScreenState extends State<ProfileScreen> {
       elevation: 0,
       title: Text(
         'Профиль',
-        style: GoogleFonts.fredoka(fontWeight: FontWeight.w600, fontSize: 17, color: const Color(0xFF1B2430)),
+        style: TextStyle(
+          fontFamily: 'Fredoka',
+          fontWeight: FontWeight.w600,
+          fontSize: 17,
+          color: const Color(0xFF1B2430),
+        ),
       ),
       actions: [
         IconButton(
           icon: const Icon(Icons.settings_outlined, color: Color(0xFF5C6B73)),
-          onPressed: () => Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const SettingsScreen()),
-          ),
+          onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen())),
         ),
       ],
     );
@@ -184,10 +193,7 @@ class ProfileScreenState extends State<ProfileScreen> {
                 Container(
                   width: 62,
                   height: 62,
-                  decoration: BoxDecoration(
-                    color: const Color(0x38FFFFFF),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
+                  decoration: BoxDecoration(color: const Color(0x38FFFFFF), borderRadius: BorderRadius.circular(20)),
                   clipBehavior: Clip.antiAlias,
                   alignment: Alignment.bottomCenter,
                   child: const Mascot(size: 52),
@@ -199,19 +205,24 @@ class ProfileScreenState extends State<ProfileScreen> {
                     children: [
                       Text(
                         '\$ whoami',
-                        style: GoogleFonts.jetBrainsMono(color: const Color(0xD9FFFFFF), fontSize: 11),
+                        style: TextStyle(fontFamily: 'JetBrains Mono', color: const Color(0xD9FFFFFF), fontSize: 11),
                       ),
                       const SizedBox(height: 3),
                       Text(
                         stats!['username'],
-                        style: GoogleFonts.fredoka(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 19),
+                        style: TextStyle(
+                          fontFamily: 'Fredoka',
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 19,
+                        ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 4),
                       Text(
                         _memberSince(stats!['created_at']),
-                        style: GoogleFonts.jetBrainsMono(color: const Color(0xE6FFFFFF), fontSize: 10.5),
+                        style: TextStyle(fontFamily: 'JetBrains Mono', color: const Color(0xE6FFFFFF), fontSize: 10.5),
                       ),
                     ],
                   ),
@@ -235,9 +246,15 @@ class ProfileScreenState extends State<ProfileScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: GoogleFonts.jetBrainsMono(fontSize: 10, color: const Color(0xFF9AAAAA))),
+          Text(
+            label,
+            style: TextStyle(fontFamily: 'JetBrains Mono', fontSize: 10, color: const Color(0xFF9AAAAA)),
+          ),
           const SizedBox(height: 6),
-          Text(value, style: GoogleFonts.fredoka(fontWeight: FontWeight.w600, fontSize: 22, color: valueColor)),
+          Text(
+            value,
+            style: TextStyle(fontFamily: 'Fredoka', fontWeight: FontWeight.w600, fontSize: 22, color: valueColor),
+          ),
         ],
       ),
     );
@@ -265,11 +282,16 @@ class ProfileScreenState extends State<ProfileScreen> {
             children: [
               Text(
                 'Активность за неделю',
-                style: GoogleFonts.fredoka(fontWeight: FontWeight.w600, fontSize: 14, color: const Color(0xFF1B2430)),
+                style: TextStyle(
+                  fontFamily: 'Fredoka',
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                  color: const Color(0xFF1B2430),
+                ),
               ),
               Text(
                 '$totalXp XP',
-                style: GoogleFonts.jetBrainsMono(fontSize: 10, color: const Color(0xFF9AAAAA)),
+                style: TextStyle(fontFamily: 'JetBrains Mono', fontSize: 10, color: const Color(0xFF9AAAAA)),
               ),
             ],
           ),
@@ -320,7 +342,8 @@ class ProfileScreenState extends State<ProfileScreen> {
         const SizedBox(height: 6),
         Text(
           label,
-          style: GoogleFonts.jetBrainsMono(
+          style: TextStyle(
+            fontFamily: 'JetBrains Mono',
             fontSize: 9.5,
             fontWeight: isToday ? FontWeight.w600 : FontWeight.w400,
             color: isToday ? const Color(0xFF00A896) : const Color(0xFF9AAAAA),
@@ -335,10 +358,11 @@ class ProfileScreenState extends State<ProfileScreen> {
     final unlockedCount = achievements?['unlocked'] ?? 0;
     final total = achievements?['total'] ?? 0;
 
-    final sorted = [...items]..sort((a, b) {
-      if (a['unlocked'] == b['unlocked']) return 0;
-      return a['unlocked'] == true ? -1 : 1;
-    });
+    final sorted = [...items]
+      ..sort((a, b) {
+        if (a['unlocked'] == b['unlocked']) return 0;
+        return a['unlocked'] == true ? -1 : 1;
+      });
     final visible = sorted.take(8).toList();
 
     return Column(
@@ -351,11 +375,16 @@ class ProfileScreenState extends State<ProfileScreen> {
           children: [
             Text(
               'Достижения',
-              style: GoogleFonts.fredoka(fontWeight: FontWeight.w600, fontSize: 14, color: const Color(0xFF1B2430)),
+              style: TextStyle(
+                fontFamily: 'Fredoka',
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+                color: const Color(0xFF1B2430),
+              ),
             ),
             Text(
               '$unlockedCount / $total',
-              style: GoogleFonts.jetBrainsMono(fontSize: 10, color: const Color(0xFF00A896)),
+              style: TextStyle(fontFamily: 'JetBrains Mono', fontSize: 10, color: const Color(0xFF00A896)),
             ),
           ],
         ),
@@ -416,12 +445,16 @@ class ProfileScreenState extends State<ProfileScreen> {
             alignment: Alignment.center,
             child: unlocked
                 ? (icon.length > 2
-                    ? Text(
-                        icon,
-                        style: GoogleFonts.jetBrainsMono(
-                            fontWeight: FontWeight.w600, fontSize: 13, color: Colors.white),
-                      )
-                    : Text(icon, style: const TextStyle(fontSize: 20, color: Colors.white)))
+                      ? Text(
+                          icon,
+                          style: TextStyle(
+                            fontFamily: 'JetBrains Mono',
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                            color: Colors.white,
+                          ),
+                        )
+                      : Text(icon, style: const TextStyle(fontSize: 20, color: Colors.white)))
                 : const Icon(Icons.lock, size: 17, color: Color(0xFFC2CDCD)),
           ),
         ),
@@ -431,7 +464,8 @@ class ProfileScreenState extends State<ProfileScreen> {
           textAlign: TextAlign.center,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: GoogleFonts.jetBrainsMono(
+          style: TextStyle(
+            fontFamily: 'JetBrains Mono',
             fontSize: 8.5,
             color: unlocked ? const Color(0xFF5C6B73) : const Color(0xFF9AAAAA),
           ),

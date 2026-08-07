@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile/services/api_service.dart';
 import 'package:mobile/screens/path_screen.dart';
 import 'package:mobile/widgets/gradient_banner.dart';
@@ -39,13 +38,13 @@ class CourseOverviewScreenState extends State<CourseOverviewScreen> {
 
   Map<String, dynamic>? get _continueCourse {
     for (final c in courses) {
-    if (c['locked'] == true) continue;
-    if (c['total'] > 0 && c['completed'] < c['total']) return c;
-  }
-  for (final c in courses) {
-    if (c['locked'] != true && c['total'] > 0) return c;
-  }
-  return null;
+      if (c['locked'] == true) continue;
+      if (c['total'] > 0 && c['completed'] < c['total']) return c;
+    }
+    for (final c in courses) {
+      if (c['locked'] != true && c['total'] > 0) return c;
+    }
+    return null;
   }
 
   @override
@@ -87,8 +86,15 @@ class CourseOverviewScreenState extends State<CourseOverviewScreen> {
                         ),
                       ),
                       const SizedBox(width: 6),
-                      Text('Kernelly',
-                          style: GoogleFonts.fredoka(fontWeight: FontWeight.w700, fontSize: 18, color: const Color(0xFF1B2430))),
+                      Text(
+                        'Kernelly',
+                        style: TextStyle(
+                          fontFamily: 'Fredoka',
+                          fontWeight: FontWeight.w700,
+                          fontSize: 18,
+                          color: const Color(0xFF1B2430),
+                        ),
+                      ),
                     ],
                   ),
                   if (user != null)
@@ -97,15 +103,24 @@ class CourseOverviewScreenState extends State<CourseOverviewScreen> {
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(14),
-                        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 6, offset: const Offset(0, 2))],
+                        boxShadow: [
+                          BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 6, offset: const Offset(0, 2)),
+                        ],
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           const Text('🔥', style: TextStyle(fontSize: 14)),
                           const SizedBox(width: 5),
-                          Text('${user!['streak']}',
-                              style: GoogleFonts.fredoka(fontWeight: FontWeight.w600, fontSize: 14, color: const Color(0xFFFF9500))),
+                          Text(
+                            '${user!['streak']}',
+                            style: TextStyle(
+                              fontFamily: 'Fredoka',
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                              color: const Color(0xFFFF9500),
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -126,12 +141,26 @@ class CourseOverviewScreenState extends State<CourseOverviewScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('КУРС',
-                      style: GoogleFonts.jetBrainsMono(
-                          fontSize: 10, fontWeight: FontWeight.w600, color: const Color(0xFF9AAAAA), letterSpacing: 0.4)),
-                  Text('ПРОГРЕСС',
-                      style: GoogleFonts.jetBrainsMono(
-                          fontSize: 10, fontWeight: FontWeight.w600, color: const Color(0xFF9AAAAA), letterSpacing: 0.4)),
+                  Text(
+                    'КУРС',
+                    style: TextStyle(
+                      fontFamily: 'JetBrains Mono',
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF9AAAAA),
+                      letterSpacing: 0.4,
+                    ),
+                  ),
+                  Text(
+                    'ПРОГРЕСС',
+                    style: TextStyle(
+                      fontFamily: 'JetBrains Mono',
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF9AAAAA),
+                      letterSpacing: 0.4,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -139,8 +168,7 @@ class CourseOverviewScreenState extends State<CourseOverviewScreen> {
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 22),
               child: Column(
                 children: [
-                  for (final c in unlocked)
-                    Padding(padding: const EdgeInsets.only(bottom: 10), child: _courseCard(c)),
+                  for (final c in unlocked) Padding(padding: const EdgeInsets.only(bottom: 10), child: _courseCard(c)),
                   if (locked.isNotEmpty) ...[
                     Padding(
                       padding: const EdgeInsets.fromLTRB(4, 6, 4, 10),
@@ -149,15 +177,20 @@ class CourseOverviewScreenState extends State<CourseOverviewScreen> {
                           const Expanded(child: Divider(height: 1, thickness: 1, color: Color(0xFFDCE8E7))),
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 8),
-                            child: Text('заблокировано',
-                                style: GoogleFonts.jetBrainsMono(fontSize: 10, color: const Color(0xFF9AAAAA))),
+                            child: Text(
+                              'заблокировано',
+                              style: TextStyle(
+                                fontFamily: 'JetBrains Mono',
+                                fontSize: 10,
+                                color: const Color(0xFF9AAAAA),
+                              ),
+                            ),
                           ),
                           const Expanded(child: Divider(height: 1, thickness: 1, color: Color(0xFFDCE8E7))),
                         ],
                       ),
                     ),
-                    for (final c in locked)
-                      Padding(padding: const EdgeInsets.only(bottom: 10), child: _lockedCard(c)),
+                    for (final c in locked) Padding(padding: const EdgeInsets.only(bottom: 10), child: _lockedCard(c)),
                   ],
                 ],
               ),
@@ -182,7 +215,9 @@ class CourseOverviewScreenState extends State<CourseOverviewScreen> {
         final first = sections.first;
         await Navigator.push(
           context,
-          MaterialPageRoute(builder: (_) => PathScreen(sectionId: first['id'], sectionTitle: first['title'])),
+          MaterialPageRoute(
+            builder: (_) => PathScreen(sectionId: first['id'], sectionTitle: first['title']),
+          ),
         );
         load();
       },
@@ -208,23 +243,41 @@ class CourseOverviewScreenState extends State<CourseOverviewScreen> {
                 ),
                 borderRadius: BorderRadius.circular(14),
                 boxShadow: [
-                  BoxShadow(color: isDone ? const Color(0xFF3F9200) : const Color(0xFF00A896), offset: const Offset(0, 3)),
+                  BoxShadow(
+                    color: isDone ? const Color(0xFF3F9200) : const Color(0xFF00A896),
+                    offset: const Offset(0, 3),
+                  ),
                 ],
               ),
               alignment: Alignment.center,
               child: isDone
                   ? const Text('✓', style: TextStyle(fontSize: 19, color: Colors.white))
-                  : Text('>_', style: GoogleFonts.jetBrainsMono(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 15)),
+                  : Text(
+                      '>_',
+                      style: TextStyle(
+                        fontFamily: 'JetBrains Mono',
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                      ),
+                    ),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(course['title'],
-                      style: GoogleFonts.fredoka(fontWeight: FontWeight.w600, fontSize: 14.5, color: const Color(0xFF1B2430)),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis),
+                  Text(
+                    course['title'],
+                    style: TextStyle(
+                      fontFamily: 'Fredoka',
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14.5,
+                      color: const Color(0xFF1B2430),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                   const SizedBox(height: 7),
                   Row(
                     children: [
@@ -235,16 +288,22 @@ class CourseOverviewScreenState extends State<CourseOverviewScreen> {
                             value: ratio,
                             minHeight: 8,
                             backgroundColor: isDone ? const Color(0xFFEAF9DC) : const Color(0xFFE7EEEE),
-                            valueColor: AlwaysStoppedAnimation(isDone ? const Color(0xFF58CC02) : const Color(0xFF00C9B7)),
+                            valueColor: AlwaysStoppedAnimation(
+                              isDone ? const Color(0xFF58CC02) : const Color(0xFF00C9B7),
+                            ),
                           ),
                         ),
                       ),
                       const SizedBox(width: 8),
-                      Text('$completed/$total',
-                          style: GoogleFonts.jetBrainsMono(
-                              fontSize: 10.5,
-                              fontWeight: FontWeight.w600,
-                              color: isDone ? const Color(0xFF3F9200) : const Color(0xFF5C6B73))),
+                      Text(
+                        '$completed/$total',
+                        style: TextStyle(
+                          fontFamily: 'JetBrains Mono',
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w600,
+                          color: isDone ? const Color(0xFF3F9200) : const Color(0xFF5C6B73),
+                        ),
+                      ),
                     ],
                   ),
                 ],
@@ -282,13 +341,22 @@ class CourseOverviewScreenState extends State<CourseOverviewScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(course['title'],
-                    style: GoogleFonts.fredoka(fontWeight: FontWeight.w600, fontSize: 14.5, color: const Color(0xFF8D9C9C)),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis),
+                Text(
+                  course['title'],
+                  style: TextStyle(
+                    fontFamily: 'Fredoka',
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14.5,
+                    color: const Color(0xFF8D9C9C),
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
                 const SizedBox(height: 5),
-                Text(course['requirement'] ?? '',
-                    style: GoogleFonts.jetBrainsMono(fontSize: 10.5, color: const Color(0xFF9AAAAA))),
+                Text(
+                  course['requirement'] ?? '',
+                  style: TextStyle(fontFamily: 'JetBrains Mono', fontSize: 10.5, color: const Color(0xFF9AAAAA)),
+                ),
               ],
             ),
           ),

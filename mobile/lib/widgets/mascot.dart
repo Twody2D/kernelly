@@ -31,22 +31,35 @@ class _MascotPainter extends CustomPainter {
     final Color bodyColor = isAngry ? const Color(0xFFFF4B4B) : const Color(0xFF00C9B7);
     final Color darkColor = isAngry ? const Color(0xFF7A1F1F) : const Color(0xFF0E2A28);
     final Color antennaColor = isAngry ? const Color(0xFFD63838) : const Color(0xFF007A6E);
-    final Color dotColor = isAngry ? const Color(0xFFFF4B4B) : (emotion == MascotEmotion.sleepy ? const Color(0xFFB6C2C2) : const Color(0xFFFF9500));
+    final Color dotColor = isAngry
+        ? const Color(0xFFFF4B4B)
+        : (emotion == MascotEmotion.sleepy ? const Color(0xFFB6C2C2) : const Color(0xFFFF9500));
 
     // shadow
-    canvas.drawOval(Rect.fromCenter(center: p(75, 140), width: 48 * s, height: 12 * s),
-        Paint()..color = Colors.black.withOpacity(0.08));
+    canvas.drawOval(
+      Rect.fromCenter(center: p(75, 140), width: 48 * s, height: 12 * s),
+      Paint()..color = Colors.black.withOpacity(0.08),
+    );
 
     // antenna
-    canvas.drawLine(p(75, 30), p(75, 16), Paint()..color = antennaColor..strokeWidth = 4 * s..strokeCap = StrokeCap.round);
+    canvas.drawLine(
+      p(75, 30),
+      p(75, 16),
+      Paint()
+        ..color = antennaColor
+        ..strokeWidth = 4 * s
+        ..strokeCap = StrokeCap.round,
+    );
     canvas.drawCircle(p(75, 14), 6 * s, Paint()..color = dotColor);
 
     // body
     canvas.drawCircle(p(75, 82), 50 * s, Paint()..color = bodyColor);
 
     // glossy highlight
-    canvas.drawOval(Rect.fromCenter(center: p(59, 58), width: 32 * s, height: 20 * s),
-        Paint()..color = Colors.white.withOpacity(0.25));
+    canvas.drawOval(
+      Rect.fromCenter(center: p(59, 58), width: 32 * s, height: 20 * s),
+      Paint()..color = Colors.white.withOpacity(0.25),
+    );
 
     final facePaint = Paint()
       ..color = darkColor
@@ -77,7 +90,10 @@ class _MascotPainter extends CustomPainter {
         canvas.drawOval(Rect.fromCenter(center: p(75, 101), width: 16 * s, height: 20 * s), Paint()..color = darkColor);
 
         final excl = Paint()..color = const Color(0xFFFF9500);
-        canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(p(112, 26).dx, p(112, 26).dy, 5 * s, 15 * s), Radius.circular(2.5 * s)), excl);
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(Rect.fromLTWH(p(112, 26).dx, p(112, 26).dy, 5 * s, 15 * s), Radius.circular(2.5 * s)),
+          excl,
+        );
         canvas.drawCircle(p(114.5, 47), 3 * s, excl);
         break;
       case MascotEmotion.sleepy:
@@ -94,19 +110,44 @@ class _MascotPainter extends CustomPainter {
     }
   }
 
-  void _drawSmileEye(Canvas canvas, Offset Function(double, double) p, double s, double x1, double y1, double x2, Paint paint, {bool flat = false}) {
+  void _drawSmileEye(
+    Canvas canvas,
+    Offset Function(double, double) p,
+    double s,
+    double x1,
+    double y1,
+    double x2,
+    Paint paint, {
+    bool flat = false,
+  }) {
     final path = Path();
     path.moveTo(p(x1, y1).dx, p(x1, y1).dy);
     if (flat) {
       path.quadraticBezierTo(p((x1 + x2) / 2, y1 + 6).dx, p((x1 + x2) / 2, y1 + 6).dy, p(x2, y1).dx, p(x2, y1).dy);
     } else {
-      path.quadraticBezierTo(p(x1, y1 + 10).dx, p(x1, y1 + 10).dy, p((x1 + x2) / 2, y1 + 10).dx, p((x1 + x2) / 2, y1 + 10).dy);
+      path.quadraticBezierTo(
+        p(x1, y1 + 10).dx,
+        p(x1, y1 + 10).dy,
+        p((x1 + x2) / 2, y1 + 10).dx,
+        p((x1 + x2) / 2, y1 + 10).dy,
+      );
       path.quadraticBezierTo(p(x2, y1 + 10).dx, p(x2, y1 + 10).dy, p(x2, y1).dx, p(x2, y1).dy);
     }
     canvas.drawPath(path, paint);
   }
 
-  void _drawMouth(Canvas canvas, Offset Function(double, double) p, double s, double x1, double y1, double cx, double cy, double x2, double y2, Paint paint) {
+  void _drawMouth(
+    Canvas canvas,
+    Offset Function(double, double) p,
+    double s,
+    double x1,
+    double y1,
+    double cx,
+    double cy,
+    double x2,
+    double y2,
+    Paint paint,
+  ) {
     final path = Path();
     path.moveTo(p(x1, y1).dx, p(x1, y1).dy);
     path.quadraticBezierTo(p(cx, cy).dx, p(cx, cy).dy, p(x2, y2).dx, p(x2, y2).dy);

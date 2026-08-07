@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile/services/api_service.dart';
 import 'package:mobile/widgets/lesson_node.dart';
 import 'package:mobile/widgets/path_trace_painter.dart';
@@ -61,18 +60,11 @@ class PathScreenState extends State<PathScreen> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF6F9F9),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFFF6F9F9),
-        elevation: 0,
-      ),
+      appBar: AppBar(backgroundColor: const Color(0xFFF6F9F9), elevation: 0),
       body: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 20),
         children: [
-          GradientBanner(
-            eyebrow: '\$ раздел',
-            title: widget.sectionTitle,
-            badge: '$doneCount / ${lessons.length}',
-          ),
+          GradientBanner(eyebrow: '\$ раздел', title: widget.sectionTitle, badge: '$doneCount / ${lessons.length}'),
           const SizedBox(height: 20),
           LayoutBuilder(
             builder: (context, constraints) {
@@ -101,10 +93,8 @@ class PathScreenState extends State<PathScreen> {
                                   await Navigator.push(
                                     context,
                                     MaterialPageRoute(
-                                      builder: (_) => LessonScreen(
-                                        lessonId: lessons[i]['id'],
-                                        sectionTitle: widget.sectionTitle,
-                                      ),
+                                      builder: (_) =>
+                                          LessonScreen(lessonId: lessons[i]['id'], sectionTitle: widget.sectionTitle),
                                     ),
                                   );
                                   load();
