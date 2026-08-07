@@ -580,6 +580,26 @@ def get_user_stats(user_id: int, db: Session = Depends(get_db)):
     }
 
 
+@app.get("/users/{user_id}/daily-progress")
+def get_daily_progress(user_id: int, db: Session = Depends(get_db)):
+    """Сколько уроков пройдено сегодня. Саму цель хранит приложение локально."""
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    today = date.today()
+    lessons_completed = (
+        db.query(models.UserProgress)
+        .filter(
+            models.UserProgress.user_id == user_id,
+            func.date(models.UserProgress.completed_at) == today,
+        )
+        .count()
+    )
+
+    return {"date": today.isoformat(), "lessons_completed": lessons_completed}
+
+
 @app.get("/users/{user_id}/activity")
 def get_user_activity(user_id: int, db: Session = Depends(get_db)):
     user = db.query(models.User).filter(models.User.id == user_id).first()
