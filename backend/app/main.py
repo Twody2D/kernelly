@@ -126,8 +126,38 @@ def get_or_create_guest(guest: schemas.GuestCreate, db: Session = Depends(get_db
     return user
 
 
+def _course_id_for_lesson(db: Session, lesson_id: int) -> int | None:
+    row = (
+        db.query(models.Section.course_id)
+        .join(models.Lesson, models.Lesson.section_id == models.Section.id)
+        .filter(models.Lesson.id == lesson_id)
+        .first()
+    )
+    return row.course_id if row else None
+
+
+def _course_id_for_section(db: Session, section_id: int) -> int | None:
+    row = db.query(models.Section.course_id).filter(models.Section.id == section_id).first()
+    return row.course_id if row else None
+
+
+def _assert_course_unlocked(db: Session, course_id: int | None, user_id: int) -> None:
+    """Гость не должен пройти дальше списка курсов, если курс требует регистрации —
+    список курсов лишь прячет карточку, а не защищает сами эндпоинты."""
+    if course_id is None:
+        return
+    course = db.query(models.Course).filter(models.Course.id == course_id).first()
+    if course is None or not course.requires_account:
+        return
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    is_guest = user is None or user.auth_provider == "guest"
+    if is_guest:
+        raise HTTPException(status_code=403, detail="Курс требует регистрации")
+
+
 @app.get("/lessons/{lesson_id}/exercises", response_model=list[schemas.ExerciseOut])
-def get_lesson_exercises(lesson_id: int, db: Session = Depends(get_db)):
+def get_lesson_exercises(lesson_id: int, user_id: int, db: Session = Depends(get_db)):
+    _assert_course_unlocked(db, _course_id_for_lesson(db, lesson_id), user_id)
     return (
         db.query(models.Exercise)
         .filter(models.Exercise.lesson_id == lesson_id)
@@ -141,6 +171,8 @@ def submit_answer(exercise_id: int, submission: schemas.AnswerSubmit, db: Sessio
     exercise = db.query(models.Exercise).filter(models.Exercise.id == exercise_id).first()
     if exercise is None:
         raise HTTPException(status_code=404, detail="Exercise not found")
+
+    _assert_course_unlocked(db, _course_id_for_lesson(db, exercise.lesson_id), submission.user_id)
 
     is_correct = submission.answer == exercise.correct_answer
 
@@ -181,6 +213,8 @@ def award_xp(user_id: int, payload: schemas.LessonComplete, db: Session = Depend
 
 @app.get("/sections/{section_id}/lessons-progress")
 def get_lessons_progress(section_id: int, user_id: int, db: Session = Depends(get_db)):
+    _assert_course_unlocked(db, _course_id_for_section(db, section_id), user_id)
+
     lessons = (
         db.query(models.Lesson)
         .filter(models.Lesson.section_id == section_id)
@@ -219,6 +253,8 @@ def complete_lesson(lesson_id: int, user_id: int, db: Session = Depends(get_db))
     lesson = db.query(models.Lesson).filter(models.Lesson.id == lesson_id).first()
     if lesson is None:
         raise HTTPException(status_code=404, detail="Lesson not found")
+
+    _assert_course_unlocked(db, _course_id_for_section(db, lesson.section_id), user_id)
 
     existing = (
         db.query(models.UserProgress)
@@ -302,7 +338,8 @@ def complete_lesson(lesson_id: int, user_id: int, db: Session = Depends(get_db))
 
 
 @app.get("/courses/{course_id}/sections", response_model=list[schemas.SectionOut])
-def get_course_sections(course_id: int, db: Session = Depends(get_db)):
+def get_course_sections(course_id: int, user_id: int, db: Session = Depends(get_db)):
+    _assert_course_unlocked(db, course_id, user_id)
     return (
         db.query(models.Section)
         .filter(models.Section.course_id == course_id)
@@ -316,6 +353,8 @@ def get_sections_progress(course_id: int, user_id: int, db: Session = Depends(ge
     course = db.query(models.Course).filter(models.Course.id == course_id).first()
     if course is None:
         raise HTTPException(status_code=404, detail="Course not found")
+
+    _assert_course_unlocked(db, course_id, user_id)
 
     sections = (
         db.query(models.Section)
@@ -371,6 +410,8 @@ def get_sections_progress(course_id: int, user_id: int, db: Session = Depends(ge
 
 @app.get("/courses/{course_id}/progress")
 def get_course_progress(course_id: int, user_id: int, db: Session = Depends(get_db)):
+    _assert_course_unlocked(db, course_id, user_id)
+
     lesson_ids = [
         row.id
         for row in db.query(models.Lesson.id)

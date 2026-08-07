@@ -2,8 +2,8 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:mobile/services/api_config.dart';
 
-Future<List<Map<String, dynamic>>> fetchLessonExercises(int lessonId) async {
-  final response = await http.get(Uri.parse('$apiBaseUrl/lessons/$lessonId/exercises'));
+Future<List<Map<String, dynamic>>> fetchLessonExercises(int lessonId, int userId) async {
+  final response = await http.get(Uri.parse('$apiBaseUrl/lessons/$lessonId/exercises?user_id=$userId'));
 
   if (response.statusCode == 200) {
     final List<dynamic> data = jsonDecode(utf8.decode(response.bodyBytes));

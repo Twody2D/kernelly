@@ -27,6 +27,7 @@ class PathScreen extends StatefulWidget {
 class PathScreenState extends State<PathScreen> {
   List<Map<String, dynamic>> lessons = [];
   bool loading = true;
+  bool hasError = false;
 
   @override
   void initState() {
@@ -40,12 +41,30 @@ class PathScreenState extends State<PathScreen> {
     if (oldWidget.sectionId != widget.sectionId) load();
   }
 
-  Future<void> load() async {
-    final data = await fetchLessonsProgress(widget.sectionId, currentUserId);
+  void _retry() {
     setState(() {
-      lessons = data;
-      loading = false;
+      loading = true;
+      hasError = false;
     });
+    load();
+  }
+
+  Future<void> load() async {
+    try {
+      final data = await fetchLessonsProgress(widget.sectionId, currentUserId);
+      if (!mounted) return;
+      setState(() {
+        lessons = data;
+        loading = false;
+      });
+    } catch (e) {
+      debugPrint('Ошибка загрузки пути: $e');
+      if (!mounted) return;
+      setState(() {
+        hasError = true;
+        loading = false;
+      });
+    }
   }
 
   LessonNodeStatus _statusFor(String status) {
@@ -63,6 +82,38 @@ class PathScreenState extends State<PathScreen> {
   Widget build(BuildContext context) {
     if (loading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    if (hasError) {
+      return Scaffold(
+        backgroundColor: const Color(0xFFF6F9F9),
+        appBar: AppBar(
+          backgroundColor: const Color(0xFFF6F9F9),
+          elevation: 0,
+          automaticallyImplyLeading: widget.showBackButton,
+          iconTheme: const IconThemeData(color: Color(0xFF5C6B73)),
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Не удалось загрузить раздел',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontFamily: 'Fredoka', fontWeight: FontWeight.w500, fontSize: 15, color: const Color(0xFF5C6B73)),
+                ),
+                const SizedBox(height: 14),
+                TextButton(
+                  onPressed: _retry,
+                  child: Text('Повторить', style: TextStyle(fontFamily: 'Fredoka', fontWeight: FontWeight.w600, color: const Color(0xFF00A896))),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
     }
 
     final doneCount = lessons.where((l) => l['status'] == 'done').length;

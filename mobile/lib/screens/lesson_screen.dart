@@ -57,7 +57,7 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
   }
 
   Future<void> loadLesson() async {
-    final data = await fetchLessonExercises(widget.lessonId);
+    final data = await fetchLessonExercises(widget.lessonId, currentUserId);
     final userData = await fetchUser(currentUserId);
     setState(() {
       exercises = data;
