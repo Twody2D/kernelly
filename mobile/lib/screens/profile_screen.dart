@@ -161,8 +161,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       child: Stack(
         children: [
           Positioned(
-            right: -10,
-            bottom: -24,
+            right: -6,
+            top: -14,
             child: Transform.rotate(
               angle: -8 * 3.1415926535 / 180,
               child: const Text(
