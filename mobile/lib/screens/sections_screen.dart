@@ -160,7 +160,7 @@ class _SectionsScreenState extends State<SectionsScreen> {
               child: isLocked
                   ? const Icon(Icons.lock, size: 20, color: Color(0xFFC2CDCD))
                   : isDone
-                      ? const Text('✓', style: TextStyle(fontSize: 19, color: Colors.white))
+                      ? const Icon(Icons.check, size: 21, color: Colors.white)
                       : const Text(
                           '>_',
                           style: TextStyle(

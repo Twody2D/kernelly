@@ -32,12 +32,11 @@ class DailyGoalCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(11),
             ),
             alignment: Alignment.center,
-            child: isDone
-                ? const Icon(Icons.check, size: 19, color: Colors.white)
-                : const Text(
-                    '◎',
-                    style: TextStyle(fontSize: 17, color: Color(0xFF00A896)),
-                  ),
+            child: Icon(
+              isDone ? Icons.check : Icons.track_changes,
+              size: 19,
+              color: isDone ? Colors.white : const Color(0xFF00A896),
+            ),
           ),
           const SizedBox(width: 11),
           Expanded(

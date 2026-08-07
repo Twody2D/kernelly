@@ -263,7 +263,7 @@ class CourseOverviewScreenState extends State<CourseOverviewScreen> {
               ),
               alignment: Alignment.center,
               child: isDone
-                  ? const Text('✓', style: TextStyle(fontSize: 19, color: Colors.white))
+                  ? const Icon(Icons.check, size: 21, color: Colors.white)
                   : Text(
                       '>_',
                       style: TextStyle(
