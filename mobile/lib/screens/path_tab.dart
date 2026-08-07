@@ -12,11 +12,10 @@ class PathTab extends StatefulWidget {
 }
 
 class PathTabState extends State<PathTab> {
+  final GlobalKey<PathScreenState> _pathKey = GlobalKey();
+
   Map<String, dynamic>? current;
   bool loading = true;
-
-  // меняется при каждой загрузке, чтобы пересоздать PathScreen со свежим прогрессом
-  int _reloadTick = 0;
 
   @override
   void initState() {
@@ -28,11 +27,17 @@ class PathTabState extends State<PathTab> {
     try {
       final data = await fetchCurrentSection(1);
       if (!mounted) return;
+
+      final sameSection = current != null && data != null && current!['section_id'] == data['section_id'];
+
       setState(() {
         current = data;
-        _reloadTick++;
         loading = false;
       });
+
+      // раздел тот же — экран не пересоздаётся, обновляем прогресс уроков на месте.
+      // если раздел сменился, PathScreen перезагрузится сам в didUpdateWidget
+      if (sameSection) _pathKey.currentState?.load();
     } catch (e) {
       debugPrint('Ошибка загрузки текущего раздела: $e');
       if (!mounted) return;
@@ -72,7 +77,7 @@ class PathTabState extends State<PathTab> {
     }
 
     return PathScreen(
-      key: ValueKey('${current!['section_id']}-$_reloadTick'),
+      key: _pathKey,
       sectionId: current!['section_id'],
       sectionTitle: current!['section_title'],
       showBackButton: false,

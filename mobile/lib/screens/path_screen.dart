@@ -33,6 +33,12 @@ class PathScreenState extends State<PathScreen> {
     load();
   }
 
+  @override
+  void didUpdateWidget(PathScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.sectionId != widget.sectionId) load();
+  }
+
   Future<void> load() async {
     final data = await fetchLessonsProgress(widget.sectionId);
     setState(() {
