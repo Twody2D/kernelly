@@ -92,6 +92,18 @@ Future<Map<String, dynamic>> fetchCourseProgress(int courseId) async {
   }
 }
 
+/// Раздел, с которого продолжать. null — если проходить нечего.
+Future<Map<String, dynamic>?> fetchCurrentSection(int userId) async {
+  final response = await http.get(Uri.parse('http://127.0.0.1:8000/users/$userId/current-section'));
+
+  if (response.statusCode == 200) {
+    final decoded = jsonDecode(utf8.decode(response.bodyBytes));
+    return decoded == null ? null : decoded as Map<String, dynamic>;
+  } else {
+    throw Exception('Failed to load current section');
+  }
+}
+
 Future<Map<String, dynamic>> fetchSectionsProgress(int courseId) async {
   final response = await http.get(Uri.parse('http://127.0.0.1:8000/courses/$courseId/sections-progress'));
 

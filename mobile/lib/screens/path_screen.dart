@@ -9,7 +9,15 @@ class PathScreen extends StatefulWidget {
   final int sectionId;
   final String sectionTitle;
 
-  const PathScreen({super.key, required this.sectionId, required this.sectionTitle});
+  /// Во вкладке «Путь» возвращаться некуда, поэтому стрелку можно скрыть
+  final bool showBackButton;
+
+  const PathScreen({
+    super.key,
+    required this.sectionId,
+    required this.sectionTitle,
+    this.showBackButton = true,
+  });
 
   @override
   State<PathScreen> createState() => PathScreenState();
@@ -60,7 +68,12 @@ class PathScreenState extends State<PathScreen> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF6F9F9),
-      appBar: AppBar(backgroundColor: const Color(0xFFF6F9F9), elevation: 0),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFFF6F9F9),
+        elevation: 0,
+        automaticallyImplyLeading: widget.showBackButton,
+        iconTheme: const IconThemeData(color: Color(0xFF5C6B73)),
+      ),
       body: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 20),
         children: [

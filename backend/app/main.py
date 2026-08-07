@@ -296,13 +296,14 @@ def get_course_progress(course_id: int, db: Session = Depends(get_db)):
     return {"completed": completed, "total": total}
 
 
-@app.get("/courses/overview")
-def get_courses_overview(db: Session = Depends(get_db)):
+def _courses_with_status(db: Session, user_id: int = 1) -> list[dict]:
+    """Курсы с прогрессом и статусом блокировки. Общая основа для списка курсов
+    и поиска текущего раздела."""
     courses = db.query(models.Course).all()
     completed_ids = {
         row.lesson_id
         for row in db.query(models.UserProgress.lesson_id)
-        .filter(models.UserProgress.user_id == 1)
+        .filter(models.UserProgress.user_id == user_id)
         .all()
     }
 
@@ -348,6 +349,73 @@ def get_courses_overview(db: Session = Depends(get_db)):
         })
 
     return result
+
+
+@app.get("/courses/overview")
+def get_courses_overview(db: Session = Depends(get_db)):
+    return _courses_with_status(db)
+
+
+@app.get("/users/{user_id}/current-section")
+def get_current_section(user_id: int, db: Session = Depends(get_db)):
+    """Раздел, с которого пользователю продолжать: первый незавершённый
+    в первом незавершённом доступном курсе."""
+    courses = _courses_with_status(db, user_id)
+    available = [c for c in courses if not c["locked"] and c["total"] > 0]
+    if not available:
+        return None
+
+    completed_lesson_ids = {
+        row.lesson_id
+        for row in db.query(models.UserProgress.lesson_id)
+        .filter(models.UserProgress.user_id == user_id)
+        .all()
+    }
+
+    # сначала курсы в работе, потом остальные — как в баннере «продолжить»
+    unfinished = [c for c in available if c["completed"] < c["total"]]
+    ordered = unfinished + [c for c in available if c not in unfinished]
+
+    for course in ordered:
+        sections = (
+            db.query(models.Section)
+            .filter(models.Section.course_id == course["id"])
+            .order_by(models.Section.order)
+            .all()
+        )
+        for section in sections:
+            lesson_ids = [
+                r.id
+                for r in db.query(models.Lesson.id)
+                .filter(models.Lesson.section_id == section.id)
+                .all()
+            ]
+            if not lesson_ids:
+                continue
+            if any(i not in completed_lesson_ids for i in lesson_ids):
+                return {
+                    "course_id": course["id"],
+                    "course_title": course["title"],
+                    "section_id": section.id,
+                    "section_title": section.title,
+                }
+
+    # всё пройдено — возвращаем последний раздел первого курса, чтобы было куда зайти
+    last = ordered[0]
+    section = (
+        db.query(models.Section)
+        .filter(models.Section.course_id == last["id"])
+        .order_by(models.Section.order.desc())
+        .first()
+    )
+    if section is None:
+        return None
+    return {
+        "course_id": last["id"],
+        "course_title": last["title"],
+        "section_id": section.id,
+        "section_title": section.title,
+    }
 
 
 # точность считается только когда ответов достаточно, иначе один верный ответ даёт 100%
