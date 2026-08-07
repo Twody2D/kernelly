@@ -12,7 +12,9 @@ Future<List<Map<String, dynamic>>> fetchLessonExercises(int lessonId) async {
   }
 }
 
-Future<bool> submitAnswer(int exerciseId, String answer) async {
+/// Возвращает {correct: bool, correct_answer: String} — правильный вариант
+/// приходит уже после ответа, чтобы его нельзя было подсмотреть заранее.
+Future<Map<String, dynamic>> submitAnswer(int exerciseId, String answer) async {
   final response = await http.post(
     Uri.parse('http://127.0.0.1:8000/exercises/$exerciseId/submit'),
     headers: {'Content-Type': 'application/json'},
@@ -21,8 +23,11 @@ Future<bool> submitAnswer(int exerciseId, String answer) async {
     }),
   );
 
-  final data = jsonDecode(response.body);
-  return data['correct'];
+  if (response.statusCode == 200) {
+    return jsonDecode(utf8.decode(response.bodyBytes));
+  } else {
+    throw Exception('Failed to submit answer');
+  }
 }
 
 Future<Map<String, dynamic>> fetchUser(int userId) async {

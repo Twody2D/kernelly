@@ -145,7 +145,12 @@ def submit_answer(exercise_id: int, submission: schemas.AnswerSubmit, db: Sessio
 
     db.commit()
 
-    return {"correct": is_correct}
+    # ответ уже дан, поэтому правильный вариант можно показать
+    correct_answer = exercise.correct_answer
+    if isinstance(correct_answer, dict):
+        correct_answer = correct_answer.get("answer")
+
+    return {"correct": is_correct, "correct_answer": correct_answer}
 
 
 @app.post("/users/{user_id}/award-xp")

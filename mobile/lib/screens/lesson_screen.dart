@@ -20,11 +20,17 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
   int currentIndex = 0;
   String? selectedAnswer;
   bool? isCorrect;
+
+  /// Приходит вместе с результатом проверки — показываем при ошибке
+  String? correctAnswer;
   int attemptCount = 0;
   Map<String, dynamic>? user;
   int correctCount = 0;
   bool finishing = false;
   DateTime? startTime;
+
+  /// Повторное прохождение: XP за него уже начислялся, второй раз не даём
+  bool isRepeat = false;
 
   /// Ответ на завершение урока: прогресс раздела, курса и что дальше
   Map<String, dynamic>? completion;
@@ -62,10 +68,14 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
 
   void _checkAnswer() async {
     final currentExercise = exercises[currentIndex];
-    final correct = await submitAnswer(currentExercise['id'], selectedAnswer!);
+    final result = await submitAnswer(currentExercise['id'], selectedAnswer!);
     final userData = await fetchUser(1);
+    if (!mounted) return;
+
+    final correct = result['correct'] == true;
     setState(() {
       isCorrect = correct;
+      correctAnswer = result['correct_answer'] as String?;
       attemptCount++;
       user = userData;
       if (correct) correctCount++;
@@ -81,6 +91,20 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
       currentIndex++;
       selectedAnswer = null;
       isCorrect = null;
+      correctAnswer = null;
+    });
+  }
+
+  void _repeatLesson() {
+    setState(() {
+      currentIndex = 0;
+      selectedAnswer = null;
+      isCorrect = null;
+      correctAnswer = null;
+      correctCount = 0;
+      completion = null;
+      isRepeat = true;
+      startTime = DateTime.now();
     });
   }
 
@@ -89,11 +113,13 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
     setState(() => finishing = true);
 
     try {
-      final newXp = await awardXp(1, correctCount);
+      if (!isRepeat) {
+        final newXp = await awardXp(1, correctCount);
+        if (mounted) setState(() => user?['xp'] = newXp);
+      }
       final data = await completeLesson(widget.lessonId);
       if (!mounted) return;
       setState(() {
-        user?['xp'] = newXp;
         completion = data;
         finishing = false;
       });
@@ -152,12 +178,12 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
     if (completion != null) {
       return SectionCompleteScreen(
         completion: completion!,
-        xpEarned: correctCount * 10,
+        xpEarned: isRepeat ? 0 : correctCount * 10,
         accuracyPercent: exercises.isEmpty ? 0 : ((correctCount / exercises.length) * 100).round(),
         elapsed: startTime == null ? Duration.zero : DateTime.now().difference(startTime!),
         streak: user?['streak'] ?? 0,
         onContinue: () => Navigator.pop(context),
-        onRepeat: () => Navigator.pop(context),
+        onRepeat: _repeatLesson,
       );
     }
 
@@ -207,8 +233,10 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
                 onTap: () => _chooseOption(option),
                 locked: isCorrect != null,
                 state: isCorrect != null
-                    ? (option == selectedAnswer
-                          ? (isCorrect! ? OptionState.correct : OptionState.incorrect)
+                    ? (option == correctAnswer
+                          ? OptionState.correct
+                          : option == selectedAnswer
+                          ? OptionState.incorrect
                           : OptionState.none)
                     : (option == selectedAnswer ? OptionState.selected : OptionState.none),
               ),
@@ -227,13 +255,31 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
                         borderRadius: BorderRadius.circular(18),
                       ),
                       width: double.infinity,
-                      child: Text(
-                        isCorrect! ? 'Правильно! +10 XP' : 'Неверно, попробуйте ещё раз',
-                        style: TextStyle(
-                          fontFamily: 'Fredoka',
-                          fontWeight: FontWeight.w600,
-                          color: isCorrect! ? const Color(0xFF2E6E00) : const Color(0xFFB33A3A),
-                        ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            isCorrect! ? 'Правильно! ${isRepeat ? '' : '+10 XP'}'.trim() : 'Неверно',
+                            style: TextStyle(
+                              fontFamily: 'Fredoka',
+                              fontWeight: FontWeight.w600,
+                              color: isCorrect! ? const Color(0xFF2E6E00) : const Color(0xFFB33A3A),
+                            ),
+                          ),
+                          if (!isCorrect! && correctAnswer != null) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              'Правильный ответ: $correctAnswer',
+                              style: const TextStyle(
+                                fontFamily: 'JetBrains Mono',
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w500,
+                                color: Color(0xFFB33A3A),
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                     ),
                     Positioned(

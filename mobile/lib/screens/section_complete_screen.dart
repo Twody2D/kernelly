@@ -357,7 +357,7 @@ class SectionCompleteScreen extends StatelessWidget {
                               GestureDetector(
                                 onTap: onRepeat,
                                 child: Text(
-                                  'Повторить раздел',
+                                  'Повторить урок',
                                   style: TextStyle(
                                     fontFamily: 'Fredoka',
                                     fontWeight: FontWeight.w600,
