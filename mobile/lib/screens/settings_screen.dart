@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:mobile/screens/onboarding_screen.dart';
+import 'package:mobile/services/user_prefs.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -9,11 +12,49 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+  SharedPreferences? prefs;
+
   bool remind = true;
   bool shield = false;
   bool sound = true;
   bool mascot = true;
   String theme = 'light';
+  int goal = defaultDailyGoal;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final stored = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    setState(() {
+      prefs = stored;
+      remind = stored.getBool(PrefKeys.remind) ?? true;
+      shield = stored.getBool(PrefKeys.streakShield) ?? false;
+      sound = stored.getBool(PrefKeys.sound) ?? true;
+      mascot = stored.getBool(PrefKeys.mascotAnimations) ?? true;
+      theme = stored.getString(PrefKeys.theme) ?? 'light';
+      goal = stored.getInt(PrefKeys.dailyGoal) ?? defaultDailyGoal;
+    });
+  }
+
+  Future<void> _saveBool(String key, bool value, ValueChanged<bool> apply) async {
+    setState(() => apply(value));
+    await prefs?.setBool(key, value);
+  }
+
+  Future<void> _saveTheme(String value) async {
+    setState(() => theme = value);
+    await prefs?.setString(PrefKeys.theme, value);
+  }
+
+  Future<void> _saveGoal(int lessons) async {
+    setState(() => goal = lessons);
+    await prefs?.setInt(PrefKeys.dailyGoal, lessons);
+  }
 
   void _soon(String message) {
     ScaffoldMessenger.of(context)
@@ -28,8 +69,110 @@ class _SettingsScreenState extends State<SettingsScreen> {
       );
   }
 
+  Future<void> _pickGoal() async {
+    final selected = await showModalBottomSheet<int>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => Container(
+        decoration: const BoxDecoration(
+          color: Color(0xFFF6F9F9),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 38,
+              height: 4,
+              decoration: BoxDecoration(
+                color: const Color(0xFFDCE8E7),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Цель на день',
+              style: GoogleFonts.fredoka(fontWeight: FontWeight.w600, fontSize: 17, color: const Color(0xFF1B2430)),
+            ),
+            const SizedBox(height: 14),
+            for (final item in dailyGoals) ...[
+              _goalOption(sheetContext, item),
+              const SizedBox(height: 10),
+            ],
+          ],
+        ),
+      ),
+    );
+
+    if (selected != null) await _saveGoal(selected);
+  }
+
+  Widget _goalOption(BuildContext sheetContext, Map<String, Object> item) {
+    final lessons = item['lessons'] as int;
+    final selected = goal == lessons;
+
+    return GestureDetector(
+      onTap: () => Navigator.pop(sheetContext, lessons),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+        decoration: BoxDecoration(
+          color: selected ? const Color(0xFFE3F8F6) : Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: selected ? const Color(0xFF00C9B7) : const Color(0xFFDCE8E7),
+            width: selected ? 2 : 1.5,
+          ),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item['title'] as String,
+                    style: GoogleFonts.fredoka(
+                        fontWeight: FontWeight.w600, fontSize: 15, color: const Color(0xFF1B2430)),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    item['subtitle'] as String,
+                    style: GoogleFonts.jetBrainsMono(fontSize: 11.5, color: const Color(0xFF5C6B73)),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              selected ? Icons.check_circle : Icons.circle_outlined,
+              size: 22,
+              color: selected ? const Color(0xFF00C9B7) : const Color(0xFFC2CDCD),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _restartOnboarding() async {
+    await prefs?.setBool(PrefKeys.onboardingDone, false);
+    if (!mounted) return;
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (_) => const OnboardingScreen()),
+      (route) => false,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (prefs == null) {
+      return const Scaffold(
+        backgroundColor: Color(0xFFF6F9F9),
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFFF6F9F9),
       appBar: AppBar(
@@ -52,18 +195,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _card([
             _row(
               title: 'Цель на день',
-              subtitle: '3 урока · ~15 минут',
-              trailing: _pill('изменить', () => _soon('Выбор цели — в следующем шаге')),
+              subtitle: goalSubtitle(goal),
+              trailing: _pill('изменить', _pickGoal),
             ),
             _row(
               title: 'Напоминание',
               subtitle: 'каждый день в 20:00',
-              trailing: _Toggle(value: remind, onChanged: (v) => setState(() => remind = v)),
+              trailing: _Toggle(
+                value: remind,
+                onChanged: (v) => _saveBool(PrefKeys.remind, v, (x) => remind = x),
+              ),
             ),
             _row(
               title: 'Защита streak',
               subtitle: 'пропущенный день не сбросит 🔥',
-              trailing: _Toggle(value: shield, onChanged: (v) => setState(() => shield = v)),
+              trailing: _Toggle(
+                value: shield,
+                onChanged: (v) => _saveBool(PrefKeys.streakShield, v, (x) => shield = x),
+              ),
+            ),
+            _row(
+              title: 'Пройти онбординг заново',
+              subtitle: 'знакомство с Kernel, темы и цель',
+              trailing: const Icon(Icons.chevron_right, size: 20, color: Color(0xFFC2CDCD)),
+              onTap: _restartOnboarding,
             ),
           ]),
           const SizedBox(height: 18),
@@ -72,12 +227,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
             _themeRow(),
             _row(
               title: 'Звуки',
-              trailing: _Toggle(value: sound, onChanged: (v) => setState(() => sound = v)),
+              trailing: _Toggle(
+                value: sound,
+                onChanged: (v) => _saveBool(PrefKeys.sound, v, (x) => sound = x),
+              ),
             ),
             _row(
               title: 'Анимации Kernel',
               subtitle: 'маскот реагирует на ответы',
-              trailing: _Toggle(value: mascot, onChanged: (v) => setState(() => mascot = v)),
+              trailing: _Toggle(
+                value: mascot,
+                onChanged: (v) => _saveBool(PrefKeys.mascotAnimations, v, (x) => mascot = x),
+              ),
             ),
           ]),
           const SizedBox(height: 18),
@@ -233,7 +394,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final selected = theme == value;
 
     return GestureDetector(
-      onTap: () => setState(() => theme = value),
+      onTap: () => _saveTheme(value),
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 9),
         alignment: Alignment.center,

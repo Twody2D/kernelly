@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mobile/screens/main_shell.dart';
+import 'package:mobile/services/user_prefs.dart';
 import 'package:mobile/widgets/animated_mascot.dart';
 import 'package:mobile/widgets/primary_button.dart';
 
@@ -9,12 +10,6 @@ const _introTopics = ['bash', 'git', 'python', 'sql'];
 
 const _topics = ['linux', 'bash', 'git', 'docker', 'python', 'sql'];
 
-const _goals = [
-  {'lessons': 1, 'title': 'Спокойно', 'subtitle': '1 урок · ~5 минут'},
-  {'lessons': 3, 'title': 'Обычно', 'subtitle': '3 урока · ~15 минут'},
-  {'lessons': 5, 'title': 'Серьёзно', 'subtitle': '5 уроков · ~25 минут'},
-  {'lessons': 10, 'title': 'Хардкор', 'subtitle': '10 уроков · ~50 минут'},
-];
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -27,7 +22,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final PageController _controller = PageController();
   int page = 0;
   final Set<String> selectedTopics = {};
-  int goal = 3;
+  int goal = defaultDailyGoal;
 
   @override
   void dispose() {
@@ -37,9 +32,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   Future<void> _finish() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('onboarding_done', true);
-    await prefs.setStringList('onboarding_topics', selectedTopics.toList());
-    await prefs.setInt('daily_goal', goal);
+    await prefs.setBool(PrefKeys.onboardingDone, true);
+    await prefs.setStringList(PrefKeys.onboardingTopics, selectedTopics.toList());
+    await prefs.setInt(PrefKeys.dailyGoal, goal);
 
     if (!mounted) return;
     Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const MainShell()));
@@ -307,7 +302,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 style: GoogleFonts.inter(fontSize: 15.5, height: 1.5, color: const Color(0xFF5C6B73)),
               ),
               const SizedBox(height: 20),
-              for (final item in _goals) ...[_goalCard(item), const SizedBox(height: 10)],
+              for (final item in dailyGoals) ...[_goalCard(item), const SizedBox(height: 10)],
             ],
           ),
         ),
