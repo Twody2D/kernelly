@@ -74,7 +74,7 @@ class AnswerSubmit(BaseModel):
 
 class UserOut(BaseModel):
     id: int
-    username: str
+    username: str | None = None
     xp: int
     streak: int
 
@@ -84,6 +84,10 @@ class UserOut(BaseModel):
 
 class UserCreate(BaseModel):
     username: str
+
+
+class GuestCreate(BaseModel):
+    device_token: str
 
 
 class LessonComplete(BaseModel):

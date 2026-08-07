@@ -209,7 +209,7 @@ class ProfileScreenState extends State<ProfileScreen> {
                       ),
                       const SizedBox(height: 3),
                       Text(
-                        stats!['username'],
+                        stats!['username'] ?? 'Гость',
                         style: TextStyle(
                           fontFamily: 'Fredoka',
                           color: Colors.white,

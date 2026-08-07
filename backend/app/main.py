@@ -113,6 +113,19 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     return new_user
 
 
+@app.post("/users/guest", response_model=schemas.UserOut)
+def get_or_create_guest(guest: schemas.GuestCreate, db: Session = Depends(get_db)):
+    """Находит гостя по device_token или заводит нового — вызывается при каждом
+    старте приложения, до того как экраны начнут запрашивать данные пользователя."""
+    user = db.query(models.User).filter(models.User.device_token == guest.device_token).first()
+    if user is None:
+        user = models.User(device_token=guest.device_token, auth_provider="guest")
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+    return user
+
+
 @app.get("/lessons/{lesson_id}/exercises", response_model=list[schemas.ExerciseOut])
 def get_lesson_exercises(lesson_id: int, db: Session = Depends(get_db)):
     return (
