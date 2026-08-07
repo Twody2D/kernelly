@@ -132,16 +132,20 @@ def submit_answer(exercise_id: int, submission: schemas.AnswerSubmit, db: Sessio
     is_correct = submission.answer == exercise.correct_answer
 
     user = db.query(models.User).filter(models.User.id == 1).first()
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
 
     db.add(models.Answer(user_id=1, exercise_id=exercise_id, is_correct=is_correct))
 
-    today = date.today()
-    if user.last_activity_date != today:
-        if user.last_activity_date == today - timedelta(days=1):
-            user.streak += 1
-        else:
-            user.streak = 1
-        user.last_activity_date = today
+    # день засчитывается в streak только за верный ответ
+    if is_correct:
+        today = date.today()
+        if user.last_activity_date != today:
+            if user.last_activity_date == today - timedelta(days=1):
+                user.streak += 1
+            else:
+                user.streak = 1
+            user.last_activity_date = today
 
     db.commit()
 
