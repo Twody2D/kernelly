@@ -94,6 +94,17 @@ Future<Map<String, dynamic>> fetchSectionsProgress(int courseId) async {
   }
 }
 
+/// Сколько уроков пройдено сегодня — для дневной цели.
+Future<Map<String, dynamic>> fetchDailyProgress(int userId) async {
+  final response = await http.get(Uri.parse('http://127.0.0.1:8000/users/$userId/daily-progress'));
+
+  if (response.statusCode == 200) {
+    return jsonDecode(utf8.decode(response.bodyBytes));
+  } else {
+    throw Exception('Failed to load daily progress');
+  }
+}
+
 Future<Map<String, dynamic>> fetchUserStats(int userId) async {
   final response = await http.get(Uri.parse('http://127.0.0.1:8000/users/$userId/stats'));
 

@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mobile/services/api_service.dart';
+import 'package:mobile/services/user_prefs.dart';
 import 'package:mobile/screens/sections_screen.dart';
+import 'package:mobile/widgets/daily_goal_card.dart';
 import 'package:mobile/widgets/gradient_banner.dart';
 
 class CourseOverviewScreen extends StatefulWidget {
@@ -15,6 +18,9 @@ class CourseOverviewScreenState extends State<CourseOverviewScreen> {
   Map<String, dynamic>? user;
   bool loading = true;
 
+  int dailyCompleted = 0;
+  int dailyGoal = defaultDailyGoal;
+
   @override
   void initState() {
     super.initState();
@@ -25,9 +31,14 @@ class CourseOverviewScreenState extends State<CourseOverviewScreen> {
     try {
       final data = await fetchCoursesOverview();
       final userData = await fetchUser(1);
+      final daily = await fetchDailyProgress(1);
+      final prefs = await SharedPreferences.getInstance();
+      if (!mounted) return;
       setState(() {
         courses = data;
         user = userData;
+        dailyCompleted = daily['lessons_completed'] ?? 0;
+        dailyGoal = prefs.getInt(PrefKeys.dailyGoal) ?? defaultDailyGoal;
         loading = false;
       });
     } catch (e) {
@@ -129,13 +140,17 @@ class CourseOverviewScreenState extends State<CourseOverviewScreen> {
             ),
             if (cont != null)
               Padding(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
                 child: GradientBanner(
                   eyebrow: '\$ мои курсы / ${courses.length}',
                   title: 'Продолжить: ${cont['title']}',
                   badge: '${((cont['completed'] / cont['total']) * 100).round()}%',
                 ),
               ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+              child: DailyGoalCard(completed: dailyCompleted, goal: dailyGoal),
+            ),
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
               child: Row(
