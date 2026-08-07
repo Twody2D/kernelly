@@ -77,6 +77,7 @@ class UserOut(BaseModel):
     id: int
     username: str | None = None
     avatar: str | None = None
+    email: str | None = None
     xp: int
     streak: int
 

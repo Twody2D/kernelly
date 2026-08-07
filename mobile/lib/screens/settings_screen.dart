@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:mobile/screens/main_shell.dart';
 import 'package:mobile/screens/onboarding_screen.dart';
+import 'package:mobile/services/auth_service.dart';
 import 'package:mobile/services/user_prefs.dart';
 
 class SettingsScreen extends StatefulWidget {
-  const SettingsScreen({super.key});
+  final bool isGuest;
+  final String? email;
+
+  const SettingsScreen({super.key, required this.isGuest, this.email});
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -19,6 +24,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool mascot = true;
   String theme = 'light';
   int goal = defaultDailyGoal;
+  bool signingOut = false;
 
   @override
   void initState() {
@@ -159,6 +165,60 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  Future<void> _confirmSignOut() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          'Выйти из аккаунта?',
+          style: TextStyle(fontFamily: 'Fredoka', fontWeight: FontWeight.w600, fontSize: 17, color: const Color(0xFF1B2430)),
+        ),
+        content: Text(
+          'Прогресс останется в аккаунте. Чтобы продолжить с ним на этом устройстве, нужно будет войти снова.',
+          style: TextStyle(fontFamily: 'Inter', fontSize: 13.5, height: 1.4, color: const Color(0xFF5C6B73)),
+        ),
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text(
+              'Отмена',
+              style: TextStyle(fontFamily: 'Fredoka', fontWeight: FontWeight.w600, fontSize: 14, color: const Color(0xFF5C6B73)),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: Text(
+              'Выйти',
+              style: TextStyle(fontFamily: 'Fredoka', fontWeight: FontWeight.w600, fontSize: 14, color: const Color(0xFFFF4B4B)),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    setState(() => signingOut = true);
+    try {
+      await signOutAndResetToGuest();
+    } catch (e) {
+      if (mounted) {
+        setState(() => signingOut = false);
+        _soon('Не удалось выйти, попробуй ещё раз');
+      }
+      return;
+    }
+
+    if (!mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const MainShell()),
+      (route) => false,
+    );
+  }
+
   Future<void> _restartOnboarding() async {
     await prefs?.setBool(PrefKeys.onboardingDone, false);
     if (!mounted) return;
@@ -247,16 +307,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
             _row(
               title: 'Почта',
               trailing: Text(
-                'не привязана',
+                widget.isGuest ? 'не привязана' : (widget.email ?? 'не привязана'),
                 style: TextStyle(fontFamily: 'JetBrains Mono', fontSize: 11, color: const Color(0xFF5C6B73)),
               ),
-              onTap: () => _soon('Вход в аккаунт появится позже'),
+              onTap: widget.isGuest ? () => _soon('Вход в аккаунт появится позже') : null,
             ),
-            _row(
-              title: 'Выйти',
-              trailing: const Icon(Icons.chevron_right, size: 20, color: Color(0xFFC2CDCD)),
-              onTap: () => _soon('Вход в аккаунт появится позже'),
-            ),
+            if (!widget.isGuest)
+              _row(
+                title: 'Выйти',
+                trailing: signingOut
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFC2CDCD)),
+                      )
+                    : const Icon(Icons.chevron_right, size: 20, color: Color(0xFFC2CDCD)),
+                onTap: signingOut ? null : _confirmSignOut,
+              ),
           ]),
           const SizedBox(height: 20),
           GestureDetector(

@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
 import 'package:mobile/services/api_config.dart';
-import 'package:mobile/services/user_prefs.dart';
+import 'package:mobile/services/user_prefs.dart' show currentDeviceToken, currentUserId, resetGuestIdentity;
 
 /// Web-клиент из Google Cloud Console — на Android/iOS передаётся как
 /// serverClientId, чтобы получить id-токен, проверяемый бэкендом единообразно
@@ -57,4 +57,17 @@ Future<GoogleSignInResult> signInWithGoogle() async {
   final user = jsonDecode(utf8.decode(response.bodyBytes));
   currentUserId = user['id'] as int;
   return GoogleSignInResult(user: user, suggestedName: account.displayName);
+}
+
+/// Выходит из Google на этом устройстве и заводит нового гостя вместо текущего
+/// аккаунта — сам аккаунт и его прогресс никуда не деваются, просто это
+/// устройство больше с ним не связано, пока не войти снова.
+Future<void> signOutAndResetToGuest() async {
+  await _ensureInitialized();
+  try {
+    await _googleSignIn.signOut();
+  } catch (_) {
+    // локальный выход всё равно должен произойти, даже если Google недоступен
+  }
+  await resetGuestIdentity();
 }

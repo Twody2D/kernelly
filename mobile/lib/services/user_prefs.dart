@@ -26,13 +26,17 @@ late int currentUserId;
 /// находит пользователя (гостя или уже вошедшего) заново при каждом старте.
 late String currentDeviceToken;
 
+String _generateToken() {
+  final random = Random.secure();
+  return List.generate(32, (_) => random.nextInt(16).toRadixString(16)).join();
+}
+
 /// Отдаёт device_token этого устройства, генерируя его при первом обращении.
 Future<String> _deviceToken(SharedPreferences prefs) async {
   final existing = prefs.getString(PrefKeys.deviceToken);
   if (existing != null) return existing;
 
-  final random = Random.secure();
-  final token = List.generate(32, (_) => random.nextInt(16).toRadixString(16)).join();
+  final token = _generateToken();
   await prefs.setString(PrefKeys.deviceToken, token);
   return token;
 }
@@ -43,6 +47,20 @@ Future<int> ensureUserId() async {
   final prefs = await SharedPreferences.getInstance();
   currentDeviceToken = await _deviceToken(prefs);
   final user = await fetchOrCreateGuest(currentDeviceToken);
+  currentUserId = user['id'] as int;
+  return currentUserId;
+}
+
+/// Отвязывает устройство от текущего аккаунта и заводит нового гостя — вызывается
+/// при выходе из аккаунта. Меняем device_token на новый, иначе /users/guest снова
+/// нашёл бы прежнего (уже привязанного к Google) пользователя, а не создал гостя.
+Future<int> resetGuestIdentity() async {
+  final prefs = await SharedPreferences.getInstance();
+  final token = _generateToken();
+  await prefs.setString(PrefKeys.deviceToken, token);
+  currentDeviceToken = token;
+
+  final user = await fetchOrCreateGuest(token);
   currentUserId = user['id'] as int;
   return currentUserId;
 }

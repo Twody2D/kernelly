@@ -178,6 +178,7 @@ def google_sign_in(payload: schemas.GoogleSignIn, db: Session = Depends(get_db))
         raise HTTPException(status_code=401, detail="Invalid Google token")
 
     external_id = idinfo["sub"]
+    email = idinfo.get("email")
 
     google_user = (
         db.query(models.User)
@@ -194,6 +195,7 @@ def google_sign_in(payload: schemas.GoogleSignIn, db: Session = Depends(get_db))
             # username/avatar остаются пустыми — клиент увидит avatar=null и предложит их выбрать
             mergeable_guest.auth_provider = "google"
             mergeable_guest.external_id = external_id
+            mergeable_guest.email = email
             db.commit()
             db.refresh(mergeable_guest)
             return mergeable_guest
@@ -201,6 +203,7 @@ def google_sign_in(payload: schemas.GoogleSignIn, db: Session = Depends(get_db))
         google_user = models.User(
             auth_provider="google",
             external_id=external_id,
+            email=email,
             device_token=payload.device_token if device_owner is None else None,
         )
         db.add(google_user)
@@ -213,6 +216,7 @@ def google_sign_in(payload: schemas.GoogleSignIn, db: Session = Depends(get_db))
         _merge_guest_into_account(db, mergeable_guest, google_user)
         google_user.device_token = payload.device_token
 
+    google_user.email = email
     db.commit()
     db.refresh(google_user)
     return google_user
@@ -762,6 +766,7 @@ def get_user_stats(user_id: int, db: Session = Depends(get_db)):
         "id": user.id,
         "username": user.username,
         "avatar": user.avatar,
+        "email": user.email,
         "xp": user.xp,
         "streak": user.streak,
         "lessons_completed": stats["lessons_completed"],

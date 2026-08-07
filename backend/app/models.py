@@ -47,6 +47,7 @@ class User(Base):
     id = Column(Integer, primary_key=True)
     username = Column(String, nullable=True, unique=True)
     avatar = Column(String, nullable=True)
+    email = Column(String, nullable=True)
     device_token = Column(String, nullable=True, unique=True, index=True)
     auth_provider = Column(String, nullable=False, default="guest")
     external_id = Column(String, nullable=True)

@@ -169,7 +169,15 @@ class ProfileScreenState extends State<ProfileScreen> {
       actions: [
         IconButton(
           icon: const Icon(Icons.settings_outlined, color: Color(0xFF5C6B73)),
-          onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen())),
+          onPressed: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => SettingsScreen(
+                isGuest: stats?['auth_provider'] == null || stats?['auth_provider'] == 'guest',
+                email: stats?['email'] as String?,
+              ),
+            ),
+          ),
         ),
       ],
     );
