@@ -1,42 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:mobile/services/auth_service.dart';
+import 'package:mobile/screens/profile_setup_screen.dart';
 import 'package:mobile/widgets/animated_mascot.dart';
 import 'package:mobile/widgets/primary_button.dart';
 
-void _showRegisterComingSoon(BuildContext context) {
-  showDialog(
-    context: context,
-    builder: (_) => AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      title: Text(
-        'Регистрация скоро',
-        style: TextStyle(fontFamily: 'Fredoka', fontWeight: FontWeight.w600, color: const Color(0xFF1B2430)),
-      ),
-      content: Text(
-        'Вход через аккаунт появится в одном из следующих обновлений — тогда прогресс можно будет сохранить и открыть все курсы.',
-        style: TextStyle(fontFamily: 'Inter', fontSize: 14, color: const Color(0xFF5C6B73)),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: Text('Понятно', style: TextStyle(fontFamily: 'Fredoka', color: const Color(0xFF00A896))),
-        ),
-      ],
-    ),
-  );
-}
-
 /// Содержимое заглушки «зарегистрируйся, чтобы разблокировать» — маскот,
-/// заголовок/подзаголовок и кнопка регистрации (пока ведёт на заглушку «скоро»,
-/// самой регистрации ещё нет). Без Scaffold — годится и для полноэкранной
-/// навигации, и для встраивания прямо в экран профиля.
+/// заголовок/подзаголовок и кнопка входа через Google. Без Scaffold — годится
+/// и для полноэкранной навигации, и для встраивания прямо в экран профиля.
+///
+/// [onSignedIn] вызывается после успешного входа — экран сам не перезагружает
+/// данные и не уходит назад, это решает вызывающий код.
 ///
 /// Появление анимировано по стадиям (маскот → заголовок → подзаголовок →
 /// кнопка), в духе экрана завершения урока/раздела.
 class RegisterPromptContent extends StatefulWidget {
   final String title;
   final String subtitle;
+  final VoidCallback? onSignedIn;
 
-  const RegisterPromptContent({super.key, required this.title, required this.subtitle});
+  const RegisterPromptContent({super.key, required this.title, required this.subtitle, this.onSignedIn});
 
   @override
   State<RegisterPromptContent> createState() => _RegisterPromptContentState();
@@ -100,6 +83,36 @@ class _RegisterPromptContentState extends State<RegisterPromptContent> with Tick
     _introController.dispose();
     _pulseController.dispose();
     super.dispose();
+  }
+
+  bool _signingIn = false;
+
+  Future<void> _handleSignIn() async {
+    setState(() => _signingIn = true);
+    try {
+      final result = await signInWithGoogle();
+      if (result.user['avatar'] == null && mounted) {
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ProfileSetupScreen(userId: result.user['id'] as int, suggestedName: result.suggestedName),
+          ),
+        );
+      }
+      widget.onSignedIn?.call();
+    } on GoogleSignInException catch (e) {
+      if (e.code != GoogleSignInExceptionCode.canceled && mounted) {
+        _showError('Не удалось войти через Google');
+      }
+    } catch (e) {
+      if (mounted) _showError('Не удалось войти через Google');
+    } finally {
+      if (mounted) setState(() => _signingIn = false);
+    }
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -169,7 +182,11 @@ class _RegisterPromptContentState extends State<RegisterPromptContent> with Tick
                   final pulse = 1.0 + Curves.easeInOut.transform(_pulseController.value) * 0.03;
                   return Transform.scale(scale: pulse, child: child);
                 },
-                child: PrimaryButton(text: 'Зарегистрироваться', onPressed: () => _showRegisterComingSoon(context)),
+                child: PrimaryButton(
+                  text: _signingIn ? 'Входим…' : 'Войти через Google',
+                  enabled: !_signingIn,
+                  onPressed: _handleSignIn,
+                ),
               ),
             ),
           ),
@@ -218,7 +235,13 @@ class RegisterPromptScreen extends StatelessWidget {
       backgroundColor: const Color(0xFFF6F9F9),
       appBar: AppBar(backgroundColor: const Color(0xFFF6F9F9), elevation: 0),
       body: SafeArea(
-        child: Center(child: RegisterPromptContent(title: title, subtitle: subtitle)),
+        child: Center(
+          child: RegisterPromptContent(
+            title: title,
+            subtitle: subtitle,
+            onSignedIn: () => Navigator.pop(context),
+          ),
+        ),
       ),
     );
   }

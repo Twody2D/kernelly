@@ -1,5 +1,7 @@
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from google.auth.transport import requests as google_requests
+from google.oauth2 import id_token as google_id_token
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 from app.database import Base, engine, get_db
@@ -7,6 +9,15 @@ from app import models, schemas
 from datetime import date, timedelta
 
 XP_PER_CORRECT = 10
+
+# Client ID не секретны (зашиты в приложение), поэтому спокойно живут в коде.
+# Три штуки — по одной на платформу, но токен, пришедший от любой из них, валиден.
+GOOGLE_CLIENT_IDS = {
+    "969523130284-iu9vl4pc3r3rv2n3gcprn7uf2uskgc6t.apps.googleusercontent.com",  # web
+    "969523130284-rd0mvtnkq186ffg2uc61e8ij4545nv10.apps.googleusercontent.com",  # ios
+    "969523130284-i04jjpc4jlmon85eeosmqljpp86pr7bl.apps.googleusercontent.com",  # android
+}
+_google_request = google_requests.Request()
 
 app = FastAPI() #test backend
 
@@ -123,6 +134,119 @@ def get_or_create_guest(guest: schemas.GuestCreate, db: Session = Depends(get_db
         db.add(user)
         db.commit()
         db.refresh(user)
+    return user
+
+
+def _merge_guest_into_account(db: Session, guest_user: models.User, target_user: models.User) -> None:
+    """Переносит прогресс гостя на аккаунт, с которым он логинится: уроки без
+    дублей, все ответы, XP суммируется, streak — больший из двух, дата
+    активности — более свежая. Гостевая запись удаляется."""
+    existing_lesson_ids = {
+        row.lesson_id
+        for row in db.query(models.UserProgress.lesson_id).filter(models.UserProgress.user_id == target_user.id)
+    }
+    for progress in db.query(models.UserProgress).filter(models.UserProgress.user_id == guest_user.id).all():
+        if progress.lesson_id in existing_lesson_ids:
+            db.delete(progress)
+        else:
+            progress.user_id = target_user.id
+            existing_lesson_ids.add(progress.lesson_id)
+
+    db.query(models.Answer).filter(models.Answer.user_id == guest_user.id).update(
+        {"user_id": target_user.id}, synchronize_session=False
+    )
+
+    target_user.xp += guest_user.xp
+    target_user.streak = max(target_user.streak, guest_user.streak)
+    if guest_user.last_activity_date and (
+        target_user.last_activity_date is None or guest_user.last_activity_date > target_user.last_activity_date
+    ):
+        target_user.last_activity_date = guest_user.last_activity_date
+
+    db.delete(guest_user)
+    db.flush()  # физически убрать гостя до того, как его device_token достанется target_user
+
+
+@app.post("/auth/google", response_model=schemas.UserOut)
+def google_sign_in(payload: schemas.GoogleSignIn, db: Session = Depends(get_db)):
+    try:
+        idinfo = google_id_token.verify_oauth2_token(payload.id_token, _google_request)
+    except ValueError:
+        raise HTTPException(status_code=401, detail="Invalid Google token")
+
+    if idinfo.get("aud") not in GOOGLE_CLIENT_IDS:
+        raise HTTPException(status_code=401, detail="Invalid Google token")
+
+    external_id = idinfo["sub"]
+
+    google_user = (
+        db.query(models.User)
+        .filter(models.User.auth_provider == "google", models.User.external_id == external_id)
+        .first()
+    )
+
+    device_owner = db.query(models.User).filter(models.User.device_token == payload.device_token).first()
+    mergeable_guest = device_owner if device_owner is not None and device_owner.auth_provider == "guest" else None
+
+    if google_user is None:
+        if mergeable_guest is not None:
+            # первый вход этим Google-аккаунтом на этом устройстве — повышаем гостя до аккаунта.
+            # username/avatar остаются пустыми — клиент увидит avatar=null и предложит их выбрать
+            mergeable_guest.auth_provider = "google"
+            mergeable_guest.external_id = external_id
+            db.commit()
+            db.refresh(mergeable_guest)
+            return mergeable_guest
+
+        google_user = models.User(
+            auth_provider="google",
+            external_id=external_id,
+            device_token=payload.device_token if device_owner is None else None,
+        )
+        db.add(google_user)
+        db.commit()
+        db.refresh(google_user)
+        return google_user
+
+    # аккаунт уже существует (вход с нового устройства) — переносим на него прогресс гостя
+    if mergeable_guest is not None and mergeable_guest.id != google_user.id:
+        _merge_guest_into_account(db, mergeable_guest, google_user)
+        google_user.device_token = payload.device_token
+
+    db.commit()
+    db.refresh(google_user)
+    return google_user
+
+
+ALLOWED_AVATARS = {"terminal", "code", "bug", "rocket", "bolt", "shield", "flame", "star"}
+
+
+@app.patch("/users/{user_id}/profile", response_model=schemas.UserOut)
+def update_profile(user_id: int, payload: schemas.ProfileUpdate, db: Session = Depends(get_db)):
+    """Имя и аватарка, которые выбираются один раз после первого входа через Google."""
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    username = payload.username.strip()
+    if not username:
+        raise HTTPException(status_code=422, detail="Имя не может быть пустым")
+
+    if payload.avatar not in ALLOWED_AVATARS:
+        raise HTTPException(status_code=422, detail="Неизвестная аватарка")
+
+    conflict = (
+        db.query(models.User)
+        .filter(models.User.username == username, models.User.id != user_id)
+        .first()
+    )
+    if conflict is not None:
+        raise HTTPException(status_code=409, detail="Это имя уже занято")
+
+    user.username = username
+    user.avatar = payload.avatar
+    db.commit()
+    db.refresh(user)
     return user
 
 
@@ -637,6 +761,7 @@ def get_user_stats(user_id: int, db: Session = Depends(get_db)):
     return {
         "id": user.id,
         "username": user.username,
+        "avatar": user.avatar,
         "xp": user.xp,
         "streak": user.streak,
         "lessons_completed": stats["lessons_completed"],

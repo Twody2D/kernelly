@@ -16,10 +16,15 @@ class PrefKeys {
   static const deviceToken = 'device_token';
 }
 
-/// Id текущего пользователя (гостя) на этом устройстве. Заполняется один раз
-/// при старте приложения через [ensureUserId] — до этого момента экраны
-/// с обращениями к API запускаться не должны.
+/// Id текущего пользователя на этом устройстве — гостя или того, в чей
+/// аккаунт он вошёл через Google. Заполняется один раз при старте приложения
+/// через [ensureUserId], а после успешного входа обновляется на месте (см.
+/// auth_service.dart), пока до перезапуска не прочитается заново.
 late int currentUserId;
+
+/// device_token этого устройства — единственный ключ, по которому сервер
+/// находит пользователя (гостя или уже вошедшего) заново при каждом старте.
+late String currentDeviceToken;
 
 /// Отдаёт device_token этого устройства, генерируя его при первом обращении.
 Future<String> _deviceToken(SharedPreferences prefs) async {
@@ -32,13 +37,12 @@ Future<String> _deviceToken(SharedPreferences prefs) async {
   return token;
 }
 
-/// Находит или заводит гостевого пользователя для этого устройства и
-/// сохраняет его id в [currentUserId]. Вызывается один раз при старте
-/// приложения, до runApp.
+/// Находит или заводит пользователя для этого устройства и сохраняет его id
+/// в [currentUserId]. Вызывается один раз при старте приложения, до runApp.
 Future<int> ensureUserId() async {
   final prefs = await SharedPreferences.getInstance();
-  final token = await _deviceToken(prefs);
-  final user = await fetchOrCreateGuest(token);
+  currentDeviceToken = await _deviceToken(prefs);
+  final user = await fetchOrCreateGuest(currentDeviceToken);
   currentUserId = user['id'] as int;
   return currentUserId;
 }

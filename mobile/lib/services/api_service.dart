@@ -152,6 +152,25 @@ Future<Map<String, dynamic>> fetchUserAchievements(int userId) async {
   }
 }
 
+/// Бросается, когда имя уже занято другим пользователем (409 от сервера).
+class UsernameTakenException implements Exception {}
+
+Future<Map<String, dynamic>> updateProfile(int userId, String username, String avatar) async {
+  final response = await http.patch(
+    Uri.parse('$apiBaseUrl/users/$userId/profile'),
+    headers: {'Content-Type': 'application/json'},
+    body: jsonEncode({'username': username, 'avatar': avatar}),
+  );
+
+  if (response.statusCode == 200) {
+    return jsonDecode(utf8.decode(response.bodyBytes));
+  } else if (response.statusCode == 409) {
+    throw UsernameTakenException();
+  } else {
+    throw Exception('Failed to update profile');
+  }
+}
+
 Future<List<Map<String, dynamic>>> fetchCoursesOverview(int userId) async {
   final response = await http.get(Uri.parse('$apiBaseUrl/courses/overview?user_id=$userId'));
 

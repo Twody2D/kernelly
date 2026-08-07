@@ -76,6 +76,7 @@ class AnswerSubmit(BaseModel):
 class UserOut(BaseModel):
     id: int
     username: str | None = None
+    avatar: str | None = None
     xp: int
     streak: int
 
@@ -89,6 +90,16 @@ class UserCreate(BaseModel):
 
 class GuestCreate(BaseModel):
     device_token: str
+
+
+class GoogleSignIn(BaseModel):
+    id_token: str
+    device_token: str
+
+
+class ProfileUpdate(BaseModel):
+    username: str
+    avatar: str
 
 
 class LessonComplete(BaseModel):

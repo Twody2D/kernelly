@@ -103,10 +103,11 @@ class ProfileScreenState extends State<ProfileScreen> {
       return Scaffold(
         backgroundColor: const Color(0xFFF6F9F9),
         appBar: _appBar(),
-        body: const Center(
+        body: Center(
           child: RegisterPromptContent(
             title: 'Сохрани свой прогресс',
             subtitle: 'Сейчас прогресс привязан только к этому устройству. Зарегистрируйся, чтобы не потерять его.',
+            onSignedIn: load,
           ),
         ),
       );

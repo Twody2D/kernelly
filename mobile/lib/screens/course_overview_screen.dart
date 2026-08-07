@@ -328,8 +328,8 @@ class CourseOverviewScreenState extends State<CourseOverviewScreen> {
     );
   }
 
-  void _openRegisterPrompt(Map<String, dynamic> course) {
-    Navigator.push(
+  void _openRegisterPrompt(Map<String, dynamic> course) async {
+    await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => RegisterPromptScreen(
@@ -338,6 +338,7 @@ class CourseOverviewScreenState extends State<CourseOverviewScreen> {
         ),
       ),
     );
+    load();
   }
 
   Widget _lockedCard(Map<String, dynamic> course) {
