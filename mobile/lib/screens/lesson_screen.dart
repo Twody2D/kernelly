@@ -110,6 +110,13 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
     });
   }
 
+  /// Шаг LEARN не проверяется — просто засчитывается как пройденный, чтобы
+  /// не портить XP/точность (нечего было отвечать неправильно).
+  void _acknowledgeTheory() {
+    correctCount++;
+    _nextExercise();
+  }
+
   void _repeatLesson() {
     _terminalController.clear();
     setState(() {
@@ -189,6 +196,72 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
     );
   }
 
+  Widget _theoryScreen(Map<String, dynamic> exercise) {
+    final progress = currentIndex / exercises.length;
+    final example = exercise['content']?['example'] as String?;
+
+    return Scaffold(
+      appBar: _buildAppBar(progress: progress),
+      body: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              '\$ ${widget.sectionTitle}',
+              style: TextStyle(
+                fontFamily: 'JetBrains Mono',
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
+                color: const Color(0xFF00A896),
+                letterSpacing: 0.5,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'ЧТО НУЖНО ЗНАТЬ',
+              style: TextStyle(
+                fontFamily: 'JetBrains Mono',
+                fontWeight: FontWeight.w600,
+                fontSize: 10.5,
+                color: const Color(0xFF9AAAAA),
+                letterSpacing: 0.5,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              exercise['question'],
+              style: TextStyle(
+                fontFamily: 'Fredoka',
+                fontWeight: FontWeight.w500,
+                fontSize: 19,
+                height: 1.35,
+                color: const Color(0xFF1B2430),
+              ),
+            ),
+            if (example != null && example.isNotEmpty) ...[
+              const SizedBox(height: 20),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1B2430),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Text(
+                  example,
+                  style: TextStyle(fontFamily: 'JetBrains Mono', fontSize: 13.5, height: 1.6, color: const Color(0xFF58CC02)),
+                ),
+              ),
+            ],
+            const Spacer(),
+            PrimaryButton(text: 'Понятно', onPressed: _acknowledgeTheory),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (exercises.isEmpty) {
@@ -226,6 +299,11 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
     }
 
     final currentExercise = exercises[currentIndex];
+
+    if (currentExercise['type'] == 'theory') {
+      return _theoryScreen(currentExercise);
+    }
+
     final question = currentExercise['question'];
     final isTerminal = currentExercise['type'] == 'terminal';
     final options = isTerminal ? const <String>[] : List<String>.from(currentExercise['content']['options']);
