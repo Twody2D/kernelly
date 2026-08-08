@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mobile/services/api_service.dart';
 import 'package:mobile/services/user_prefs.dart';
 import 'package:mobile/screens/friend_search_screen.dart';
+import 'package:mobile/widgets/achievement_badge.dart';
 
 /// Вкладка «Новости»: лента активности друзей — достижения, серии и посты
 /// от тех, на кого подписан пользователь, плюс его собственные.
@@ -245,7 +246,12 @@ class FeedTabState extends State<FeedTab> {
         ),
         child: Row(
           children: [
-            _achievementIcon(achievement),
+            AchievementBadge(
+              icon: achievement['icon'] as String,
+              style: achievement['style'] as String,
+              unlocked: true,
+              size: 40,
+            ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -353,48 +359,6 @@ class FeedTabState extends State<FeedTab> {
           ),
         ],
       ),
-    );
-  }
-
-  Widget _achievementIcon(Map<String, dynamic> achievement) {
-    List<Color> gradient;
-    switch (achievement['style']) {
-      case 'gold':
-        gradient = [const Color(0xFFFFE7B8), const Color(0xFFFFD98A)];
-        break;
-      case 'green':
-        gradient = [const Color(0xFF6EDB1F), const Color(0xFF58CC02)];
-        break;
-      default:
-        gradient = [const Color(0xFF29DFCB), const Color(0xFF00C9B7)];
-    }
-    final icon = achievement['icon'] as String;
-    return Container(
-      width: 38,
-      height: 38,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: gradient,
-        ),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      alignment: Alignment.center,
-      child: icon.length > 2
-          ? Text(
-              icon,
-              style: const TextStyle(
-                fontFamily: 'JetBrains Mono',
-                fontWeight: FontWeight.w600,
-                fontSize: 10,
-                color: Colors.white,
-              ),
-            )
-          : Text(
-              icon,
-              style: const TextStyle(fontSize: 16, color: Colors.white),
-            ),
     );
   }
 
