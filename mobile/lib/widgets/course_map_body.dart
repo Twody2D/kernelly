@@ -4,6 +4,7 @@ import 'package:mobile/services/user_prefs.dart';
 import 'package:mobile/screens/lesson_screen.dart';
 import 'package:mobile/screens/review_screen.dart';
 import 'package:mobile/widgets/chapter_card.dart';
+import 'package:mobile/widgets/daily_goal_card.dart';
 import 'package:mobile/widgets/gradient_banner.dart';
 import 'package:mobile/widgets/review_card.dart';
 import 'package:mobile/widgets/section_path_nodes.dart';
@@ -13,8 +14,17 @@ import 'package:mobile/widgets/section_path_nodes.dart';
 /// Общая для вкладки «Путь» (текущий курс) и экрана разделов курса в «Курсах».
 class CourseMapBody extends StatefulWidget {
   final int courseId;
+  final int? dailyCompleted;
+  final int? dailyGoal;
+  final VoidCallback? onTapBanner;
 
-  const CourseMapBody({super.key, required this.courseId});
+  const CourseMapBody({
+    super.key,
+    required this.courseId,
+    this.dailyCompleted,
+    this.dailyGoal,
+    this.onTapBanner,
+  });
 
   @override
   State<CourseMapBody> createState() => CourseMapBodyState();
@@ -42,7 +52,9 @@ class CourseMapBodyState extends State<CourseMapBody> {
       if (!mounted) return;
 
       final sectionsData = results[0] as Map<String, dynamic>;
-      final sectionsList = List<Map<String, dynamic>>.from(sectionsData['sections'] ?? []);
+      final sectionsList = List<Map<String, dynamic>>.from(
+        sectionsData['sections'] ?? [],
+      );
 
       Map<String, dynamic>? current;
       for (final section in sectionsList) {
@@ -51,7 +63,9 @@ class CourseMapBodyState extends State<CourseMapBody> {
           break;
         }
       }
-      final lessons = current == null ? <Map<String, dynamic>>[] : await fetchLessonsProgress(current['id'], currentUserId);
+      final lessons = current == null
+          ? <Map<String, dynamic>>[]
+          : await fetchLessonsProgress(current['id'], currentUserId);
       if (!mounted) return;
 
       setState(() {
@@ -69,14 +83,23 @@ class CourseMapBodyState extends State<CourseMapBody> {
   }
 
   Future<void> _openReview() async {
-    await Navigator.push(context, MaterialPageRoute(builder: (_) => const ReviewScreen()));
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const ReviewScreen()),
+    );
     load();
   }
 
-  Future<void> _openLesson(Map<String, dynamic> lesson, String sectionTitle) async {
+  Future<void> _openLesson(
+    Map<String, dynamic> lesson,
+    String sectionTitle,
+  ) async {
     await Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => LessonScreen(lessonId: lesson['id'], sectionTitle: sectionTitle)),
+      MaterialPageRoute(
+        builder: (_) =>
+            LessonScreen(lessonId: lesson['id'], sectionTitle: sectionTitle),
+      ),
     );
     load();
   }
@@ -87,13 +110,31 @@ class CourseMapBodyState extends State<CourseMapBody> {
       return const Center(child: CircularProgressIndicator());
     }
 
-    final totalLessons = sections.fold<int>(0, (sum, s) => sum + (s['total'] as int));
-    final doneLessons = sections.fold<int>(0, (sum, s) => sum + (s['completed'] as int));
+    final totalLessons = sections.fold<int>(
+      0,
+      (sum, s) => sum + (s['total'] as int),
+    );
+    final doneLessons = sections.fold<int>(
+      0,
+      (sum, s) => sum + (s['completed'] as int),
+    );
 
     return ListView(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       children: [
-        GradientBanner(eyebrow: '\$ курс', title: courseTitle ?? '', badge: '$doneLessons / $totalLessons'),
+        GradientBanner(
+          eyebrow: '\$ курс',
+          title: courseTitle ?? '',
+          badge: '$doneLessons / $totalLessons',
+          onTap: widget.onTapBanner,
+        ),
+        if (widget.dailyGoal != null) ...[
+          const SizedBox(height: 14),
+          DailyGoalCard(
+            completed: widget.dailyCompleted ?? 0,
+            goal: widget.dailyGoal!,
+          ),
+        ],
         if (reviewDue > 0) ...[
           const SizedBox(height: 14),
           ReviewCard(due: reviewDue, onTap: _openReview),

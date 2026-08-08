@@ -4,7 +4,6 @@ import 'package:mobile/services/api_service.dart';
 import 'package:mobile/services/user_prefs.dart';
 import 'package:mobile/screens/course_intro_screen.dart';
 import 'package:mobile/widgets/course_map_body.dart';
-import 'package:mobile/widgets/daily_goal_card.dart';
 
 /// Вкладка «Путь»: шапка приложения (лого, streak), цель дня и карта текущего
 /// курса — сама находит, с какого курса пользователю продолжать. Раньше это
@@ -47,7 +46,10 @@ class CourseMapTabState extends State<CourseMapTab> {
           await Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => CourseIntroScreen(courseId: newCourseId, courseTitle: current!['course_title']),
+              builder: (_) => CourseIntroScreen(
+                courseId: newCourseId,
+                courseTitle: current!['course_title'],
+              ),
             ),
           );
         }
@@ -65,7 +67,9 @@ class CourseMapTabState extends State<CourseMapTab> {
 
       setState(() {
         courseId = newCourseId;
-        courseTitle = newCourseId == null ? '' : current!['course_title'] as String;
+        courseTitle = newCourseId == null
+            ? ''
+            : current!['course_title'] as String;
         user = results[0] as Map<String, dynamic>;
         dailyCompleted = daily['lessons_completed'] ?? 0;
         dailyGoal = prefs.getInt(PrefKeys.dailyGoal) ?? defaultDailyGoal;
@@ -85,7 +89,10 @@ class CourseMapTabState extends State<CourseMapTab> {
     if (courseId == null) return;
     await Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => CourseIntroScreen(courseId: courseId!, courseTitle: courseTitle)),
+      MaterialPageRoute(
+        builder: (_) =>
+            CourseIntroScreen(courseId: courseId!, courseTitle: courseTitle),
+      ),
     );
   }
 
@@ -118,7 +125,11 @@ class CourseMapTabState extends State<CourseMapTab> {
                           color: const Color(0xFF58CC02),
                           shape: BoxShape.circle,
                           boxShadow: [
-                            BoxShadow(color: const Color(0xFF58CC02).withOpacity(0.2), spreadRadius: 3, blurRadius: 0),
+                            BoxShadow(
+                              color: const Color(0xFF58CC02).withOpacity(0.2),
+                              spreadRadius: 3,
+                              blurRadius: 0,
+                            ),
                           ],
                         ),
                       ),
@@ -134,52 +145,43 @@ class CourseMapTabState extends State<CourseMapTab> {
                       ),
                     ],
                   ),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (user != null)
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(14),
-                            boxShadow: [
-                              BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 6, offset: const Offset(0, 2)),
-                            ],
+                  if (user != null)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(14),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.06),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
                           ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Text('🔥', style: TextStyle(fontSize: 14)),
-                              const SizedBox(width: 5),
-                              Text(
-                                '${user!['streak']}',
-                                style: TextStyle(
-                                  fontFamily: 'Fredoka',
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 14,
-                                  color: const Color(0xFFFF9500),
-                                ),
-                              ),
-                            ],
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text('🔥', style: TextStyle(fontSize: 14)),
+                          const SizedBox(width: 5),
+                          Text(
+                            '${user!['streak']}',
+                            style: TextStyle(
+                              fontFamily: 'Fredoka',
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                              color: const Color(0xFFFF9500),
+                            ),
                           ),
-                        ),
-                      if (courseId != null)
-                        IconButton(
-                          tooltip: 'Пересмотреть заставку курса',
-                          icon: const Icon(Icons.replay_rounded, color: Color(0xFF5C6B73)),
-                          onPressed: _replayIntro,
-                        ),
-                    ],
-                  ),
+                        ],
+                      ),
+                    ),
                 ],
               ),
             ),
-            if (courseId != null)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-                child: DailyGoalCard(completed: dailyCompleted, goal: dailyGoal),
-              ),
             Expanded(
               child: courseId == null
                   ? const Center(
@@ -198,7 +200,13 @@ class CourseMapTabState extends State<CourseMapTab> {
                         ),
                       ),
                     )
-                  : CourseMapBody(key: _mapKey, courseId: courseId!),
+                  : CourseMapBody(
+                      key: _mapKey,
+                      courseId: courseId!,
+                      dailyCompleted: dailyCompleted,
+                      dailyGoal: dailyGoal,
+                      onTapBanner: _replayIntro,
+                    ),
             ),
           ],
         ),
