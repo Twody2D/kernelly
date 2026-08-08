@@ -22,6 +22,7 @@ class _ReviewScreenState extends State<ReviewScreen> with SingleTickerProviderSt
   int currentIndex = 0;
   String? selectedAnswer;
   bool? isCorrect;
+  bool isClose = false;
   String? correctAnswer;
   int attemptCount = 0;
   int correctCount = 0;
@@ -69,6 +70,7 @@ class _ReviewScreenState extends State<ReviewScreen> with SingleTickerProviderSt
     final correct = result['correct'] == true;
     setState(() {
       isCorrect = correct;
+      isClose = result['close'] == true;
       correctAnswer = result['correct_answer'] as String?;
       attemptCount++;
       if (correct) correctCount++;
@@ -91,6 +93,7 @@ class _ReviewScreenState extends State<ReviewScreen> with SingleTickerProviderSt
       currentIndex++;
       selectedAnswer = null;
       isCorrect = null;
+      isClose = false;
       correctAnswer = null;
     });
   }
@@ -285,7 +288,9 @@ class _ReviewScreenState extends State<ReviewScreen> with SingleTickerProviderSt
                     Container(
                       padding: const EdgeInsets.only(left: 74, right: 14, top: 14, bottom: 14),
                       decoration: BoxDecoration(
-                        color: isCorrect! ? const Color(0xFFEAF9DC) : const Color(0xFFFFEAEA),
+                        color: isCorrect!
+                            ? const Color(0xFFEAF9DC)
+                            : (isClose ? const Color(0xFFFFF3D6) : const Color(0xFFFFEAEA)),
                         borderRadius: BorderRadius.circular(18),
                       ),
                       width: double.infinity,
@@ -294,22 +299,26 @@ class _ReviewScreenState extends State<ReviewScreen> with SingleTickerProviderSt
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
-                            isCorrect! ? 'Правильно! +10 XP' : 'Неверно',
+                            isCorrect!
+                                ? 'Правильно! +10 XP'
+                                : (isClose ? 'Почти! Проверь регистр и пробелы' : 'Неверно'),
                             style: TextStyle(
                               fontFamily: 'Fredoka',
                               fontWeight: FontWeight.w600,
-                              color: isCorrect! ? const Color(0xFF2E6E00) : const Color(0xFFB33A3A),
+                              color: isCorrect!
+                                  ? const Color(0xFF2E6E00)
+                                  : (isClose ? const Color(0xFF9A6B00) : const Color(0xFFB33A3A)),
                             ),
                           ),
                           if (!isCorrect! && correctAnswer != null) ...[
                             const SizedBox(height: 4),
                             Text(
                               'Правильный ответ: $correctAnswer',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontFamily: 'JetBrains Mono',
                                 fontSize: 12.5,
                                 fontWeight: FontWeight.w500,
-                                color: Color(0xFFB33A3A),
+                                color: isClose ? const Color(0xFF9A6B00) : const Color(0xFFB33A3A),
                               ),
                             ),
                           ],

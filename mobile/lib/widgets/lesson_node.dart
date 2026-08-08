@@ -12,29 +12,34 @@ class LessonNode extends StatelessWidget {
 
   const LessonNode({super.key, required this.label, required this.status, this.onTap, this.mastery = 0});
 
-  static const _masteryColors = {
-    1: Color(0xFFCD7F32),
-    2: Color(0xFF8FA0AB),
-    3: Color(0xFFE0A82E),
+  /// Пройденный урок красится по уровню мастерства (бронза/серебро/золото),
+  /// а не зелёным «готово» — так уровень виден сразу на карте, без лишней
+  /// медальки в углу.
+  static const _masteryGradients = {
+    1: (top: Color(0xFFE8B27C), bottom: Color(0xFFC97A3B), shadow: Color(0xFF8B5228)),
+    2: (top: Color(0xFFDCE4E8), bottom: Color(0xFF9FB0BA), shadow: Color(0xFF67767E)),
+    3: (top: Color(0xFFFFE49A), bottom: Color(0xFFE8B93A), shadow: Color(0xFFA87A12)),
   };
+  static const _doneDefault = (top: Color(0xFF6EDB1F), bottom: Color(0xFF58CC02), shadow: Color(0xFF3F9200));
 
   @override
   Widget build(BuildContext context) {
     final bool isDone = status == LessonNodeStatus.done;
     final bool isCurrent = status == LessonNodeStatus.current;
+    final doneStyle = isDone ? (_masteryGradients[mastery] ?? _doneDefault) : null;
 
     final Color fillTop = isDone
-        ? const Color(0xFF6EDB1F)
+        ? doneStyle!.top
         : isCurrent
         ? const Color(0xFF29DFCB)
         : const Color(0xFFE7EEEE);
     final Color fillBottom = isDone
-        ? const Color(0xFF58CC02)
+        ? doneStyle!.bottom
         : isCurrent
         ? const Color(0xFF00C9B7)
         : const Color(0xFFE7EEEE);
     final Color shadow = isDone
-        ? const Color(0xFF3F9200)
+        ? doneStyle!.shadow
         : isCurrent
         ? const Color(0xFF00A896)
         : const Color(0xFFD3DEDE);
@@ -75,22 +80,6 @@ class LessonNode extends StatelessWidget {
                 Positioned(bottom: -10, left: 16, child: _pin(pinColor)),
                 Positioned(bottom: -10, right: 16, child: _pin(pinColor)),
                 if (isCurrent) Positioned(top: -7, left: -7, right: -7, bottom: -7, child: _PulsingRing()),
-                if (isDone && mastery > 0)
-                  Positioned(
-                    top: -6,
-                    right: -6,
-                    child: Container(
-                      width: 24,
-                      height: 24,
-                      decoration: BoxDecoration(
-                        color: _masteryColors[mastery],
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 2),
-                      ),
-                      alignment: Alignment.center,
-                      child: const Icon(Icons.workspace_premium_rounded, size: 13, color: Colors.white),
-                    ),
-                  ),
               ],
             ),
           ),

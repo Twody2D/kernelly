@@ -27,6 +27,10 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
   bool? isCorrect;
   final _terminalController = TextEditingController();
 
+  /// Ответ неверный, но совпадает без учёта регистра/пробелов — скорее всего
+  /// опечатка, а не незнание команды. Показываем отдельным жёлтым состоянием.
+  bool isClose = false;
+
   /// Приходит вместе с результатом проверки — показываем при ошибке
   String? correctAnswer;
   int attemptCount = 0;
@@ -97,6 +101,7 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
     final correct = result['correct'] == true;
     setState(() {
       isCorrect = correct;
+      isClose = result['close'] == true;
       correctAnswer = result['correct_answer'] as String?;
       attemptCount++;
       user?['streak'] = result['streak'];
@@ -115,6 +120,7 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
       currentIndex++;
       selectedAnswer = null;
       isCorrect = null;
+      isClose = false;
       correctAnswer = null;
     });
   }
@@ -135,6 +141,7 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
       currentIndex = 0;
       selectedAnswer = null;
       isCorrect = null;
+      isClose = false;
       correctAnswer = null;
       correctCount = 0;
       completion = null;
@@ -471,7 +478,9 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
                     Container(
                       padding: const EdgeInsets.only(left: 74, right: 14, top: 14, bottom: 14),
                       decoration: BoxDecoration(
-                        color: isCorrect! ? const Color(0xFFEAF9DC) : const Color(0xFFFFEAEA),
+                        color: isCorrect!
+                            ? const Color(0xFFEAF9DC)
+                            : (isClose ? const Color(0xFFFFF3D6) : const Color(0xFFFFEAEA)),
                         borderRadius: BorderRadius.circular(18),
                       ),
                       width: double.infinity,
@@ -480,22 +489,26 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
-                            isCorrect! ? 'Правильно! ${isRepeat ? '' : '+10 XP'}'.trim() : 'Неверно',
+                            isCorrect!
+                                ? 'Правильно! ${isRepeat ? '' : '+10 XP'}'.trim()
+                                : (isClose ? 'Почти! Проверь регистр и пробелы' : 'Неверно'),
                             style: TextStyle(
                               fontFamily: 'Fredoka',
                               fontWeight: FontWeight.w600,
-                              color: isCorrect! ? const Color(0xFF2E6E00) : const Color(0xFFB33A3A),
+                              color: isCorrect!
+                                  ? const Color(0xFF2E6E00)
+                                  : (isClose ? const Color(0xFF9A6B00) : const Color(0xFFB33A3A)),
                             ),
                           ),
                           if (!isCorrect! && correctAnswer != null) ...[
                             const SizedBox(height: 4),
                             Text(
                               'Правильный ответ: $correctAnswer',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontFamily: 'JetBrains Mono',
                                 fontSize: 12.5,
                                 fontWeight: FontWeight.w500,
-                                color: Color(0xFFB33A3A),
+                                color: isClose ? const Color(0xFF9A6B00) : const Color(0xFFB33A3A),
                               ),
                             ),
                           ],

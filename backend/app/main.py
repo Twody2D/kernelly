@@ -33,6 +33,24 @@ def _lesson_mastery(db: Session, user_id: int, lesson_id: int) -> int:
     return min(row.completions, MAX_MASTERY) if row else 0
 
 
+def _normalize_terminal_answer(value: str) -> str:
+    value = value.strip()
+    if value.startswith("$"):
+        value = value[1:].strip()
+    return " ".join(value.lower().split())
+
+
+def _is_close_terminal_answer(submitted: dict, correct: dict) -> bool:
+    """Реальный терминал чувствителен к регистру, поэтому `Whoami` всё же
+    неверно — но стоит явно подсказать, что дело именно в написании, а не в
+    том, что команда выбрана не та."""
+    submitted_answer = submitted.get("answer") if isinstance(submitted, dict) else None
+    correct_answer = correct.get("answer") if isinstance(correct, dict) else None
+    if not isinstance(submitted_answer, str) or not isinstance(correct_answer, str):
+        return False
+    return _normalize_terminal_answer(submitted_answer) == _normalize_terminal_answer(correct_answer)
+
+
 def _update_skill_progress(db: Session, user_id: int, skill_tags: list[str] | None, is_correct: bool) -> None:
     if not skill_tags:
         return
@@ -373,6 +391,11 @@ def submit_answer(exercise_id: int, submission: schemas.AnswerSubmit, db: Sessio
     _assert_course_unlocked(db, _course_id_for_lesson(db, exercise.lesson_id), submission.user_id)
 
     is_correct = submission.answer == exercise.correct_answer
+    is_close = (
+        not is_correct
+        and exercise.type == "terminal"
+        and _is_close_terminal_answer(submission.answer, exercise.correct_answer)
+    )
 
     user = db.query(models.User).filter(models.User.id == submission.user_id).first()
     if user is None:
@@ -398,7 +421,7 @@ def submit_answer(exercise_id: int, submission: schemas.AnswerSubmit, db: Sessio
     if isinstance(correct_answer, dict):
         correct_answer = correct_answer.get("answer")
 
-    return {"correct": is_correct, "correct_answer": correct_answer, "streak": user.streak}
+    return {"correct": is_correct, "correct_answer": correct_answer, "streak": user.streak, "close": is_close}
 
 
 @app.get("/users/{user_id}/review/due")
