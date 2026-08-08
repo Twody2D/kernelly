@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:mobile/widgets/mascot.dart';
 
@@ -14,6 +16,9 @@ class AnimatedMascot extends StatefulWidget {
 class _AnimatedMascotState extends State<AnimatedMascot> with TickerProviderStateMixin {
   late AnimationController _floatController;
   late AnimationController _ringController;
+  late AnimationController _swayController;
+  late AnimationController _bounceController;
+  Timer? _bounceTimer;
 
   @override
   void initState() {
@@ -22,12 +27,24 @@ class _AnimatedMascotState extends State<AnimatedMascot> with TickerProviderStat
       ..repeat(reverse: true);
     _ringController = AnimationController(vsync: this, duration: const Duration(milliseconds: 2400))
       ..repeat(reverse: true);
+    _swayController = AnimationController(vsync: this, duration: const Duration(milliseconds: 4600))
+      ..repeat(reverse: true);
+
+    // время от времени маскот "подпрыгивает" — оживляет долгий idle-простой,
+    // например пока пользователь читает текст на экране
+    _bounceController = AnimationController(vsync: this, duration: const Duration(milliseconds: 550));
+    _bounceTimer = Timer.periodic(const Duration(milliseconds: 4200), (_) {
+      if (mounted) _bounceController.forward(from: 0);
+    });
   }
 
   @override
   void dispose() {
     _floatController.dispose();
     _ringController.dispose();
+    _swayController.dispose();
+    _bounceController.dispose();
+    _bounceTimer?.cancel();
     super.dispose();
   }
 
@@ -66,10 +83,22 @@ class _AnimatedMascotState extends State<AnimatedMascot> with TickerProviderStat
             },
           ),
           AnimatedBuilder(
-            animation: _floatController,
+            animation: Listenable.merge([_floatController, _swayController, _bounceController]),
             builder: (context, child) {
               final dy = Curves.easeInOut.transform(_floatController.value) * -8;
-              return Transform.translate(offset: Offset(0, dy), child: child);
+              final angle = (Curves.easeInOut.transform(_swayController.value) - 0.5) * 0.08;
+              final bounce = sin(Curves.easeOut.transform(_bounceController.value) * pi) * 0.12;
+              return Transform.translate(
+                offset: Offset(0, dy),
+                child: Transform.rotate(
+                  angle: angle,
+                  child: Transform.scale(
+                    scaleX: 1 - bounce * 0.6,
+                    scaleY: 1 + bounce,
+                    child: child,
+                  ),
+                ),
+              );
             },
             child: Mascot(emotion: widget.emotion, size: widget.size),
           ),
