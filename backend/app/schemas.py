@@ -54,6 +54,8 @@ class ExerciseOut(BaseModel):
     content: dict
     order: int
     lesson_id: int
+    skill_tags: list[str] | None = None
+    hints: list[str] | None = None
 
     class Config:
         from_attributes = True
@@ -66,6 +68,8 @@ class ExerciseCreate(BaseModel):
     correct_answer: dict
     order: int
     lesson_id: int
+    skill_tags: list[str] | None = None
+    hints: list[str] | None = None
 
 
 class AnswerSubmit(BaseModel):

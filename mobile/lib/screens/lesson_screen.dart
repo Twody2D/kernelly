@@ -22,6 +22,7 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
   int currentIndex = 0;
   String? selectedAnswer;
   bool? isCorrect;
+  final _terminalController = TextEditingController();
 
   /// Приходит вместе с результатом проверки — показываем при ошибке
   String? correctAnswer;
@@ -53,6 +54,7 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
   @override
   void dispose() {
     _lottieController.dispose();
+    _terminalController.dispose();
     super.dispose();
   }
 
@@ -74,7 +76,7 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
 
   void _checkAnswer() async {
     final currentExercise = exercises[currentIndex];
-    final result = await submitAnswer(currentExercise['id'], currentUserId, selectedAnswer!);
+    final result = await submitAnswer(currentExercise['id'], currentUserId, selectedAnswer!.trim());
     final userData = await fetchUser(currentUserId);
     if (!mounted) return;
 
@@ -93,6 +95,7 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
       _finishLesson();
       return;
     }
+    _terminalController.clear();
     setState(() {
       currentIndex++;
       selectedAnswer = null;
@@ -102,6 +105,7 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
   }
 
   void _repeatLesson() {
+    _terminalController.clear();
     setState(() {
       currentIndex = 0;
       selectedAnswer = null;
@@ -208,7 +212,8 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
 
     final currentExercise = exercises[currentIndex];
     final question = currentExercise['question'];
-    final options = List<String>.from(currentExercise['content']['options']);
+    final isTerminal = currentExercise['type'] == 'terminal';
+    final options = isTerminal ? const <String>[] : List<String>.from(currentExercise['content']['options']);
     final progress = (currentIndex + (isCorrect != null ? 1 : 0)) / exercises.length;
 
     return Scaffold(
@@ -239,19 +244,26 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
               ),
             ),
             const SizedBox(height: 24),
-            for (final option in options)
-              OptionCard(
-                text: option,
-                onTap: () => _chooseOption(option),
-                locked: isCorrect != null,
-                state: isCorrect != null
-                    ? (option == correctAnswer
-                          ? OptionState.correct
-                          : option == selectedAnswer
-                          ? OptionState.incorrect
-                          : OptionState.none)
-                    : (option == selectedAnswer ? OptionState.selected : OptionState.none),
-              ),
+            if (isTerminal)
+              _TerminalInput(
+                controller: _terminalController,
+                enabled: isCorrect == null,
+                onChanged: _chooseOption,
+              )
+            else
+              for (final option in options)
+                OptionCard(
+                  text: option,
+                  onTap: () => _chooseOption(option),
+                  locked: isCorrect != null,
+                  state: isCorrect != null
+                      ? (option == correctAnswer
+                            ? OptionState.correct
+                            : option == selectedAnswer
+                            ? OptionState.incorrect
+                            : OptionState.none)
+                      : (option == selectedAnswer ? OptionState.selected : OptionState.none),
+                ),
             const Spacer(),
             if (isCorrect != null)
               Padding(
@@ -320,11 +332,56 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
                 ),
               ),
             if (isCorrect == null)
-              PrimaryButton(text: 'Проверить', enabled: selectedAnswer != null, onPressed: _checkAnswer)
+              PrimaryButton(
+                text: 'Проверить',
+                enabled: selectedAnswer != null && selectedAnswer!.trim().isNotEmpty,
+                onPressed: _checkAnswer,
+              )
             else
               PrimaryButton(text: 'Продолжить', onPressed: _nextExercise),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Ввод команды текстом вместо выбора варианта — используется упражнениями
+/// типа `terminal`, где нужно вспомнить/набрать команду самому.
+class _TerminalInput extends StatelessWidget {
+  final TextEditingController controller;
+  final bool enabled;
+  final ValueChanged<String> onChanged;
+
+  const _TerminalInput({required this.controller, required this.enabled, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1B2430),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: [
+          Text(
+            '\$',
+            style: TextStyle(fontFamily: 'JetBrains Mono', fontWeight: FontWeight.w600, fontSize: 15, color: const Color(0xFF00C9B7)),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: TextField(
+              controller: controller,
+              enabled: enabled,
+              onChanged: onChanged,
+              autocorrect: false,
+              style: const TextStyle(fontFamily: 'JetBrains Mono', fontSize: 15, color: Colors.white),
+              cursorColor: const Color(0xFF00C9B7),
+              decoration: const InputDecoration(border: InputBorder.none, isDense: true, contentPadding: EdgeInsets.symmetric(vertical: 14)),
+            ),
+          ),
+        ],
       ),
     );
   }

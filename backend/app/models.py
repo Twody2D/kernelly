@@ -40,6 +40,8 @@ class Exercise(Base):
     correct_answer = Column(JSON, nullable=False)
     order = Column(Integer, nullable=False)
     lesson_id = Column(Integer, ForeignKey("lessons.id"), nullable=False)
+    skill_tags = Column(JSON, nullable=True)
+    hints = Column(JSON, nullable=True)
 
 
 class User(Base):
