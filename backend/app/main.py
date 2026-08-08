@@ -438,14 +438,20 @@ def submit_answer(exercise_id: int, submission: schemas.AnswerSubmit, db: Sessio
             user.last_activity_date = today
 
     db.commit()
-    _record_achievement_unlocks(db, user)
+    new_achievements = _record_achievement_unlocks(db, user)
 
     # ответ уже дан, поэтому правильный вариант можно показать
     correct_answer = exercise.correct_answer
     if isinstance(correct_answer, dict):
         correct_answer = correct_answer.get("answer")
 
-    return {"correct": is_correct, "correct_answer": correct_answer, "streak": user.streak, "close": is_close}
+    return {
+        "correct": is_correct,
+        "correct_answer": correct_answer,
+        "streak": user.streak,
+        "close": is_close,
+        "new_achievements": new_achievements,
+    }
 
 
 @app.get("/users/{user_id}/review/due")
@@ -501,8 +507,8 @@ def award_xp(user_id: int, payload: schemas.LessonComplete, db: Session = Depend
         raise HTTPException(status_code=404, detail="User not found")
     user.xp += payload.correct_count * XP_PER_CORRECT
     db.commit()
-    _record_achievement_unlocks(db, user)
-    return {"xp": user.xp}
+    new_achievements = _record_achievement_unlocks(db, user)
+    return {"xp": user.xp, "new_achievements": new_achievements}
 
 @app.get("/sections/{section_id}/lessons-progress")
 def get_lessons_progress(section_id: int, user_id: int, db: Session = Depends(get_db)):
@@ -632,11 +638,12 @@ def complete_lesson(lesson_id: int, user_id: int, db: Session = Depends(get_db))
     db.commit()
 
     user = db.query(models.User).filter(models.User.id == user_id).first()
-    _record_achievement_unlocks(db, user)
+    new_achievements = _record_achievement_unlocks(db, user)
 
     return {
         "status": "ok",
         "lesson_title": lesson.title,
+        "new_achievements": new_achievements,
         "mastery": {"level": new_level, "leveled_up": new_level > previous_level},
         "section": {
             "id": section.id,
@@ -945,9 +952,10 @@ def _collect_stats(user: models.User, db: Session) -> dict:
     }
 
 
-def _record_achievement_unlocks(db: Session, user: models.User) -> None:
-    """Достижения считаются на лету, но для ленты активности нужен сам факт
-    разблокировки — записываем событие один раз, при первом пересечении порога."""
+def _record_achievement_unlocks(db: Session, user: models.User) -> list[dict]:
+    """Достижения считаются на лету, но для ленты активности и всплывающего
+    поздравления нужен сам факт разблокировки — записываем событие один раз,
+    при первом пересечении порога, и возвращаем то, что разблокировалось только что."""
     stats = _collect_stats(user, db)
     enough_answers = stats["total_answers"] >= MIN_ANSWERS_FOR_ACCURACY
     values = {
@@ -960,6 +968,7 @@ def _record_achievement_unlocks(db: Session, user: models.User) -> None:
         row.code
         for row in db.query(models.AchievementUnlock).filter(models.AchievementUnlock.user_id == user.id).all()
     }
+    newly_unlocked = []
     for achievement in ACHIEVEMENTS:
         code = achievement["code"]
         if code in already:
@@ -970,7 +979,16 @@ def _record_achievement_unlocks(db: Session, user: models.User) -> None:
             unlocked = False
         if unlocked:
             db.add(models.AchievementUnlock(user_id=user.id, code=code))
-    db.commit()
+            newly_unlocked.append({
+                "code": achievement["code"],
+                "title": achievement["title"],
+                "description": achievement["description"],
+                "icon": achievement["icon"],
+                "style": achievement["style"],
+            })
+    if newly_unlocked:
+        db.commit()
+    return newly_unlocked
 
 
 @app.get("/users/{user_id}/stats")
