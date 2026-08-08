@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mobile/services/api_service.dart';
 import 'package:mobile/services/user_prefs.dart';
 import 'package:mobile/widgets/animated_mascot.dart';
+import 'package:mobile/widgets/mascot.dart';
 import 'package:mobile/widgets/option_card.dart';
 import 'package:mobile/widgets/primary_button.dart';
 import 'package:mobile/screens/section_complete_screen.dart';
@@ -733,30 +734,69 @@ class _StoryIntroState extends State<_StoryIntro> with SingleTickerProviderState
 
 /// Заставка перед серебряным/золотым прохождением — объясняет, что изменится
 /// (без подсказок, сложнее вопросы), не засоряя этим текст самих заданий.
-class _TierIntro extends StatelessWidget {
+/// Стадийное появление медали с "поп"-эффектом + пульсирующее кольцо вокруг
+/// неё, чтобы момент ощущался как награда, а не служебный экран.
+class _TierIntro extends StatefulWidget {
   final int tier;
   final VoidCallback onContinue;
 
   const _TierIntro({required this.tier, required this.onContinue});
+
+  @override
+  State<_TierIntro> createState() => _TierIntroState();
+}
+
+class _TierIntroState extends State<_TierIntro> with TickerProviderStateMixin {
+  late final AnimationController _entrance;
+  late final Animation<double> _badgeScale;
+  late final Animation<double> _fade;
+  late final Animation<Offset> _slide;
+  late final AnimationController _pulse;
+  late final AnimationController _sparkle;
 
   static const _tiers = {
     2: (
       label: 'Серебряный уровень',
       color: Color(0xFF8FA0AB),
       bg: Color(0xFFEDF1F3),
+      emotion: MascotEmotion.happy,
       description: 'Ты уже проходил этот урок. Теперь — без подсказок и с вопросами похитрее. Проверим, что действительно запомнилось.',
     ),
     3: (
       label: 'Золотой уровень',
       color: Color(0xFFE0A82E),
       bg: Color(0xFFFFF3D6),
+      emotion: MascotEmotion.excited,
       description: 'Финальная проверка. Минимум подсказок, максимум внимания — заодно вспомним то, что учили раньше.',
     ),
   };
 
   @override
+  void initState() {
+    super.initState();
+    _entrance = AnimationController(vsync: this, duration: const Duration(milliseconds: 900));
+    _badgeScale = CurvedAnimation(parent: _entrance, curve: const Interval(0.0, 0.6, curve: Curves.elasticOut));
+    const textInterval = Interval(0.35, 0.85, curve: Curves.easeOut);
+    _fade = CurvedAnimation(parent: _entrance, curve: textInterval);
+    _slide = Tween(begin: const Offset(0, 0.2), end: Offset.zero)
+        .animate(CurvedAnimation(parent: _entrance, curve: textInterval));
+    _entrance.forward();
+
+    _pulse = AnimationController(vsync: this, duration: const Duration(milliseconds: 1400))..repeat(reverse: true);
+    _sparkle = AnimationController(vsync: this, duration: const Duration(milliseconds: 2200))..repeat();
+  }
+
+  @override
+  void dispose() {
+    _entrance.dispose();
+    _pulse.dispose();
+    _sparkle.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final style = _tiers[tier] ?? _tiers[2]!;
+    final style = _tiers[widget.tier] ?? _tiers[2]!;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF6F9F9),
@@ -767,38 +807,108 @@ class _TierIntro extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Container(
-                  width: 96,
-                  height: 96,
-                  decoration: BoxDecoration(
-                    color: style.bg,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: style.color, width: 2),
+                SizedBox(
+                  width: 220,
+                  height: 210,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      AnimatedBuilder(
+                        animation: _sparkle,
+                        builder: (context, child) {
+                          return Transform.rotate(
+                            angle: _sparkle.value * 6.28318,
+                            child: child,
+                          );
+                        },
+                        child: Stack(
+                          children: [
+                            Positioned(top: 8, left: 100, child: Text('✨', style: TextStyle(fontSize: 18, color: style.color))),
+                            Positioned(bottom: 30, right: 8, child: Text('✨', style: TextStyle(fontSize: 13, color: style.color))),
+                            Positioned(top: 40, left: 4, child: Text('✨', style: TextStyle(fontSize: 12, color: style.color))),
+                          ],
+                        ),
+                      ),
+                      ScaleTransition(
+                        scale: _badgeScale,
+                        child: AnimatedMascot(size: 150, emotion: style.emotion),
+                      ),
+                      Positioned(
+                        bottom: 8,
+                        right: 14,
+                        child: ScaleTransition(
+                          scale: _badgeScale,
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              AnimatedBuilder(
+                                animation: _pulse,
+                                builder: (context, child) {
+                                  final v = Curves.easeInOut.transform(_pulse.value);
+                                  return Transform.scale(
+                                    scale: 1.0 + v * 0.14,
+                                    child: Opacity(opacity: 0.35 + v * 0.35, child: child),
+                                  );
+                                },
+                                child: Container(
+                                  width: 62,
+                                  height: 62,
+                                  decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: style.color, width: 2)),
+                                ),
+                              ),
+                              Container(
+                                width: 52,
+                                height: 52,
+                                decoration: BoxDecoration(
+                                  color: style.bg,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: Colors.white, width: 3),
+                                  boxShadow: [BoxShadow(color: style.color.withOpacity(0.4), blurRadius: 12, offset: const Offset(0, 4))],
+                                ),
+                                alignment: Alignment.center,
+                                child: Icon(Icons.workspace_premium_rounded, size: 26, color: style.color),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                  alignment: Alignment.center,
-                  child: Icon(Icons.workspace_premium_rounded, size: 44, color: style.color),
                 ),
-                const SizedBox(height: 20),
-                Text(
-                  style.label,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontFamily: 'Fredoka',
-                    fontWeight: FontWeight.w600,
-                    fontSize: 24,
-                    color: const Color(0xFF1B2430),
+                const SizedBox(height: 4),
+                FadeTransition(
+                  opacity: _fade,
+                  child: SlideTransition(
+                    position: _slide,
+                    child: Column(
+                      children: [
+                        Text(
+                          style.label,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontFamily: 'Fredoka',
+                            fontWeight: FontWeight.w600,
+                            fontSize: 24,
+                            color: const Color(0xFF1B2430),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          style.description,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontFamily: 'Inter', fontSize: 15, height: 1.5, color: const Color(0xFF5C6B73)),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  style.description,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontFamily: 'Inter', fontSize: 15, height: 1.5, color: const Color(0xFF5C6B73)),
                 ),
                 const SizedBox(height: 28),
-                SizedBox(
-                  width: double.infinity,
-                  child: PrimaryButton(text: 'Начать', onPressed: onContinue),
+                FadeTransition(
+                  opacity: _fade,
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: PrimaryButton(text: 'Начать', onPressed: widget.onContinue),
+                  ),
                 ),
               ],
             ),
