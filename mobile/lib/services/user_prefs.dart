@@ -14,6 +14,23 @@ class PrefKeys {
   static const mascotAnimations = 'settings_mascot_animations';
   static const theme = 'settings_theme';
   static const deviceToken = 'device_token';
+  static const introSeenCourses = 'intro_seen_courses';
+}
+
+/// Показывали ли уже вводный экран-историю для этого курса на этом устройстве —
+/// чтобы не повторять её при каждом входе в курс.
+Future<bool> hasSeenCourseIntro(int courseId) async {
+  final prefs = await SharedPreferences.getInstance();
+  final seen = prefs.getStringList(PrefKeys.introSeenCourses) ?? [];
+  return seen.contains(courseId.toString());
+}
+
+Future<void> markCourseIntroSeen(int courseId) async {
+  final prefs = await SharedPreferences.getInstance();
+  final seen = prefs.getStringList(PrefKeys.introSeenCourses) ?? [];
+  if (!seen.contains(courseId.toString())) {
+    await prefs.setStringList(PrefKeys.introSeenCourses, [...seen, courseId.toString()]);
+  }
 }
 
 /// Id текущего пользователя на этом устройстве — гостя или того, в чей

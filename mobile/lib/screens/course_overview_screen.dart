@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mobile/services/api_service.dart';
 import 'package:mobile/services/user_prefs.dart';
+import 'package:mobile/screens/course_intro_screen.dart';
 import 'package:mobile/screens/sections_screen.dart';
 import 'package:mobile/screens/register_prompt_screen.dart';
 import 'package:mobile/widgets/daily_goal_card.dart';
@@ -226,10 +227,14 @@ class CourseOverviewScreenState extends State<CourseOverviewScreen> {
     return InkWell(
       borderRadius: BorderRadius.circular(16),
       onTap: () async {
+        final seenIntro = await hasSeenCourseIntro(course['id'] as int);
+        if (!mounted) return;
         await Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) => SectionsScreen(courseId: course['id'], courseTitle: course['title']),
+            builder: (_) => seenIntro
+                ? SectionsScreen(courseId: course['id'], courseTitle: course['title'])
+                : CourseIntroScreen(courseId: course['id'] as int, courseTitle: course['title'] as String),
           ),
         );
         load();
