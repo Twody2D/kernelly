@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, JSON, DateTime, Date, Boolean
+from sqlalchemy import Column, Integer, String, ForeignKey, JSON, DateTime, Date, Boolean, UniqueConstraint
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from app.database import Base
@@ -101,3 +101,38 @@ class LessonMastery(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     lesson_id = Column(Integer, ForeignKey("lessons.id"), nullable=False)
     completions = Column(Integer, nullable=False, default=0)
+
+
+class Follow(Base):
+    """Подписка в стиле Instagram: follower видит ленту followee, согласие не
+    требуется. Взаимная подписка помечается на бэкенде как «друзья» —
+    это лишь косметический статус, на видимость ленты он не влияет."""
+
+    __tablename__ = "follows"
+    __table_args__ = (UniqueConstraint("follower_id", "followee_id", name="uq_follow_pair"),)
+    id = Column(Integer, primary_key=True)
+    follower_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    followee_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+
+class Post(Base):
+    """Текстовый статус-апдейт пользователя для ленты активности."""
+
+    __tablename__ = "posts"
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    text = Column(String, nullable=False)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+
+class AchievementUnlock(Base):
+    """Момент разблокировки достижения — сами достижения считаются на лету
+    (см. ACHIEVEMENTS в main.py), но для ленты нужен факт и время события."""
+
+    __tablename__ = "achievement_unlocks"
+    __table_args__ = (UniqueConstraint("user_id", "code", name="uq_achievement_unlock"),)
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    code = Column(String, nullable=False)
+    unlocked_at = Column(DateTime, nullable=False, default=datetime.utcnow)

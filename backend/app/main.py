@@ -165,6 +165,29 @@ def create_exercise(exercise: schemas.ExerciseCreate, db: Session = Depends(get_
     return new_exercise
 
 
+@app.get("/users/search")
+def search_users(q: str, user_id: int, db: Session = Depends(get_db)):
+    """Литеральный путь должен быть объявлен раньше /users/{user_id} —
+    иначе FastAPI пытается распарсить "search" как user_id и падает в 422."""
+    query = q.strip()
+    if len(query) < 2:
+        return []
+
+    matches = (
+        db.query(models.User)
+        .filter(models.User.username.ilike(f"%{query}%"), models.User.id != user_id)
+        .limit(20)
+        .all()
+    )
+    following_ids = {
+        row.followee_id for row in db.query(models.Follow).filter(models.Follow.follower_id == user_id).all()
+    }
+    return [
+        {"id": u.id, "username": u.username, "avatar": u.avatar, "is_following": u.id in following_ids}
+        for u in matches
+    ]
+
+
 @app.get("/users/{user_id}", response_model=schemas.UserOut)
 def get_user(user_id: int, db: Session = Depends(get_db)):
     user = db.query(models.User).filter(models.User.id == user_id).first()
@@ -415,6 +438,7 @@ def submit_answer(exercise_id: int, submission: schemas.AnswerSubmit, db: Sessio
             user.last_activity_date = today
 
     db.commit()
+    _record_achievement_unlocks(db, user)
 
     # ответ уже дан, поэтому правильный вариант можно показать
     correct_answer = exercise.correct_answer
@@ -477,6 +501,7 @@ def award_xp(user_id: int, payload: schemas.LessonComplete, db: Session = Depend
         raise HTTPException(status_code=404, detail="User not found")
     user.xp += payload.correct_count * XP_PER_CORRECT
     db.commit()
+    _record_achievement_unlocks(db, user)
     return {"xp": user.xp}
 
 @app.get("/sections/{section_id}/lessons-progress")
@@ -605,6 +630,9 @@ def complete_lesson(lesson_id: int, user_id: int, db: Session = Depends(get_db))
     mastery.completions = min(mastery.completions + 1, MAX_MASTERY)
     new_level = mastery.completions
     db.commit()
+
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    _record_achievement_unlocks(db, user)
 
     return {
         "status": "ok",
@@ -917,6 +945,34 @@ def _collect_stats(user: models.User, db: Session) -> dict:
     }
 
 
+def _record_achievement_unlocks(db: Session, user: models.User) -> None:
+    """Достижения считаются на лету, но для ленты активности нужен сам факт
+    разблокировки — записываем событие один раз, при первом пересечении порога."""
+    stats = _collect_stats(user, db)
+    enough_answers = stats["total_answers"] >= MIN_ANSWERS_FOR_ACCURACY
+    values = {
+        "streak": user.streak,
+        "xp": user.xp,
+        "lessons": stats["lessons_completed"],
+        "accuracy": stats["accuracy"] or 0,
+    }
+    already = {
+        row.code
+        for row in db.query(models.AchievementUnlock).filter(models.AchievementUnlock.user_id == user.id).all()
+    }
+    for achievement in ACHIEVEMENTS:
+        code = achievement["code"]
+        if code in already:
+            continue
+        metric = achievement["metric"]
+        unlocked = values[metric] >= achievement["target"]
+        if metric == "accuracy" and not enough_answers:
+            unlocked = False
+        if unlocked:
+            db.add(models.AchievementUnlock(user_id=user.id, code=code))
+    db.commit()
+
+
 @app.get("/users/{user_id}/stats")
 def get_user_stats(user_id: int, db: Session = Depends(get_db)):
     user = db.query(models.User).filter(models.User.id == user_id).first()
@@ -1032,3 +1088,174 @@ def get_user_achievements(user_id: int, db: Session = Depends(get_db)):
         "total": len(items),
         "items": items,
     }
+
+
+LEADERBOARD_SIZE = 20
+
+
+@app.get("/leaderboard")
+def get_leaderboard(user_id: int, db: Session = Depends(get_db)):
+    """Топ по XP за последние 7 дней — та же агрегация, что в /activity,
+    но сгруппированная по всем пользователям, а не по одному."""
+    start = date.today() - timedelta(days=6)
+    rows = (
+        db.query(models.Answer.user_id, func.count(models.Answer.id).label("correct"))
+        .filter(models.Answer.is_correct.is_(True), func.date(models.Answer.created_at) >= start)
+        .group_by(models.Answer.user_id)
+        .all()
+    )
+    xp_by_user = {row.user_id: row.correct * XP_PER_CORRECT for row in rows}
+
+    user_ids = set(xp_by_user.keys()) | {user_id}
+    users = db.query(models.User).filter(models.User.id.in_(user_ids)).all()
+
+    entries = [
+        {
+            "user_id": u.id,
+            "username": u.username or "Игрок",
+            "avatar": u.avatar,
+            "xp_7d": xp_by_user.get(u.id, 0),
+            "streak": u.streak,
+        }
+        for u in users
+    ]
+    entries.sort(key=lambda e: e["xp_7d"], reverse=True)
+    for i, entry in enumerate(entries):
+        entry["rank"] = i + 1
+
+    top = entries[:LEADERBOARD_SIZE]
+    me = next((e for e in entries if e["user_id"] == user_id), None)
+    if me is not None and me not in top:
+        top.append(me)
+
+    return {"entries": top, "me": me}
+
+
+@app.post("/users/{user_id}/follow/{target_id}")
+def follow_user(user_id: int, target_id: int, db: Session = Depends(get_db)):
+    if user_id == target_id:
+        raise HTTPException(status_code=400, detail="Cannot follow yourself")
+    target = db.query(models.User).filter(models.User.id == target_id).first()
+    if target is None:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    existing = (
+        db.query(models.Follow)
+        .filter(models.Follow.follower_id == user_id, models.Follow.followee_id == target_id)
+        .first()
+    )
+    if existing is None:
+        db.add(models.Follow(follower_id=user_id, followee_id=target_id))
+        db.commit()
+    return {"status": "ok"}
+
+
+@app.delete("/users/{user_id}/follow/{target_id}")
+def unfollow_user(user_id: int, target_id: int, db: Session = Depends(get_db)):
+    db.query(models.Follow).filter(
+        models.Follow.follower_id == user_id, models.Follow.followee_id == target_id
+    ).delete()
+    db.commit()
+    return {"status": "ok"}
+
+
+@app.get("/users/{user_id}/following")
+def get_following(user_id: int, db: Session = Depends(get_db)):
+    following_ids = {
+        row.followee_id for row in db.query(models.Follow).filter(models.Follow.follower_id == user_id).all()
+    }
+    if not following_ids:
+        return []
+
+    friend_ids = {
+        row.follower_id
+        for row in db.query(models.Follow)
+        .filter(models.Follow.followee_id == user_id, models.Follow.follower_id.in_(following_ids))
+        .all()
+    }
+
+    users = db.query(models.User).filter(models.User.id.in_(following_ids)).all()
+    return [
+        {"id": u.id, "username": u.username, "avatar": u.avatar, "is_friend": u.id in friend_ids}
+        for u in users
+    ]
+
+
+@app.post("/users/{user_id}/posts")
+def create_post(user_id: int, payload: schemas.PostCreate, db: Session = Depends(get_db)):
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    text = payload.text.strip()
+    if not text:
+        raise HTTPException(status_code=400, detail="Post text is empty")
+
+    db.add(models.Post(user_id=user_id, text=text[:500]))
+    db.commit()
+    return {"status": "ok"}
+
+
+ACHIEVEMENTS_BY_CODE = {a["code"]: a for a in ACHIEVEMENTS}
+
+FEED_PAGE_SIZE = 50
+
+
+@app.get("/users/{user_id}/feed")
+def get_feed(user_id: int, db: Session = Depends(get_db)):
+    """Лента активности: посты и разблокировки достижений от тех, на кого
+    подписан пользователь, плюс его собственные — подписка односторонняя,
+    видимость взаимности не требует."""
+    following_ids = {
+        row.followee_id for row in db.query(models.Follow).filter(models.Follow.follower_id == user_id).all()
+    }
+    scope_ids = following_ids | {user_id}
+
+    users_by_id = {u.id: u for u in db.query(models.User).filter(models.User.id.in_(scope_ids)).all()}
+
+    events = []
+
+    posts = (
+        db.query(models.Post)
+        .filter(models.Post.user_id.in_(scope_ids))
+        .order_by(models.Post.created_at.desc())
+        .limit(FEED_PAGE_SIZE)
+        .all()
+    )
+    for post in posts:
+        author = users_by_id.get(post.user_id)
+        if author is None:
+            continue
+        events.append({
+            "type": "post",
+            "user": {"id": author.id, "username": author.username, "avatar": author.avatar},
+            "text": post.text,
+            "created_at": post.created_at,
+        })
+
+    unlocks = (
+        db.query(models.AchievementUnlock)
+        .filter(models.AchievementUnlock.user_id.in_(scope_ids))
+        .order_by(models.AchievementUnlock.unlocked_at.desc())
+        .limit(FEED_PAGE_SIZE)
+        .all()
+    )
+    for unlock in unlocks:
+        author = users_by_id.get(unlock.user_id)
+        achievement = ACHIEVEMENTS_BY_CODE.get(unlock.code)
+        if author is None or achievement is None:
+            continue
+        events.append({
+            "type": "achievement",
+            "user": {"id": author.id, "username": author.username, "avatar": author.avatar},
+            "achievement": {
+                "code": achievement["code"],
+                "title": achievement["title"],
+                "icon": achievement["icon"],
+                "style": achievement["style"],
+            },
+            "created_at": unlock.unlocked_at,
+        })
+
+    events.sort(key=lambda e: e["created_at"], reverse=True)
+    return events[:FEED_PAGE_SIZE]

@@ -127,6 +127,10 @@ class LessonCompleteRequest(BaseModel):
     lesson_id: int
 
 
+class PostCreate(BaseModel):
+    text: str
+
+
 class ReviewExerciseOut(BaseModel):
     id: int
     type: str
