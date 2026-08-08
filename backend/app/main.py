@@ -9,6 +9,15 @@ from app import models, schemas
 from datetime import date, datetime, timedelta
 import random
 
+def _today() -> date:
+    """«Сегодня» строго в UTC — все timestamp-колонки (created_at,
+    completed_at) пишутся через datetime.utcnow(), а date.today() отдаёт
+    локальную дату сервера. На проде и локально это разные часовые пояса,
+    так что сравнение с date.today() иногда «теряло» только что пройденный
+    урок из дневной цели, пока не наступит локальная полночь по UTC."""
+    return datetime.utcnow().date()
+
+
 XP_PER_CORRECT = 10
 
 # Алгоритм Лейтнера: box → через сколько дней повторять. Правильный ответ по
@@ -429,7 +438,7 @@ def submit_answer(exercise_id: int, submission: schemas.AnswerSubmit, db: Sessio
 
     # день засчитывается в streak только за верный ответ
     if is_correct:
-        today = date.today()
+        today = _today()
         if user.last_activity_date != today:
             if user.last_activity_date == today - timedelta(days=1):
                 user.streak += 1
@@ -1020,7 +1029,7 @@ def get_daily_progress(user_id: int, db: Session = Depends(get_db)):
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
 
-    today = date.today()
+    today = _today()
     lessons_completed = (
         db.query(models.UserProgress)
         .filter(
@@ -1039,7 +1048,7 @@ def get_user_activity(user_id: int, db: Session = Depends(get_db)):
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
 
-    today = date.today()
+    today = _today()
     start = today - timedelta(days=6)
 
     rows = (
@@ -1115,7 +1124,7 @@ LEADERBOARD_SIZE = 20
 def get_leaderboard(user_id: int, db: Session = Depends(get_db)):
     """Топ по XP за последние 7 дней — та же агрегация, что в /activity,
     но сгруппированная по всем пользователям, а не по одному."""
-    start = date.today() - timedelta(days=6)
+    start = _today() - timedelta(days=6)
     rows = (
         db.query(models.Answer.user_id, func.count(models.Answer.id).label("correct"))
         .filter(models.Answer.is_correct.is_(True), func.date(models.Answer.created_at) >= start)
