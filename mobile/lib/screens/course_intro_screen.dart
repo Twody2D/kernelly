@@ -68,7 +68,7 @@ const _beats = [
     eyebrow: '\$ ./start.sh',
     title: 'Готов начать?',
     text: 'Первая миссия уже ждёт на сервере. Погнали.',
-    emotion: MascotEmotion.surprised,
+    emotion: MascotEmotion.excited,
     icon: Icons.rocket_launch_rounded,
     iconColor: Color(0xFFCC9327),
     iconBg: Color(0xFFFFF3D6),

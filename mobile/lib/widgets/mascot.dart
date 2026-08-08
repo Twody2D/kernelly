@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-enum MascotEmotion { happy, surprised, sleepy, angry }
+enum MascotEmotion { happy, surprised, sleepy, angry, confused, sad, excited }
 
 class Mascot extends StatelessWidget {
   final MascotEmotion emotion;
@@ -107,7 +107,44 @@ class _MascotPainter extends CustomPainter {
         canvas.drawCircle(p(89, 88), 5 * s, Paint()..color = darkColor);
         _drawMouth(canvas, p, s, 63, 104, 75, 98, 87, 104, facePaint);
         break;
+      case MascotEmotion.confused:
+        // один глаз прищурен, другой приподнят «бровью» — классический вид растерянности
+        _drawSmileEye(canvas, p, s, 52, 80, 68, facePaint, flat: true);
+        canvas.drawCircle(p(91, 80), 8 * s, Paint()..color = darkColor);
+        canvas.drawCircle(p(88.5, 76.5), 2 * s, Paint()..color = Colors.white);
+        canvas.drawLine(p(84, 66), p(99, 70), facePaint);
+        final confusedMouth = Path()
+          ..moveTo(p(62, 102).dx, p(62, 102).dy)
+          ..quadraticBezierTo(p(69, 97).dx, p(69, 97).dy, p(75, 102).dx, p(75, 102).dy)
+          ..quadraticBezierTo(p(81, 107).dx, p(81, 107).dy, p(88, 102).dx, p(88, 102).dy);
+        canvas.drawPath(confusedMouth, facePaint);
+        break;
+      case MascotEmotion.sad:
+        final droopEye = Path()..moveTo(p(46, 72).dx, p(46, 72).dy);
+        droopEye.quadraticBezierTo(p(59, 82).dx, p(59, 82).dy, p(72, 76).dx, p(72, 76).dy);
+        canvas.drawPath(droopEye, facePaint);
+        final droopEye2 = Path()..moveTo(p(78, 76).dx, p(78, 76).dy);
+        droopEye2.quadraticBezierTo(p(91, 82).dx, p(91, 82).dy, p(104, 72).dx, p(104, 72).dy);
+        canvas.drawPath(droopEye2, facePaint);
+        _drawMouth(canvas, p, s, 63, 100, 75, 93, 87, 100, facePaint);
+        break;
+      case MascotEmotion.excited:
+        _drawSmileEye(canvas, p, s, 50, 74, 68, facePaint);
+        _drawSmileEye(canvas, p, s, 82, 74, 100, facePaint);
+        _drawMouth(canvas, p, s, 60, 99, 75, 110, 90, 99, facePaint);
+        final sparklePaint = Paint()
+          ..color = const Color(0xFFFFD24C)
+          ..strokeWidth = 3 * s
+          ..strokeCap = StrokeCap.round;
+        _drawSparkle(canvas, p, s, 22, 55, sparklePaint);
+        _drawSparkle(canvas, p, s, 128, 55, sparklePaint);
+        break;
     }
+  }
+
+  void _drawSparkle(Canvas canvas, Offset Function(double, double) p, double s, double x, double y, Paint paint) {
+    canvas.drawLine(p(x, y - 6), p(x, y + 6), paint);
+    canvas.drawLine(p(x - 6, y), p(x + 6, y), paint);
   }
 
   void _drawSmileEye(
