@@ -168,6 +168,8 @@ class ProfileScreenState extends State<ProfileScreen> {
       ),
       actions: [
         IconButton(
+          padding: const EdgeInsets.only(left: 8, right: 20, top: 8, bottom: 8),
+          constraints: const BoxConstraints(),
           icon: const Icon(Icons.settings_outlined, color: Color(0xFF5C6B73)),
           onPressed: () => Navigator.push(
             context,

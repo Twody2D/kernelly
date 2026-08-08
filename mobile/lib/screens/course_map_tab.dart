@@ -111,7 +111,7 @@ class CourseMapTabState extends State<CourseMapTab> {
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 8, 12, 12),
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
