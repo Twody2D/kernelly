@@ -43,6 +43,9 @@ class Exercise(Base):
     lesson_id = Column(Integer, ForeignKey("lessons.id"), nullable=False)
     skill_tags = Column(JSON, nullable=True)
     hints = Column(JSON, nullable=True)
+    # уровень сложности прохождения урока (1 = обычное, 2/3 = усложнённые
+    # повторы для системы мастерства); NULL в БД читается как 1
+    difficulty = Column(Integer, nullable=False, default=1)
 
 
 class User(Base):
@@ -87,3 +90,14 @@ class SkillProgress(Base):
     skill_tag = Column(String, nullable=False)
     box = Column(Integer, nullable=False, default=1)
     next_review_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+
+class LessonMastery(Base):
+    """Сколько раз пользователь успешно прошёл урок — источник для уровней
+    мастерства (бронза/серебро/золото) и подбора сложности следующей попытки."""
+
+    __tablename__ = "lesson_mastery"
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    lesson_id = Column(Integer, ForeignKey("lessons.id"), nullable=False)
+    completions = Column(Integer, nullable=False, default=0)

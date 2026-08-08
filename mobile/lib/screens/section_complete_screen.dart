@@ -38,6 +38,12 @@ class SectionCompleteScreen extends StatelessWidget {
   Map<String, dynamic>? get _next =>
       completion['next'] == null ? null : Map<String, dynamic>.from(completion['next']);
 
+  Map<String, dynamic> get _mastery => Map<String, dynamic>.from(completion['mastery'] ?? {});
+
+  bool get _leveledUp => _mastery['leveled_up'] == true;
+
+  int get _masteryLevel => _mastery['level'] ?? 0;
+
   bool get _isSectionComplete => _section['is_complete'] == true;
 
   String get _eyebrow => _isSectionComplete
@@ -217,6 +223,10 @@ class SectionCompleteScreen extends StatelessWidget {
                                   color: Color(0xFF5C6B73),
                                 ),
                               ),
+                              if (_leveledUp) ...[
+                                const SizedBox(height: 12),
+                                _MasteryLevelUpBadge(level: _masteryLevel),
+                              ],
                               const SizedBox(height: 14),
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
@@ -492,6 +502,68 @@ class _DashedOvalPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _DashedOvalPainter oldDelegate) => false;
+}
+
+/// Празднование повышения уровня мастерства урока — бронза/серебро/золото
+/// за 1/2/3 успешных прохождения. Появляется с лёгким "поп"-эффектом.
+class _MasteryLevelUpBadge extends StatefulWidget {
+  final int level;
+  const _MasteryLevelUpBadge({required this.level});
+
+  @override
+  State<_MasteryLevelUpBadge> createState() => _MasteryLevelUpBadgeState();
+}
+
+class _MasteryLevelUpBadgeState extends State<_MasteryLevelUpBadge> with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _scale;
+
+  static const _levels = {
+    1: (label: 'Бронзовый уровень!', color: Color(0xFFCD7F32), bg: Color(0xFFF7E9DD)),
+    2: (label: 'Серебряный уровень!', color: Color(0xFF8FA0AB), bg: Color(0xFFEDF1F3)),
+    3: (label: 'Золотой уровень!', color: Color(0xFFE0A82E), bg: Color(0xFFFFF3D6)),
+  };
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 550));
+    _scale = CurvedAnimation(parent: _controller, curve: Curves.elasticOut);
+    _controller.forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final style = _levels[widget.level] ?? _levels[1]!;
+    return ScaleTransition(
+      scale: _scale,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: style.bg,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: style.color, width: 1.5),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.workspace_premium_rounded, color: style.color, size: 20),
+            const SizedBox(width: 8),
+            Text(
+              style.label,
+              style: TextStyle(fontFamily: 'Fredoka', fontWeight: FontWeight.w600, fontSize: 14, color: style.color),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _FloatingMascot extends StatefulWidget {

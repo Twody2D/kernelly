@@ -7,7 +7,16 @@ class LessonNode extends StatelessWidget {
   final LessonNodeStatus status;
   final VoidCallback? onTap;
 
-  const LessonNode({super.key, required this.label, required this.status, this.onTap});
+  /// 0 = нет мастерства, 1/2/3 = бронза/серебро/золото за число прохождений
+  final int mastery;
+
+  const LessonNode({super.key, required this.label, required this.status, this.onTap, this.mastery = 0});
+
+  static const _masteryColors = {
+    1: Color(0xFFCD7F32),
+    2: Color(0xFF8FA0AB),
+    3: Color(0xFFE0A82E),
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -66,6 +75,22 @@ class LessonNode extends StatelessWidget {
                 Positioned(bottom: -10, left: 16, child: _pin(pinColor)),
                 Positioned(bottom: -10, right: 16, child: _pin(pinColor)),
                 if (isCurrent) Positioned(top: -7, left: -7, right: -7, bottom: -7, child: _PulsingRing()),
+                if (isDone && mastery > 0)
+                  Positioned(
+                    top: -6,
+                    right: -6,
+                    child: Container(
+                      width: 24,
+                      height: 24,
+                      decoration: BoxDecoration(
+                        color: _masteryColors[mastery],
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 2),
+                      ),
+                      alignment: Alignment.center,
+                      child: const Icon(Icons.workspace_premium_rounded, size: 13, color: Colors.white),
+                    ),
+                  ),
               ],
             ),
           ),

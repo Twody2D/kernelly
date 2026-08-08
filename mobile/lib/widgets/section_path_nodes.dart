@@ -50,6 +50,7 @@ class SectionPathNodes extends StatelessWidget {
                   child: LessonNode(
                     label: lessons[i]['title'],
                     status: _statusFor(lessons[i]['status']),
+                    mastery: lessons[i]['mastery'] ?? 0,
                     onTap: lessons[i]['status'] == 'locked' ? null : () => onTapLesson(lessons[i]),
                   ),
                 ),

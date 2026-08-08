@@ -12,7 +12,7 @@ from app.database import SessionLocal
 from app import models
 
 
-def mc(question, options, answer, skill_tags=None, hints=None):
+def mc(question, options, answer, skill_tags=None, hints=None, difficulty=1):
     return {
         "type": "multiple_choice",
         "question": question,
@@ -20,10 +20,11 @@ def mc(question, options, answer, skill_tags=None, hints=None):
         "correct_answer": {"answer": answer},
         "skill_tags": skill_tags,
         "hints": hints,
+        "difficulty": difficulty,
     }
 
 
-def terminal(question, answer, skill_tags=None, hints=None):
+def terminal(question, answer, skill_tags=None, hints=None, difficulty=1):
     return {
         "type": "terminal",
         "question": question,
@@ -31,6 +32,7 @@ def terminal(question, answer, skill_tags=None, hints=None):
         "correct_answer": {"answer": answer},
         "skill_tags": skill_tags,
         "hints": hints,
+        "difficulty": difficulty,
     }
 
 
@@ -43,6 +45,7 @@ def theory(explanation, example=None, skill_tags=None):
         "correct_answer": {},
         "skill_tags": skill_tags,
         "hints": None,
+        "difficulty": 1,
     }
 
 
@@ -123,6 +126,74 @@ COURSE = {
                             ],
                         ),
                     ],
+                    "exercises_2": [
+                        mc(
+                            "Зачем нужен SSH?",
+                            [
+                                "Чтобы удалённо подключиться к серверу через терминал",
+                                "Чтобы посмотреть файлы в браузере",
+                                "Чтобы ускорить интернет",
+                                "Это графический интерфейс для серверов",
+                            ],
+                            "Чтобы удалённо подключиться к серверу через терминал",
+                            difficulty=2,
+                        ),
+                        terminal(
+                            "Серебряный уровень: без подсказок. Покажи, под каким пользователем ты работаешь.",
+                            "whoami",
+                            skill_tags=["linux.whoami"],
+                            difficulty=2,
+                        ),
+                        mc(
+                            "DevOps-инженер настраивает автоматическую сборку и доставку кода. Как называется эта практика?",
+                            ["CI/CD", "UI/UX", "QA/AB", "B2B"],
+                            "CI/CD",
+                            difficulty=2,
+                        ),
+                        mc(
+                            "Ты подключился как пользователь engineer и набрал `whoami`. Что покажет терминал?",
+                            ["engineer", "root", "admin", "guest"],
+                            "engineer",
+                            difficulty=2,
+                        ),
+                        terminal(
+                            "Ещё раз, для закрепления.",
+                            "whoami",
+                            skill_tags=["linux.whoami"],
+                            difficulty=2,
+                        ),
+                    ],
+                    "exercises_3": [
+                        terminal(
+                            "Золотой уровень. Без подсказок, без права на ошибку.",
+                            "whoami",
+                            skill_tags=["linux.whoami"],
+                            difficulty=3,
+                        ),
+                        mc(
+                            "Ты подключился к серверу Acme по SSH и ввёл `whoami`. Терминал показал `engineer`. Что это значит?",
+                            [
+                                "Ты работаешь под пользователем engineer",
+                                "Сервер называется engineer",
+                                "Пароль — engineer",
+                                "Команда выполнилась с ошибкой",
+                            ],
+                            "Ты работаешь под пользователем engineer",
+                            difficulty=3,
+                        ),
+                        mc(
+                            "Что из перечисленного НЕ является задачей DevOps-инженера?",
+                            ["Ручное тестирование дизайна кнопок", "CI/CD", "Мониторинг серверов", "Разбор инцидентов"],
+                            "Ручное тестирование дизайна кнопок",
+                            difficulty=3,
+                        ),
+                        terminal(
+                            "Финальная проверка.",
+                            "whoami",
+                            skill_tags=["linux.whoami"],
+                            difficulty=3,
+                        ),
+                    ],
                 },
                 {
                     "title": "Твой первый сервер",
@@ -197,6 +268,45 @@ COURSE = {
                             "Переходит в родительскую (вышестоящую) папку",
                         ),
                     ],
+                    "exercises_2": [
+                        terminal("Серебряный уровень: без подсказок. Покажи путь к текущей директории.", "pwd", skill_tags=["linux.pwd"], difficulty=2),
+                        terminal("Покажи, что лежит в текущей папке.", "ls", skill_tags=["linux.ls"], difficulty=2),
+                        mc(
+                            "Ты в папке /home/engineer и набираешь `cd ..`. Где окажешься?",
+                            ["/home", "/home/engineer", "/", "Будет ошибка"],
+                            "/home",
+                            difficulty=2,
+                        ),
+                        terminal("Поднимись на уровень выше.", "cd ..", skill_tags=["linux.cd"], difficulty=2),
+                        mc(
+                            "Чем `pwd` отличается от `ls`?",
+                            [
+                                "pwd показывает путь, ls — содержимое папки",
+                                "Это одна и та же команда",
+                                "pwd показывает содержимое, ls — путь",
+                                "ls работает только в /home",
+                            ],
+                            "pwd показывает путь, ls — содержимое папки",
+                            difficulty=2,
+                        ),
+                    ],
+                    "exercises_3": [
+                        terminal("Золотой уровень. Покажи текущую директорию.", "pwd", skill_tags=["linux.pwd"], difficulty=3),
+                        terminal("Покажи содержимое папки.", "ls", skill_tags=["linux.ls"], difficulty=3),
+                        terminal("Поднимись на уровень выше.", "cd ..", skill_tags=["linux.cd"], difficulty=3),
+                        mc(
+                            "Ты выполнил `cd ..` три раза подряд из /home/engineer/app/config. Где окажешься?",
+                            ["/home", "/", "/home/engineer", "/home/engineer/app"],
+                            "/home",
+                            difficulty=3,
+                        ),
+                        mc(
+                            "Какая команда покажет твоё текущее расположение в файловой системе?",
+                            ["pwd", "ls", "cd", "whoami"],
+                            "pwd",
+                            difficulty=3,
+                        ),
+                    ],
                 },
                 {
                     "title": "Первый деплой и его провал",
@@ -248,6 +358,49 @@ COURSE = {
                             skill_tags=["linux.pwd"],
                             hints=["Та самая команда с первого сервера", "Три буквы", "pwd"],
                         ),
+                    ],
+                    "exercises_2": [
+                        mc(
+                            "Что делает деплой?",
+                            [
+                                "Выкладывает новую версию приложения на сервер",
+                                "Создаёт резервную копию БД",
+                                "Компилирует дизайн-макет",
+                                "Меняет права доступа к файлам",
+                            ],
+                            "Выкладывает новую версию приложения на сервер",
+                            difficulty=2,
+                        ),
+                        terminal("Серебряный уровень: без подсказок. Покажи последние строки лог-файла.", "tail", skill_tags=["linux.tail"], difficulty=2),
+                        mc(
+                            "После деплоя логи показывают `[ERROR] Connection refused`. Это значит…",
+                            [
+                                "Приложение не может к чему-то подключиться (например, к базе данных)",
+                                "Деплой прошёл успешно",
+                                "Файл лога повреждён",
+                                "Сервер выключен",
+                            ],
+                            "Приложение не может к чему-то подключиться (например, к базе данных)",
+                            difficulty=2,
+                        ),
+                        terminal("Ещё раз, для закрепления.", "tail", skill_tags=["linux.tail"], difficulty=2),
+                    ],
+                    "exercises_3": [
+                        terminal("Золотой уровень. Покажи последние строки лог-файла.", "tail", skill_tags=["linux.tail"], difficulty=3),
+                        mc(
+                            "Сайт лёг сразу после деплоя. Каков правильный порядок действий?",
+                            [
+                                "Проверить логи → найти ошибку → исправить",
+                                "Перезагрузить свой ноутбук",
+                                "Сразу писать в поддержку хостинга",
+                                "Ничего не делать, само пройдёт",
+                            ],
+                            "Проверить логи → найти ошибку → исправить",
+                            difficulty=3,
+                        ),
+                        terminal("Смешанное повторение: покажи, под каким пользователем ты работаешь.", "whoami", skill_tags=["linux.whoami"], difficulty=3),
+                        terminal("И покажи текущую директорию.", "pwd", skill_tags=["linux.pwd"], difficulty=3),
+                        terminal("Финальная проверка: снова последние строки лога.", "tail", skill_tags=["linux.tail"], difficulty=3),
                     ],
                 },
             ],
@@ -750,8 +903,16 @@ def seed():
                 db.add(lesson)
                 db.flush()
 
-                for ex_order, exercise in enumerate(lesson_data["exercises"], start=1):
-                    db.add(models.Exercise(lesson_id=lesson.id, order=ex_order, **exercise))
+                all_exercises = (
+                    lesson_data.get("exercises", [])
+                    + lesson_data.get("exercises_2", [])
+                    + lesson_data.get("exercises_3", [])
+                )
+                order_by_difficulty = {1: 0, 2: 0, 3: 0}
+                for exercise in all_exercises:
+                    difficulty = exercise.get("difficulty", 1)
+                    order_by_difficulty[difficulty] += 1
+                    db.add(models.Exercise(lesson_id=lesson.id, order=order_by_difficulty[difficulty], **exercise))
 
         db.commit()
         print(f"создан курс: {COURSE['title']} (id={course.id})")

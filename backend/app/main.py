@@ -18,6 +18,20 @@ REVIEW_INTERVALS_DAYS = {1: 1, 2: 3, 3: 7, 4: 16, 5: 35}
 MAX_BOX = max(REVIEW_INTERVALS_DAYS)
 REVIEW_SESSION_SIZE = 12
 
+# Мастерство урока: каждое успешное прохождение поднимает уровень (1=бронза,
+# 2=серебро, 3=золото), а следующая попытка подтягивает контент на уровень
+# сложнее — MAX_MASTERY ограничивает и уровень, и сложность контента сверху.
+MAX_MASTERY = 3
+
+
+def _lesson_mastery(db: Session, user_id: int, lesson_id: int) -> int:
+    row = (
+        db.query(models.LessonMastery)
+        .filter(models.LessonMastery.user_id == user_id, models.LessonMastery.lesson_id == lesson_id)
+        .first()
+    )
+    return min(row.completions, MAX_MASTERY) if row else 0
+
 
 def _update_skill_progress(db: Session, user_id: int, skill_tags: list[str] | None, is_correct: bool) -> None:
     if not skill_tags:
@@ -315,18 +329,39 @@ def get_lesson(lesson_id: int, user_id: int, db: Session = Depends(get_db)):
     lesson = db.query(models.Lesson).filter(models.Lesson.id == lesson_id).first()
     if lesson is None:
         raise HTTPException(status_code=404, detail="Lesson not found")
-    return lesson
+    return schemas.LessonOut(
+        id=lesson.id,
+        title=lesson.title,
+        order=lesson.order,
+        section_id=lesson.section_id,
+        story=lesson.story,
+        mastery=_lesson_mastery(db, user_id, lesson_id),
+    )
 
 
 @app.get("/lessons/{lesson_id}/exercises", response_model=list[schemas.ExerciseOut])
 def get_lesson_exercises(lesson_id: int, user_id: int, db: Session = Depends(get_db)):
     _assert_course_unlocked(db, _course_id_for_lesson(db, lesson_id), user_id)
-    return (
+
+    # следующая попытка сложнее предыдущей: 0 успешных прохождений → сложность
+    # 1, 1 прохождение → 2, 2+ → 3 (и дальше держится на золоте)
+    target_difficulty = min(_lesson_mastery(db, user_id, lesson_id) + 1, MAX_MASTERY)
+
+    exercises = (
         db.query(models.Exercise)
-        .filter(models.Exercise.lesson_id == lesson_id)
+        .filter(models.Exercise.lesson_id == lesson_id, models.Exercise.difficulty == target_difficulty)
         .order_by(models.Exercise.order)
         .all()
     )
+    # для уроков без версии этой сложности (ещё не написана) — сложность 1 как основа
+    if not exercises and target_difficulty != 1:
+        exercises = (
+            db.query(models.Exercise)
+            .filter(models.Exercise.lesson_id == lesson_id, models.Exercise.difficulty == 1)
+            .order_by(models.Exercise.order)
+            .all()
+        )
+    return exercises
 
 
 @app.post("/exercises/{exercise_id}/submit")
@@ -439,6 +474,14 @@ def get_lessons_progress(section_id: int, user_id: int, db: Session = Depends(ge
         .all()
     }
 
+    lesson_ids = [lesson.id for lesson in lessons]
+    mastery_by_lesson = {
+        row.lesson_id: min(row.completions, MAX_MASTERY)
+        for row in db.query(models.LessonMastery)
+        .filter(models.LessonMastery.user_id == user_id, models.LessonMastery.lesson_id.in_(lesson_ids))
+        .all()
+    }
+
     result = []
     unlocked_found = False
     for lesson in lessons:
@@ -454,6 +497,7 @@ def get_lessons_progress(section_id: int, user_id: int, db: Session = Depends(ge
             "title": lesson.title,
             "order": lesson.order,
             "status": status,
+            "mastery": mastery_by_lesson.get(lesson.id, 0),
         })
 
     return result
@@ -526,9 +570,23 @@ def complete_lesson(lesson_id: int, user_id: int, db: Session = Depends(get_db))
         if candidate_lessons and all(l.id in completed_lesson_ids for l in candidate_lessons):
             sections_done += 1
 
+    mastery = (
+        db.query(models.LessonMastery)
+        .filter(models.LessonMastery.user_id == user_id, models.LessonMastery.lesson_id == lesson_id)
+        .first()
+    )
+    if mastery is None:
+        mastery = models.LessonMastery(user_id=user_id, lesson_id=lesson_id, completions=0)
+        db.add(mastery)
+    previous_level = min(mastery.completions, MAX_MASTERY)
+    mastery.completions = min(mastery.completions + 1, MAX_MASTERY)
+    new_level = mastery.completions
+    db.commit()
+
     return {
         "status": "ok",
         "lesson_title": lesson.title,
+        "mastery": {"level": new_level, "leveled_up": new_level > previous_level},
         "section": {
             "id": section.id,
             "title": section.title,

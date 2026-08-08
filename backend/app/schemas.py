@@ -37,6 +37,7 @@ class LessonOut(BaseModel):
     order: int
     section_id: int
     story: str | None = None
+    mastery: int = 0
 
     class Config:
         from_attributes = True

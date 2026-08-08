@@ -126,7 +126,10 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
     _nextExercise();
   }
 
-  void _repeatLesson() {
+  /// Прошлое прохождение подняло мастерство урока — сложность следующего
+  /// подбирается сервером заново, поэтому упражнения нужно перезапросить,
+  /// а не просто перемотать локальный список на начало.
+  Future<void> _repeatLesson() async {
     _terminalController.clear();
     setState(() {
       currentIndex = 0;
@@ -136,8 +139,9 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
       correctCount = 0;
       completion = null;
       isRepeat = true;
-      startTime = DateTime.now();
+      exercises = [];
     });
+    await loadLesson();
   }
 
   Future<void> _finishLesson() async {
