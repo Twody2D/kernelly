@@ -3,6 +3,7 @@ import 'package:lottie/lottie.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mobile/services/api_service.dart';
 import 'package:mobile/services/user_prefs.dart';
+import 'package:mobile/widgets/animated_mascot.dart';
 import 'package:mobile/widgets/option_card.dart';
 import 'package:mobile/widgets/primary_button.dart';
 import 'package:mobile/screens/section_complete_screen.dart';
@@ -19,6 +20,8 @@ class LessonScreen extends StatefulWidget {
 
 class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderStateMixin {
   List<Map<String, dynamic>> exercises = [];
+  Map<String, dynamic>? lesson;
+  bool showingStory = false;
   int currentIndex = 0;
   String? selectedAnswer;
   bool? isCorrect;
@@ -59,9 +62,12 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
   }
 
   Future<void> loadLesson() async {
+    final lessonData = await fetchLesson(widget.lessonId, currentUserId);
     final data = await fetchLessonExercises(widget.lessonId, currentUserId);
     final userData = await fetchUser(currentUserId);
     setState(() {
+      lesson = lessonData;
+      showingStory = (lessonData['story'] as String?)?.isNotEmpty == true;
       exercises = data;
       user = userData;
       startTime = DateTime.now();
@@ -187,6 +193,15 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
   Widget build(BuildContext context) {
     if (exercises.isEmpty) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    if (showingStory) {
+      return _StoryIntro(
+        sectionTitle: widget.sectionTitle,
+        lessonTitle: lesson?['title'] as String? ?? '',
+        story: lesson?['story'] as String? ?? '',
+        onContinue: () => setState(() => showingStory = false),
+      );
     }
 
     if (completion != null) {
@@ -382,6 +397,126 @@ class _TerminalInput extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Короткий брифинг перед миссией — контекст, зачем вообще нужен этот урок,
+/// в духе "STORY"-шага из структуры миссии. Показывается каждый раз при
+/// открытии урока, включая повтор — это брифинг, а не одноразовое интро.
+class _StoryIntro extends StatefulWidget {
+  final String sectionTitle;
+  final String lessonTitle;
+  final String story;
+  final VoidCallback onContinue;
+
+  const _StoryIntro({
+    required this.sectionTitle,
+    required this.lessonTitle,
+    required this.story,
+    required this.onContinue,
+  });
+
+  @override
+  State<_StoryIntro> createState() => _StoryIntroState();
+}
+
+class _StoryIntroState extends State<_StoryIntro> with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _mascotScale;
+  late final Animation<double> _fade;
+  late final Animation<Offset> _slide;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
+    _mascotScale = CurvedAnimation(parent: _controller, curve: const Interval(0.0, 0.55, curve: Curves.easeOutBack));
+    const textInterval = Interval(0.3, 0.8, curve: Curves.easeOut);
+    _fade = CurvedAnimation(parent: _controller, curve: textInterval);
+    _slide = Tween(begin: const Offset(0, 0.25), end: Offset.zero)
+        .animate(CurvedAnimation(parent: _controller, curve: textInterval));
+    _controller.forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF6F9F9),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFFF6F9F9),
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.close, color: Color(0xFF5C6B73)),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(28, 0, 28, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ScaleTransition(scale: _mascotScale, child: const AnimatedMascot(size: 140)),
+                const SizedBox(height: 16),
+                FadeTransition(
+                  opacity: _fade,
+                  child: SlideTransition(
+                    position: _slide,
+                    child: Column(
+                      children: [
+                        Text(
+                          '\$ ${widget.sectionTitle}',
+                          style: TextStyle(
+                            fontFamily: 'JetBrains Mono',
+                            fontWeight: FontWeight.w600,
+                            fontSize: 12,
+                            color: const Color(0xFF00A896),
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          widget.lessonTitle,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontFamily: 'Fredoka',
+                            fontWeight: FontWeight.w600,
+                            fontSize: 24,
+                            height: 1.2,
+                            color: const Color(0xFF1B2430),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          widget.story,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontFamily: 'Inter', fontSize: 15, height: 1.5, color: const Color(0xFF5C6B73)),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 28),
+                FadeTransition(
+                  opacity: _fade,
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: PrimaryButton(text: 'Начать миссию', onPressed: widget.onContinue),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

@@ -36,6 +36,7 @@ class LessonOut(BaseModel):
     title: str
     order: int
     section_id: int
+    story: str | None = None
 
     class Config:
         from_attributes = True

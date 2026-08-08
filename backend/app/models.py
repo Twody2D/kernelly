@@ -29,6 +29,7 @@ class Lesson(Base):
     title = Column(String, nullable=False)
     order = Column(Integer, nullable=False)
     section_id = Column(Integer, ForeignKey("sections.id"), nullable=False)
+    story = Column(String, nullable=True)
 
 
 class Exercise(Base):

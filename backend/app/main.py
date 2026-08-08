@@ -283,6 +283,15 @@ def _assert_course_unlocked(db: Session, course_id: int | None, user_id: int) ->
         raise HTTPException(status_code=403, detail="Курс требует регистрации")
 
 
+@app.get("/lessons/{lesson_id}", response_model=schemas.LessonOut)
+def get_lesson(lesson_id: int, user_id: int, db: Session = Depends(get_db)):
+    _assert_course_unlocked(db, _course_id_for_lesson(db, lesson_id), user_id)
+    lesson = db.query(models.Lesson).filter(models.Lesson.id == lesson_id).first()
+    if lesson is None:
+        raise HTTPException(status_code=404, detail="Lesson not found")
+    return lesson
+
+
 @app.get("/lessons/{lesson_id}/exercises", response_model=list[schemas.ExerciseOut])
 def get_lesson_exercises(lesson_id: int, user_id: int, db: Session = Depends(get_db)):
     _assert_course_unlocked(db, _course_id_for_lesson(db, lesson_id), user_id)

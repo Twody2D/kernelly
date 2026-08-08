@@ -2,6 +2,16 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:mobile/services/api_config.dart';
 
+Future<Map<String, dynamic>> fetchLesson(int lessonId, int userId) async {
+  final response = await http.get(Uri.parse('$apiBaseUrl/lessons/$lessonId?user_id=$userId'));
+
+  if (response.statusCode == 200) {
+    return jsonDecode(utf8.decode(response.bodyBytes));
+  } else {
+    throw Exception('Failed to load lesson');
+  }
+}
+
 Future<List<Map<String, dynamic>>> fetchLessonExercises(int lessonId, int userId) async {
   final response = await http.get(Uri.parse('$apiBaseUrl/lessons/$lessonId/exercises?user_id=$userId'));
 
