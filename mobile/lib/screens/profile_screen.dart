@@ -4,6 +4,7 @@ import 'package:mobile/services/user_prefs.dart';
 import 'package:mobile/screens/settings_screen.dart';
 import 'package:mobile/screens/register_prompt_screen.dart';
 import 'package:mobile/widgets/mascot.dart';
+import 'package:mobile/widgets/achievement_badge.dart';
 
 const _months = [
   'января',
@@ -93,7 +94,12 @@ class ProfileScreenState extends State<ProfileScreen> {
         body: Center(
           child: Text(
             'Не удалось загрузить профиль',
-            style: const TextStyle(fontFamily: 'Fredoka', fontWeight: FontWeight.w500, fontSize: 15, color: Color(0xFF5C6B73)),
+            style: const TextStyle(
+              fontFamily: 'Fredoka',
+              fontWeight: FontWeight.w500,
+              fontSize: 15,
+              color: Color(0xFF5C6B73),
+            ),
           ),
         ),
       );
@@ -106,7 +112,8 @@ class ProfileScreenState extends State<ProfileScreen> {
         body: Center(
           child: RegisterPromptContent(
             title: 'Сохрани свой прогресс',
-            subtitle: 'Сейчас прогресс привязан только к этому устройству. Зарегистрируйся, чтобы не потерять его.',
+            subtitle:
+                'Сейчас прогресс привязан только к этому устройству. Зарегистрируйся, чтобы не потерять его.',
             onSignedIn: load,
           ),
         ),
@@ -125,21 +132,33 @@ class ProfileScreenState extends State<ProfileScreen> {
           const SizedBox(height: 18),
           Row(
             children: [
-              Expanded(child: _statCard('ВСЕГО XP', _formatNumber(stats!['xp']))),
+              Expanded(
+                child: _statCard('ВСЕГО XP', _formatNumber(stats!['xp'])),
+              ),
               const SizedBox(width: 10),
-              Expanded(child: _statCard('STREAK', '🔥 ${stats!['streak']}', valueColor: const Color(0xFFFF9500))),
+              Expanded(
+                child: _statCard(
+                  'STREAK',
+                  '🔥 ${stats!['streak']}',
+                  valueColor: const Color(0xFFFF9500),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 10),
           Row(
             children: [
-              Expanded(child: _statCard('УРОКОВ', '${stats!['lessons_completed']}')),
+              Expanded(
+                child: _statCard('УРОКОВ', '${stats!['lessons_completed']}'),
+              ),
               const SizedBox(width: 10),
               Expanded(
                 child: _statCard(
                   'ТОЧНОСТЬ',
                   accuracy == null ? '—' : '$accuracy%',
-                  valueColor: accuracy == null ? const Color(0xFFC2CDCD) : const Color(0xFF58CC02),
+                  valueColor: accuracy == null
+                      ? const Color(0xFFC2CDCD)
+                      : const Color(0xFF58CC02),
                 ),
               ),
             ],
@@ -175,7 +194,9 @@ class ProfileScreenState extends State<ProfileScreen> {
             context,
             MaterialPageRoute(
               builder: (_) => SettingsScreen(
-                isGuest: stats?['auth_provider'] == null || stats?['auth_provider'] == 'guest',
+                isGuest:
+                    stats?['auth_provider'] == null ||
+                    stats?['auth_provider'] == 'guest',
                 email: stats?['email'] as String?,
               ),
             ),
@@ -194,7 +215,13 @@ class ProfileScreenState extends State<ProfileScreen> {
           colors: [Color(0xFF00C9B7), Color(0xFF00A896)],
         ),
         borderRadius: BorderRadius.circular(20),
-        boxShadow: const [BoxShadow(color: Color(0x4000A896), blurRadius: 16, offset: Offset(0, 6))],
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x4000A896),
+            blurRadius: 16,
+            offset: Offset(0, 6),
+          ),
+        ],
       ),
       clipBehavior: Clip.antiAlias,
       child: Stack(
@@ -223,7 +250,10 @@ class ProfileScreenState extends State<ProfileScreen> {
                 Container(
                   width: 62,
                   height: 62,
-                  decoration: BoxDecoration(color: const Color(0x38FFFFFF), borderRadius: BorderRadius.circular(20)),
+                  decoration: BoxDecoration(
+                    color: const Color(0x38FFFFFF),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
                   clipBehavior: Clip.antiAlias,
                   alignment: Alignment.bottomCenter,
                   child: const Mascot(size: 52),
@@ -235,7 +265,11 @@ class ProfileScreenState extends State<ProfileScreen> {
                     children: [
                       Text(
                         '\$ whoami',
-                        style: TextStyle(fontFamily: 'JetBrains Mono', color: const Color(0xD9FFFFFF), fontSize: 11),
+                        style: TextStyle(
+                          fontFamily: 'JetBrains Mono',
+                          color: const Color(0xD9FFFFFF),
+                          fontSize: 11,
+                        ),
                       ),
                       const SizedBox(height: 3),
                       Text(
@@ -252,7 +286,11 @@ class ProfileScreenState extends State<ProfileScreen> {
                       const SizedBox(height: 4),
                       Text(
                         _memberSince(stats!['created_at']),
-                        style: TextStyle(fontFamily: 'JetBrains Mono', color: const Color(0xE6FFFFFF), fontSize: 10.5),
+                        style: TextStyle(
+                          fontFamily: 'JetBrains Mono',
+                          color: const Color(0xE6FFFFFF),
+                          fontSize: 10.5,
+                        ),
                       ),
                     ],
                   ),
@@ -265,7 +303,11 @@ class ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _statCard(String label, String value, {Color valueColor = const Color(0xFF1B2430)}) {
+  Widget _statCard(
+    String label,
+    String value, {
+    Color valueColor = const Color(0xFF1B2430),
+  }) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
       decoration: BoxDecoration(
@@ -278,12 +320,21 @@ class ProfileScreenState extends State<ProfileScreen> {
         children: [
           Text(
             label,
-            style: TextStyle(fontFamily: 'JetBrains Mono', fontSize: 10, color: const Color(0xFF9AAAAA)),
+            style: TextStyle(
+              fontFamily: 'JetBrains Mono',
+              fontSize: 10,
+              color: const Color(0xFF9AAAAA),
+            ),
           ),
           const SizedBox(height: 6),
           Text(
             value,
-            style: TextStyle(fontFamily: 'Fredoka', fontWeight: FontWeight.w600, fontSize: 22, color: valueColor),
+            style: TextStyle(
+              fontFamily: 'Fredoka',
+              fontWeight: FontWeight.w600,
+              fontSize: 22,
+              color: valueColor,
+            ),
           ),
         ],
       ),
@@ -293,7 +344,9 @@ class ProfileScreenState extends State<ProfileScreen> {
   Widget _activityCard() {
     final days = List<Map<String, dynamic>>.from(activity?['days'] ?? []);
     final totalXp = activity?['total_xp'] ?? 0;
-    final maxXp = days.isEmpty ? 0 : days.map((d) => d['xp'] as int).reduce((a, b) => a > b ? a : b);
+    final maxXp = days.isEmpty
+        ? 0
+        : days.map((d) => d['xp'] as int).reduce((a, b) => a > b ? a : b);
 
     return Container(
       padding: const EdgeInsets.all(14),
@@ -321,7 +374,11 @@ class ProfileScreenState extends State<ProfileScreen> {
               ),
               Text(
                 '$totalXp XP',
-                style: TextStyle(fontFamily: 'JetBrains Mono', fontSize: 10, color: const Color(0xFF9AAAAA)),
+                style: TextStyle(
+                  fontFamily: 'JetBrains Mono',
+                  fontSize: 10,
+                  color: const Color(0xFF9AAAAA),
+                ),
               ),
             ],
           ),
@@ -333,7 +390,13 @@ class ProfileScreenState extends State<ProfileScreen> {
               children: [
                 for (int i = 0; i < days.length; i++) ...[
                   if (i > 0) const SizedBox(width: 9),
-                  Expanded(child: _activityBar(days[i], maxXp, isToday: i == days.length - 1)),
+                  Expanded(
+                    child: _activityBar(
+                      days[i],
+                      maxXp,
+                      isToday: i == days.length - 1,
+                    ),
+                  ),
                 ],
               ],
             ),
@@ -343,7 +406,11 @@ class ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _activityBar(Map<String, dynamic> day, int maxXp, {required bool isToday}) {
+  Widget _activityBar(
+    Map<String, dynamic> day,
+    int maxXp, {
+    required bool isToday,
+  }) {
     final xp = day['xp'] as int;
     final parsed = DateTime.tryParse(day['date']);
     final label = parsed == null ? '' : _weekdays[parsed.weekday - 1];
@@ -367,7 +434,10 @@ class ProfileScreenState extends State<ProfileScreen> {
       children: [
         Container(
           height: height,
-          decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(6)),
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(6),
+          ),
         ),
         const SizedBox(height: 6),
         Text(
@@ -414,7 +484,11 @@ class ProfileScreenState extends State<ProfileScreen> {
             ),
             Text(
               '$unlockedCount / $total',
-              style: TextStyle(fontFamily: 'JetBrains Mono', fontSize: 10, color: const Color(0xFF00A896)),
+              style: TextStyle(
+                fontFamily: 'JetBrains Mono',
+                fontSize: 10,
+                color: const Color(0xFF00A896),
+              ),
             ),
           ],
         ),
@@ -441,66 +515,94 @@ class ProfileScreenState extends State<ProfileScreen> {
 
   Widget _achievementBadge(Map<String, dynamic> item) {
     final unlocked = item['unlocked'] == true;
-    final icon = item['icon'] as String;
 
-    List<Color> gradient;
-    Color shadow;
-    switch (item['style']) {
-      case 'gold':
-        gradient = [const Color(0xFFFFE7B8), const Color(0xFFFFD98A)];
-        shadow = const Color(0xFFE8BC66);
-        break;
-      case 'green':
-        gradient = [const Color(0xFF6EDB1F), const Color(0xFF58CC02)];
-        shadow = const Color(0xFF3F9200);
-        break;
-      default:
-        gradient = [const Color(0xFF29DFCB), const Color(0xFF00C9B7)];
-        shadow = const Color(0xFF00A896);
-    }
-
-    return Column(
-      children: [
-        AspectRatio(
-          aspectRatio: 1,
-          child: Container(
-            decoration: BoxDecoration(
-              gradient: unlocked
-                  ? LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: gradient)
-                  : null,
-              color: unlocked ? null : const Color(0xFFE7EEEE),
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [BoxShadow(color: unlocked ? shadow : const Color(0xFFD3DEDE), offset: const Offset(0, 3))],
+    return GestureDetector(
+      onTap: () => _showAchievementDetails(item),
+      child: Column(
+        children: [
+          LayoutBuilder(
+            builder: (context, constraints) => AchievementBadge(
+              icon: item['icon'] as String,
+              style: item['style'] as String,
+              unlocked: unlocked,
+              size: constraints.maxWidth,
             ),
-            alignment: Alignment.center,
-            child: unlocked
-                ? (icon.length > 2
-                      ? Text(
-                          icon,
-                          style: TextStyle(
-                            fontFamily: 'JetBrains Mono',
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
-                            color: Colors.white,
-                          ),
-                        )
-                      : Text(icon, style: const TextStyle(fontSize: 20, color: Colors.white)))
-                : const Icon(Icons.lock, size: 17, color: Color(0xFFC2CDCD)),
           ),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          item['title'],
-          textAlign: TextAlign.center,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            fontFamily: 'JetBrains Mono',
-            fontSize: 8.5,
-            color: unlocked ? const Color(0xFF5C6B73) : const Color(0xFF9AAAAA),
+          const SizedBox(height: 6),
+          Text(
+            item['title'],
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontFamily: 'JetBrains Mono',
+              fontSize: 8.5,
+              color: unlocked
+                  ? const Color(0xFF5C6B73)
+                  : const Color(0xFF9AAAAA),
+            ),
           ),
+        ],
+      ),
+    );
+  }
+
+  void _showAchievementDetails(Map<String, dynamic> item) {
+    final unlocked = item['unlocked'] == true;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        padding: const EdgeInsets.fromLTRB(28, 28, 28, 40),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
-      ],
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AchievementBadge(
+              icon: item['icon'] as String,
+              style: item['style'] as String,
+              unlocked: unlocked,
+              size: 84,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              item['title'],
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: 'Fredoka',
+                fontWeight: FontWeight.w600,
+                fontSize: 19,
+                color: const Color(0xFF1B2430),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              item['description'],
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 14.5,
+                height: 1.4,
+                color: const Color(0xFF5C6B73),
+              ),
+            ),
+            if (!unlocked) ...[
+              const SizedBox(height: 10),
+              Text(
+                'Ещё не открыто',
+                style: TextStyle(
+                  fontFamily: 'JetBrains Mono',
+                  fontSize: 11.5,
+                  color: const Color(0xFF9AAAAA),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 }

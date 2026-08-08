@@ -79,14 +79,15 @@ Future<Map<String, dynamic>> fetchUser(int userId) async {
   }
 }
 
-Future<int> awardXp(int userId, int correctCount) async {
+/// Возвращает {xp: int, new_achievements: [...]} — список того, что только
+/// что разблокировалось за счёт начисленного XP.
+Future<Map<String, dynamic>> awardXp(int userId, int correctCount) async {
   final response = await http.post(
     Uri.parse('$apiBaseUrl/users/$userId/award-xp'),
     headers: {'Content-Type': 'application/json'},
     body: jsonEncode({'correct_count': correctCount}),
   );
-  final data = jsonDecode(utf8.decode(response.bodyBytes));
-  return data['xp'];
+  return jsonDecode(utf8.decode(response.bodyBytes));
 }
 
 Future<List<Map<String, dynamic>>> fetchLessonsProgress(

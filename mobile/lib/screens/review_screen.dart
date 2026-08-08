@@ -5,6 +5,7 @@ import 'package:mobile/services/user_prefs.dart';
 import 'package:mobile/widgets/animated_mascot.dart';
 import 'package:mobile/widgets/option_card.dart';
 import 'package:mobile/widgets/primary_button.dart';
+import 'package:mobile/screens/achievement_unlock_screen.dart';
 
 /// Сессия повторения: набор упражнений из /review/session, собранных
 /// алгоритмом Лейтнера по просроченным навыкам. В отличие от урока — без
@@ -16,7 +17,8 @@ class ReviewScreen extends StatefulWidget {
   State<ReviewScreen> createState() => _ReviewScreenState();
 }
 
-class _ReviewScreenState extends State<ReviewScreen> with SingleTickerProviderStateMixin {
+class _ReviewScreenState extends State<ReviewScreen>
+    with SingleTickerProviderStateMixin {
   List<Map<String, dynamic>> exercises = [];
   bool loading = true;
   int currentIndex = 0;
@@ -29,6 +31,7 @@ class _ReviewScreenState extends State<ReviewScreen> with SingleTickerProviderSt
   bool checking = false;
   bool finished = false;
   int? xpEarned;
+  List<Map<String, dynamic>> newAchievements = [];
   final _terminalController = TextEditingController();
   late final AnimationController _lottieController;
 
@@ -64,7 +67,11 @@ class _ReviewScreenState extends State<ReviewScreen> with SingleTickerProviderSt
     setState(() => checking = true);
 
     final exercise = exercises[currentIndex];
-    final result = await submitAnswer(exercise['id'], currentUserId, selectedAnswer!.trim());
+    final result = await submitAnswer(
+      exercise['id'],
+      currentUserId,
+      selectedAnswer!.trim(),
+    );
     if (!mounted) return;
 
     final correct = result['correct'] == true;
@@ -75,16 +82,22 @@ class _ReviewScreenState extends State<ReviewScreen> with SingleTickerProviderSt
       attemptCount++;
       if (correct) correctCount++;
       checking = false;
+      newAchievements.addAll(
+        List<Map<String, dynamic>>.from(result['new_achievements'] ?? []),
+      );
     });
   }
 
   void _next() async {
     if (currentIndex + 1 >= exercises.length) {
-      final xp = await awardXp(currentUserId, correctCount);
+      final xpResult = await awardXp(currentUserId, correctCount);
       if (!mounted) return;
+      newAchievements.addAll(
+        List<Map<String, dynamic>>.from(xpResult['new_achievements'] ?? []),
+      );
       setState(() {
         finished = true;
-        xpEarned = xp;
+        xpEarned = xpResult['xp'] as int;
       });
       return;
     }
@@ -98,7 +111,10 @@ class _ReviewScreenState extends State<ReviewScreen> with SingleTickerProviderSt
     });
   }
 
-  List<InlineSpan> _parseInlineCode(String text, {required TextStyle baseStyle}) {
+  List<InlineSpan> _parseInlineCode(
+    String text, {
+    required TextStyle baseStyle,
+  }) {
     final spans = <InlineSpan>[];
     final parts = text.split('`');
     for (int i = 0; i < parts.length; i++) {
@@ -147,7 +163,12 @@ class _ReviewScreenState extends State<ReviewScreen> with SingleTickerProviderSt
                 Text(
                   'Пока нечего повторять — возвращайся позже',
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontFamily: 'Fredoka', fontWeight: FontWeight.w500, fontSize: 15, color: const Color(0xFF5C6B73)),
+                  style: TextStyle(
+                    fontFamily: 'Fredoka',
+                    fontWeight: FontWeight.w500,
+                    fontSize: 15,
+                    color: const Color(0xFF5C6B73),
+                  ),
                 ),
               ],
             ),
@@ -170,17 +191,37 @@ class _ReviewScreenState extends State<ReviewScreen> with SingleTickerProviderSt
                   const SizedBox(height: 20),
                   Text(
                     'Повторение пройдено',
-                    style: TextStyle(fontFamily: 'Fredoka', fontWeight: FontWeight.w600, fontSize: 22, color: const Color(0xFF1B2430)),
+                    style: TextStyle(
+                      fontFamily: 'Fredoka',
+                      fontWeight: FontWeight.w600,
+                      fontSize: 22,
+                      color: const Color(0xFF1B2430),
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     '$correctCount из ${exercises.length} верно · +${xpEarned == null ? 0 : correctCount * 10} XP',
-                    style: TextStyle(fontFamily: 'JetBrains Mono', fontSize: 13, color: const Color(0xFF5C6B73)),
+                    style: TextStyle(
+                      fontFamily: 'JetBrains Mono',
+                      fontSize: 13,
+                      color: const Color(0xFF5C6B73),
+                    ),
                   ),
                   const SizedBox(height: 28),
                   SizedBox(
                     width: double.infinity,
-                    child: PrimaryButton(text: 'Готово', onPressed: () => Navigator.pop(context)),
+                    child: PrimaryButton(
+                      text: 'Готово',
+                      onPressed: () async {
+                        if (newAchievements.isNotEmpty) {
+                          final queued = newAchievements;
+                          newAchievements = [];
+                          await showAchievementUnlocks(context, queued);
+                        }
+                        if (!context.mounted) return;
+                        Navigator.pop(context);
+                      },
+                    ),
                   ),
                 ],
               ),
@@ -192,8 +233,11 @@ class _ReviewScreenState extends State<ReviewScreen> with SingleTickerProviderSt
 
     final exercise = exercises[currentIndex];
     final isTerminal = exercise['type'] == 'terminal';
-    final options = isTerminal ? const <String>[] : List<String>.from(exercise['content']['options']);
-    final progress = (currentIndex + (isCorrect != null ? 1 : 0)) / exercises.length;
+    final options = isTerminal
+        ? const <String>[]
+        : List<String>.from(exercise['content']['options']);
+    final progress =
+        (currentIndex + (isCorrect != null ? 1 : 0)) / exercises.length;
 
     return Scaffold(
       appBar: AppBar(
@@ -244,10 +288,21 @@ class _ReviewScreenState extends State<ReviewScreen> with SingleTickerProviderSt
             if (isTerminal)
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14),
-                decoration: BoxDecoration(color: const Color(0xFF1B2430), borderRadius: BorderRadius.circular(14)),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1B2430),
+                  borderRadius: BorderRadius.circular(14),
+                ),
                 child: Row(
                   children: [
-                    Text('\$', style: TextStyle(fontFamily: 'JetBrains Mono', fontWeight: FontWeight.w600, fontSize: 15, color: const Color(0xFF00C9B7))),
+                    Text(
+                      '\$',
+                      style: TextStyle(
+                        fontFamily: 'JetBrains Mono',
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                        color: const Color(0xFF00C9B7),
+                      ),
+                    ),
                     const SizedBox(width: 10),
                     Expanded(
                       child: TextField(
@@ -255,9 +310,17 @@ class _ReviewScreenState extends State<ReviewScreen> with SingleTickerProviderSt
                         enabled: isCorrect == null,
                         onChanged: _chooseOption,
                         autocorrect: false,
-                        style: const TextStyle(fontFamily: 'JetBrains Mono', fontSize: 15, color: Colors.white),
+                        style: const TextStyle(
+                          fontFamily: 'JetBrains Mono',
+                          fontSize: 15,
+                          color: Colors.white,
+                        ),
                         cursorColor: const Color(0xFF00C9B7),
-                        decoration: const InputDecoration(border: InputBorder.none, isDense: true, contentPadding: EdgeInsets.symmetric(vertical: 14)),
+                        decoration: const InputDecoration(
+                          border: InputBorder.none,
+                          isDense: true,
+                          contentPadding: EdgeInsets.symmetric(vertical: 14),
+                        ),
                       ),
                     ),
                   ],
@@ -275,7 +338,9 @@ class _ReviewScreenState extends State<ReviewScreen> with SingleTickerProviderSt
                             : option == selectedAnswer
                             ? OptionState.incorrect
                             : OptionState.none)
-                      : (option == selectedAnswer ? OptionState.selected : OptionState.none),
+                      : (option == selectedAnswer
+                            ? OptionState.selected
+                            : OptionState.none),
                 ),
             const Spacer(),
             if (isCorrect != null)
@@ -286,11 +351,18 @@ class _ReviewScreenState extends State<ReviewScreen> with SingleTickerProviderSt
                   alignment: Alignment.centerLeft,
                   children: [
                     Container(
-                      padding: const EdgeInsets.only(left: 74, right: 14, top: 14, bottom: 14),
+                      padding: const EdgeInsets.only(
+                        left: 74,
+                        right: 14,
+                        top: 14,
+                        bottom: 14,
+                      ),
                       decoration: BoxDecoration(
                         color: isCorrect!
                             ? const Color(0xFFEAF9DC)
-                            : (isClose ? const Color(0xFFFFF3D6) : const Color(0xFFFFEAEA)),
+                            : (isClose
+                                  ? const Color(0xFFFFF3D6)
+                                  : const Color(0xFFFFEAEA)),
                         borderRadius: BorderRadius.circular(18),
                       ),
                       width: double.infinity,
@@ -301,13 +373,17 @@ class _ReviewScreenState extends State<ReviewScreen> with SingleTickerProviderSt
                           Text(
                             isCorrect!
                                 ? 'Правильно! +10 XP'
-                                : (isClose ? 'Почти! Проверь регистр и пробелы' : 'Неверно'),
+                                : (isClose
+                                      ? 'Почти! Проверь регистр и пробелы'
+                                      : 'Неверно'),
                             style: TextStyle(
                               fontFamily: 'Fredoka',
                               fontWeight: FontWeight.w600,
                               color: isCorrect!
                                   ? const Color(0xFF2E6E00)
-                                  : (isClose ? const Color(0xFF9A6B00) : const Color(0xFFB33A3A)),
+                                  : (isClose
+                                        ? const Color(0xFF9A6B00)
+                                        : const Color(0xFFB33A3A)),
                             ),
                           ),
                           if (!isCorrect! && correctAnswer != null) ...[
@@ -318,7 +394,9 @@ class _ReviewScreenState extends State<ReviewScreen> with SingleTickerProviderSt
                                 fontFamily: 'JetBrains Mono',
                                 fontSize: 12.5,
                                 fontWeight: FontWeight.w500,
-                                color: isClose ? const Color(0xFF9A6B00) : const Color(0xFFB33A3A),
+                                color: isClose
+                                    ? const Color(0xFF9A6B00)
+                                    : const Color(0xFFB33A3A),
                               ),
                             ),
                           ],
@@ -333,11 +411,15 @@ class _ReviewScreenState extends State<ReviewScreen> with SingleTickerProviderSt
                         width: 100,
                         child: Lottie.asset(
                           key: ValueKey(attemptCount),
-                          isCorrect! ? 'assets/animations/success.json' : 'assets/animations/error.json',
+                          isCorrect!
+                              ? 'assets/animations/success.json'
+                              : 'assets/animations/error.json',
                           controller: _lottieController,
                           fit: BoxFit.contain,
                           onLoaded: (composition) {
-                            _lottieController.duration = isCorrect! ? composition.duration ~/ 2 : composition.duration;
+                            _lottieController.duration = isCorrect!
+                                ? composition.duration ~/ 2
+                                : composition.duration;
                             _lottieController.forward(from: 0);
                           },
                         ),
@@ -349,7 +431,10 @@ class _ReviewScreenState extends State<ReviewScreen> with SingleTickerProviderSt
             if (isCorrect == null)
               PrimaryButton(
                 text: 'Проверить',
-                enabled: !checking && selectedAnswer != null && selectedAnswer!.trim().isNotEmpty,
+                enabled:
+                    !checking &&
+                    selectedAnswer != null &&
+                    selectedAnswer!.trim().isNotEmpty,
                 onPressed: _checkAnswer,
               )
             else

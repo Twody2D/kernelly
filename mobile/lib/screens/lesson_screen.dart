@@ -8,18 +8,24 @@ import 'package:mobile/widgets/mascot.dart';
 import 'package:mobile/widgets/option_card.dart';
 import 'package:mobile/widgets/primary_button.dart';
 import 'package:mobile/screens/section_complete_screen.dart';
+import 'package:mobile/screens/achievement_unlock_screen.dart';
 
 class LessonScreen extends StatefulWidget {
   final int lessonId;
   final String sectionTitle;
 
-  const LessonScreen({super.key, required this.lessonId, required this.sectionTitle});
+  const LessonScreen({
+    super.key,
+    required this.lessonId,
+    required this.sectionTitle,
+  });
 
   @override
   State<LessonScreen> createState() => _LessonScreenState();
 }
 
-class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderStateMixin {
+class _LessonScreenState extends State<LessonScreen>
+    with SingleTickerProviderStateMixin {
   List<Map<String, dynamic>> exercises = [];
   Map<String, dynamic>? lesson;
   bool showingStory = false;
@@ -51,6 +57,10 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
 
   /// Ответ на завершение урока: прогресс раздела, курса и что дальше
   Map<String, dynamic>? completion;
+
+  /// Достижения, разблокированные за время этого урока — показываем очередью
+  /// поздравлений перед выходом с экрана завершения раздела
+  List<Map<String, dynamic>> newAchievements = [];
 
   /// Дневная цель на момент завершения урока
   int dailyCompleted = 0;
@@ -104,7 +114,11 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
     setState(() => checking = true);
 
     final currentExercise = exercises[currentIndex];
-    final result = await submitAnswer(currentExercise['id'], currentUserId, selectedAnswer!.trim());
+    final result = await submitAnswer(
+      currentExercise['id'],
+      currentUserId,
+      selectedAnswer!.trim(),
+    );
     if (!mounted) return;
 
     final correct = result['correct'] == true;
@@ -116,6 +130,9 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
       user?['streak'] = result['streak'];
       if (correct) correctCount++;
       checking = false;
+      newAchievements.addAll(
+        List<Map<String, dynamic>>.from(result['new_achievements'] ?? []),
+      );
     });
   }
 
@@ -166,10 +183,16 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
 
     try {
       if (!isRepeat) {
-        final newXp = await awardXp(currentUserId, correctCount);
-        if (mounted) setState(() => user?['xp'] = newXp);
+        final xpResult = await awardXp(currentUserId, correctCount);
+        if (mounted) setState(() => user?['xp'] = xpResult['xp']);
+        newAchievements.addAll(
+          List<Map<String, dynamic>>.from(xpResult['new_achievements'] ?? []),
+        );
       }
       final data = await completeLesson(widget.lessonId, currentUserId);
+      newAchievements.addAll(
+        List<Map<String, dynamic>>.from(data['new_achievements'] ?? []),
+      );
       final daily = await fetchDailyProgress(currentUserId);
       final prefs = await SharedPreferences.getInstance();
       if (!mounted) return;
@@ -255,12 +278,22 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
                     ),
                     const SizedBox(height: 10),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                      decoration: BoxDecoration(color: const Color(0xFFE0F7F4), borderRadius: BorderRadius.circular(10)),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE0F7F4),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.lightbulb_outline_rounded, size: 14, color: Color(0xFF00A896)),
+                          const Icon(
+                            Icons.lightbulb_outline_rounded,
+                            size: 14,
+                            color: Color(0xFF00A896),
+                          ),
                           const SizedBox(width: 5),
                           Text(
                             'ЧТО НУЖНО ЗНАТЬ',
@@ -302,7 +335,10 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [for (final line in example.split('\n')) _terminalLine(line)],
+                          children: [
+                            for (final line in example.split('\n'))
+                              _terminalLine(line),
+                          ],
                         ),
                       ),
                     ],
@@ -312,7 +348,10 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-              child: PrimaryButton(text: 'Понятно', onPressed: _acknowledgeTheory),
+              child: PrimaryButton(
+                text: 'Понятно',
+                onPressed: _acknowledgeTheory,
+              ),
             ),
           ],
         ),
@@ -322,7 +361,10 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
 
   /// Разбивает текст по `бэктикам` и подсвечивает код как моноширинный чип —
   /// без этого команды вроде `pwd` тонули бы в обычном тексте.
-  List<InlineSpan> _parseInlineCode(String text, {required TextStyle baseStyle}) {
+  List<InlineSpan> _parseInlineCode(
+    String text, {
+    required TextStyle baseStyle,
+  }) {
     final spans = <InlineSpan>[];
     final parts = text.split('`');
     for (int i = 0; i < parts.length; i++) {
@@ -358,10 +400,26 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
         padding: const EdgeInsets.only(bottom: 4),
         child: RichText(
           text: TextSpan(
-            style: const TextStyle(fontFamily: 'JetBrains Mono', fontSize: 13.5, height: 1.6),
+            style: const TextStyle(
+              fontFamily: 'JetBrains Mono',
+              fontSize: 13.5,
+              height: 1.6,
+            ),
             children: [
-              const TextSpan(text: '\$ ', style: TextStyle(color: promptColor, fontWeight: FontWeight.w700)),
-              TextSpan(text: line.substring(2), style: const TextStyle(color: commandColor, fontWeight: FontWeight.w600)),
+              const TextSpan(
+                text: '\$ ',
+                style: TextStyle(
+                  color: promptColor,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              TextSpan(
+                text: line.substring(2),
+                style: const TextStyle(
+                  color: commandColor,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ],
           ),
         ),
@@ -372,7 +430,12 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
       padding: const EdgeInsets.only(bottom: 4),
       child: Text(
         line,
-        style: const TextStyle(fontFamily: 'JetBrains Mono', fontSize: 13.5, height: 1.6, color: outputColor),
+        style: const TextStyle(
+          fontFamily: 'JetBrains Mono',
+          fontSize: 13.5,
+          height: 1.6,
+          color: outputColor,
+        ),
       ),
     );
   }
@@ -405,10 +468,22 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
         dailyCompleted: dailyCompleted,
         dailyGoal: dailyGoal,
         xpEarned: isRepeat ? 0 : correctCount * 10,
-        accuracyPercent: exercises.isEmpty ? 0 : ((correctCount / exercises.length) * 100).round(),
-        elapsed: startTime == null ? Duration.zero : DateTime.now().difference(startTime!),
+        accuracyPercent: exercises.isEmpty
+            ? 0
+            : ((correctCount / exercises.length) * 100).round(),
+        elapsed: startTime == null
+            ? Duration.zero
+            : DateTime.now().difference(startTime!),
         streak: user?['streak'] ?? 0,
-        onContinue: () => Navigator.pop(context),
+        onContinue: () async {
+          if (newAchievements.isNotEmpty) {
+            final queued = newAchievements;
+            newAchievements = [];
+            await showAchievementUnlocks(context, queued);
+          }
+          if (!context.mounted) return;
+          Navigator.pop(context);
+        },
         onRepeat: _repeatLesson,
       );
     }
@@ -428,8 +503,11 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
 
     final question = currentExercise['question'];
     final isTerminal = currentExercise['type'] == 'terminal';
-    final options = isTerminal ? const <String>[] : List<String>.from(currentExercise['content']['options']);
-    final progress = (currentIndex + (isCorrect != null ? 1 : 0)) / exercises.length;
+    final options = isTerminal
+        ? const <String>[]
+        : List<String>.from(currentExercise['content']['options']);
+    final progress =
+        (currentIndex + (isCorrect != null ? 1 : 0)) / exercises.length;
 
     return Scaffold(
       appBar: _buildAppBar(progress: progress),
@@ -481,7 +559,9 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
                             : option == selectedAnswer
                             ? OptionState.incorrect
                             : OptionState.none)
-                      : (option == selectedAnswer ? OptionState.selected : OptionState.none),
+                      : (option == selectedAnswer
+                            ? OptionState.selected
+                            : OptionState.none),
                 ),
             const Spacer(),
             if (isCorrect != null)
@@ -492,11 +572,18 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
                   alignment: Alignment.centerLeft,
                   children: [
                     Container(
-                      padding: const EdgeInsets.only(left: 74, right: 14, top: 14, bottom: 14),
+                      padding: const EdgeInsets.only(
+                        left: 74,
+                        right: 14,
+                        top: 14,
+                        bottom: 14,
+                      ),
                       decoration: BoxDecoration(
                         color: isCorrect!
                             ? const Color(0xFFEAF9DC)
-                            : (isClose ? const Color(0xFFFFF3D6) : const Color(0xFFFFEAEA)),
+                            : (isClose
+                                  ? const Color(0xFFFFF3D6)
+                                  : const Color(0xFFFFEAEA)),
                         borderRadius: BorderRadius.circular(18),
                       ),
                       width: double.infinity,
@@ -506,14 +593,19 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
                         children: [
                           Text(
                             isCorrect!
-                                ? 'Правильно! ${isRepeat ? '' : '+10 XP'}'.trim()
-                                : (isClose ? 'Почти! Проверь регистр и пробелы' : 'Неверно'),
+                                ? 'Правильно! ${isRepeat ? '' : '+10 XP'}'
+                                      .trim()
+                                : (isClose
+                                      ? 'Почти! Проверь регистр и пробелы'
+                                      : 'Неверно'),
                             style: TextStyle(
                               fontFamily: 'Fredoka',
                               fontWeight: FontWeight.w600,
                               color: isCorrect!
                                   ? const Color(0xFF2E6E00)
-                                  : (isClose ? const Color(0xFF9A6B00) : const Color(0xFFB33A3A)),
+                                  : (isClose
+                                        ? const Color(0xFF9A6B00)
+                                        : const Color(0xFFB33A3A)),
                             ),
                           ),
                           if (!isCorrect! && correctAnswer != null) ...[
@@ -524,7 +616,9 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
                                 fontFamily: 'JetBrains Mono',
                                 fontSize: 12.5,
                                 fontWeight: FontWeight.w500,
-                                color: isClose ? const Color(0xFF9A6B00) : const Color(0xFFB33A3A),
+                                color: isClose
+                                    ? const Color(0xFF9A6B00)
+                                    : const Color(0xFFB33A3A),
                               ),
                             ),
                           ],
@@ -539,12 +633,15 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
                         width: 100,
                         child: Lottie.asset(
                           key: ValueKey(attemptCount),
-                          isCorrect! ? 'assets/animations/success.json' : 'assets/animations/error.json',
+                          isCorrect!
+                              ? 'assets/animations/success.json'
+                              : 'assets/animations/error.json',
                           controller: _lottieController,
                           fit: BoxFit.contain,
                           onLoaded: (composition) {
                             if (isCorrect!) {
-                              _lottieController.duration = composition.duration ~/ 2;
+                              _lottieController.duration =
+                                  composition.duration ~/ 2;
                             } else {
                               _lottieController.duration = composition.duration;
                             }
@@ -559,7 +656,10 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
             if (isCorrect == null)
               PrimaryButton(
                 text: 'Проверить',
-                enabled: !checking && selectedAnswer != null && selectedAnswer!.trim().isNotEmpty,
+                enabled:
+                    !checking &&
+                    selectedAnswer != null &&
+                    selectedAnswer!.trim().isNotEmpty,
                 onPressed: _checkAnswer,
               )
             else
@@ -578,7 +678,11 @@ class _TerminalInput extends StatelessWidget {
   final bool enabled;
   final ValueChanged<String> onChanged;
 
-  const _TerminalInput({required this.controller, required this.enabled, required this.onChanged});
+  const _TerminalInput({
+    required this.controller,
+    required this.enabled,
+    required this.onChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -592,7 +696,12 @@ class _TerminalInput extends StatelessWidget {
         children: [
           Text(
             '\$',
-            style: TextStyle(fontFamily: 'JetBrains Mono', fontWeight: FontWeight.w600, fontSize: 15, color: const Color(0xFF00C9B7)),
+            style: TextStyle(
+              fontFamily: 'JetBrains Mono',
+              fontWeight: FontWeight.w600,
+              fontSize: 15,
+              color: const Color(0xFF00C9B7),
+            ),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -601,9 +710,17 @@ class _TerminalInput extends StatelessWidget {
               enabled: enabled,
               onChanged: onChanged,
               autocorrect: false,
-              style: const TextStyle(fontFamily: 'JetBrains Mono', fontSize: 15, color: Colors.white),
+              style: const TextStyle(
+                fontFamily: 'JetBrains Mono',
+                fontSize: 15,
+                color: Colors.white,
+              ),
               cursorColor: const Color(0xFF00C9B7),
-              decoration: const InputDecoration(border: InputBorder.none, isDense: true, contentPadding: EdgeInsets.symmetric(vertical: 14)),
+              decoration: const InputDecoration(
+                border: InputBorder.none,
+                isDense: true,
+                contentPadding: EdgeInsets.symmetric(vertical: 14),
+              ),
             ),
           ),
         ],
@@ -632,7 +749,8 @@ class _StoryIntro extends StatefulWidget {
   State<_StoryIntro> createState() => _StoryIntroState();
 }
 
-class _StoryIntroState extends State<_StoryIntro> with SingleTickerProviderStateMixin {
+class _StoryIntroState extends State<_StoryIntro>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   late final Animation<double> _mascotScale;
   late final Animation<double> _fade;
@@ -641,12 +759,20 @@ class _StoryIntroState extends State<_StoryIntro> with SingleTickerProviderState
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
-    _mascotScale = CurvedAnimation(parent: _controller, curve: const Interval(0.0, 0.55, curve: Curves.easeOutBack));
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+    _mascotScale = CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(0.0, 0.55, curve: Curves.easeOutBack),
+    );
     const textInterval = Interval(0.3, 0.8, curve: Curves.easeOut);
     _fade = CurvedAnimation(parent: _controller, curve: textInterval);
-    _slide = Tween(begin: const Offset(0, 0.25), end: Offset.zero)
-        .animate(CurvedAnimation(parent: _controller, curve: textInterval));
+    _slide = Tween(
+      begin: const Offset(0, 0.25),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _controller, curve: textInterval));
     _controller.forward();
   }
 
@@ -675,7 +801,10 @@ class _StoryIntroState extends State<_StoryIntro> with SingleTickerProviderState
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                ScaleTransition(scale: _mascotScale, child: const AnimatedMascot(size: 140)),
+                ScaleTransition(
+                  scale: _mascotScale,
+                  child: const AnimatedMascot(size: 140),
+                ),
                 const SizedBox(height: 16),
                 FadeTransition(
                   opacity: _fade,
@@ -709,7 +838,12 @@ class _StoryIntroState extends State<_StoryIntro> with SingleTickerProviderState
                         Text(
                           widget.story,
                           textAlign: TextAlign.center,
-                          style: TextStyle(fontFamily: 'Inter', fontSize: 15, height: 1.5, color: const Color(0xFF5C6B73)),
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 15,
+                            height: 1.5,
+                            color: const Color(0xFF5C6B73),
+                          ),
                         ),
                       ],
                     ),
@@ -720,7 +854,10 @@ class _StoryIntroState extends State<_StoryIntro> with SingleTickerProviderState
                   opacity: _fade,
                   child: SizedBox(
                     width: double.infinity,
-                    child: PrimaryButton(text: 'Начать миссию', onPressed: widget.onContinue),
+                    child: PrimaryButton(
+                      text: 'Начать миссию',
+                      onPressed: widget.onContinue,
+                    ),
                   ),
                 ),
               ],
@@ -760,30 +897,46 @@ class _TierIntroState extends State<_TierIntro> with TickerProviderStateMixin {
       color: Color(0xFF8FA0AB),
       bg: Color(0xFFEDF1F3),
       emotion: MascotEmotion.happy,
-      description: 'Ты уже проходил этот урок. Теперь — без подсказок и с вопросами похитрее. Проверим, что действительно запомнилось.',
+      description:
+          'Ты уже проходил этот урок. Теперь — без подсказок и с вопросами похитрее. Проверим, что действительно запомнилось.',
     ),
     3: (
       label: 'Золотой уровень',
       color: Color(0xFFE0A82E),
       bg: Color(0xFFFFF3D6),
       emotion: MascotEmotion.excited,
-      description: 'Финальная проверка. Минимум подсказок, максимум внимания — заодно вспомним то, что учили раньше.',
+      description:
+          'Финальная проверка. Минимум подсказок, максимум внимания — заодно вспомним то, что учили раньше.',
     ),
   };
 
   @override
   void initState() {
     super.initState();
-    _entrance = AnimationController(vsync: this, duration: const Duration(milliseconds: 900));
-    _badgeScale = CurvedAnimation(parent: _entrance, curve: const Interval(0.0, 0.6, curve: Curves.elasticOut));
+    _entrance = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    );
+    _badgeScale = CurvedAnimation(
+      parent: _entrance,
+      curve: const Interval(0.0, 0.6, curve: Curves.elasticOut),
+    );
     const textInterval = Interval(0.35, 0.85, curve: Curves.easeOut);
     _fade = CurvedAnimation(parent: _entrance, curve: textInterval);
-    _slide = Tween(begin: const Offset(0, 0.2), end: Offset.zero)
-        .animate(CurvedAnimation(parent: _entrance, curve: textInterval));
+    _slide = Tween(
+      begin: const Offset(0, 0.2),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _entrance, curve: textInterval));
     _entrance.forward();
 
-    _pulse = AnimationController(vsync: this, duration: const Duration(milliseconds: 1400))..repeat(reverse: true);
-    _sparkle = AnimationController(vsync: this, duration: const Duration(milliseconds: 2200))..repeat();
+    _pulse = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1400),
+    )..repeat(reverse: true);
+    _sparkle = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2200),
+    )..repeat();
   }
 
   @override
@@ -823,15 +976,48 @@ class _TierIntroState extends State<_TierIntro> with TickerProviderStateMixin {
                         },
                         child: Stack(
                           children: [
-                            Positioned(top: 8, left: 100, child: Text('✨', style: TextStyle(fontSize: 18, color: style.color))),
-                            Positioned(bottom: 30, right: 8, child: Text('✨', style: TextStyle(fontSize: 13, color: style.color))),
-                            Positioned(top: 40, left: 4, child: Text('✨', style: TextStyle(fontSize: 12, color: style.color))),
+                            Positioned(
+                              top: 8,
+                              left: 100,
+                              child: Text(
+                                '✨',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  color: style.color,
+                                ),
+                              ),
+                            ),
+                            Positioned(
+                              bottom: 30,
+                              right: 8,
+                              child: Text(
+                                '✨',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: style.color,
+                                ),
+                              ),
+                            ),
+                            Positioned(
+                              top: 40,
+                              left: 4,
+                              child: Text(
+                                '✨',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: style.color,
+                                ),
+                              ),
+                            ),
                           ],
                         ),
                       ),
                       ScaleTransition(
                         scale: _badgeScale,
-                        child: AnimatedMascot(size: 150, emotion: style.emotion),
+                        child: AnimatedMascot(
+                          size: 150,
+                          emotion: style.emotion,
+                        ),
                       ),
                       Positioned(
                         bottom: 8,
@@ -844,16 +1030,27 @@ class _TierIntroState extends State<_TierIntro> with TickerProviderStateMixin {
                               AnimatedBuilder(
                                 animation: _pulse,
                                 builder: (context, child) {
-                                  final v = Curves.easeInOut.transform(_pulse.value);
+                                  final v = Curves.easeInOut.transform(
+                                    _pulse.value,
+                                  );
                                   return Transform.scale(
                                     scale: 1.0 + v * 0.14,
-                                    child: Opacity(opacity: 0.35 + v * 0.35, child: child),
+                                    child: Opacity(
+                                      opacity: 0.35 + v * 0.35,
+                                      child: child,
+                                    ),
                                   );
                                 },
                                 child: Container(
                                   width: 62,
                                   height: 62,
-                                  decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: style.color, width: 2)),
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: style.color,
+                                      width: 2,
+                                    ),
+                                  ),
                                 ),
                               ),
                               Container(
@@ -862,11 +1059,24 @@ class _TierIntroState extends State<_TierIntro> with TickerProviderStateMixin {
                                 decoration: BoxDecoration(
                                   color: style.bg,
                                   shape: BoxShape.circle,
-                                  border: Border.all(color: Colors.white, width: 3),
-                                  boxShadow: [BoxShadow(color: style.color.withOpacity(0.4), blurRadius: 12, offset: const Offset(0, 4))],
+                                  border: Border.all(
+                                    color: Colors.white,
+                                    width: 3,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: style.color.withOpacity(0.4),
+                                      blurRadius: 12,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
                                 ),
                                 alignment: Alignment.center,
-                                child: Icon(Icons.workspace_premium_rounded, size: 26, color: style.color),
+                                child: Icon(
+                                  Icons.workspace_premium_rounded,
+                                  size: 26,
+                                  color: style.color,
+                                ),
                               ),
                             ],
                           ),
@@ -896,7 +1106,12 @@ class _TierIntroState extends State<_TierIntro> with TickerProviderStateMixin {
                         Text(
                           style.description,
                           textAlign: TextAlign.center,
-                          style: TextStyle(fontFamily: 'Inter', fontSize: 15, height: 1.5, color: const Color(0xFF5C6B73)),
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 15,
+                            height: 1.5,
+                            color: const Color(0xFF5C6B73),
+                          ),
                         ),
                       ],
                     ),
@@ -907,7 +1122,10 @@ class _TierIntroState extends State<_TierIntro> with TickerProviderStateMixin {
                   opacity: _fade,
                   child: SizedBox(
                     width: double.infinity,
-                    child: PrimaryButton(text: 'Начать', onPressed: widget.onContinue),
+                    child: PrimaryButton(
+                      text: 'Начать',
+                      onPressed: widget.onContinue,
+                    ),
                   ),
                 ),
               ],
