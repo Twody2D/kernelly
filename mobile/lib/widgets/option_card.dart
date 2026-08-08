@@ -54,14 +54,17 @@ class OptionCard extends StatelessWidget {
             border: Border.all(color: borderColor, width: 2),
           ),
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 '> ',
                 style: TextStyle(fontFamily: 'JetBrains Mono', fontWeight: FontWeight.w600, color: promptColor),
               ),
-              Text(
-                text,
-                style: TextStyle(fontFamily: 'JetBrains Mono', fontWeight: FontWeight.w500, color: textColor),
+              Expanded(
+                child: Text(
+                  text,
+                  style: TextStyle(fontFamily: 'JetBrains Mono', fontWeight: FontWeight.w500, color: textColor),
+                ),
               ),
             ],
           ),

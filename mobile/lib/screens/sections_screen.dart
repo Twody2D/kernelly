@@ -179,7 +179,7 @@ class _SectionsScreenState extends State<SectionsScreen> {
                 children: [
                   Text(
                     'Раздел ${section['order']} · ${section['title']}',
-                    maxLines: 1,
+                    maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       fontFamily: 'Fredoka',
@@ -188,7 +188,7 @@ class _SectionsScreenState extends State<SectionsScreen> {
                       color: isLocked ? const Color(0xFF8D9C9C) : const Color(0xFF1B2430),
                     ),
                   ),
-                  const SizedBox(height: 7),
+                  const SizedBox(height: 8),
                   if (isLocked)
                     const Text(
                       'пройдите предыдущий раздел',
