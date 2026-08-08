@@ -38,8 +38,9 @@ Future<Map<String, dynamic>> fetchOrCreateGuest(String deviceToken) async {
   }
 }
 
-/// Возвращает {correct: bool, correct_answer: String} — правильный вариант
-/// приходит уже после ответа, чтобы его нельзя было подсмотреть заранее.
+/// Возвращает {correct: bool, correct_answer: String, streak: int} — правильный
+/// вариант приходит уже после ответа, чтобы его нельзя было подсмотреть заранее,
+/// а streak сразу актуальный, без отдельного похода за пользователем.
 Future<Map<String, dynamic>> submitAnswer(int exerciseId, int userId, String answer) async {
   final response = await http.post(
     Uri.parse('$apiBaseUrl/exercises/$exerciseId/submit'),

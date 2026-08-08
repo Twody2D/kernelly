@@ -363,7 +363,7 @@ def submit_answer(exercise_id: int, submission: schemas.AnswerSubmit, db: Sessio
     if isinstance(correct_answer, dict):
         correct_answer = correct_answer.get("answer")
 
-    return {"correct": is_correct, "correct_answer": correct_answer}
+    return {"correct": is_correct, "correct_answer": correct_answer, "streak": user.streak}
 
 
 @app.get("/users/{user_id}/review/due")

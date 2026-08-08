@@ -92,7 +92,6 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
 
     final currentExercise = exercises[currentIndex];
     final result = await submitAnswer(currentExercise['id'], currentUserId, selectedAnswer!.trim());
-    final userData = await fetchUser(currentUserId);
     if (!mounted) return;
 
     final correct = result['correct'] == true;
@@ -100,7 +99,7 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
       isCorrect = correct;
       correctAnswer = result['correct_answer'] as String?;
       attemptCount++;
-      user = userData;
+      user?['streak'] = result['streak'];
       if (correct) correctCount++;
       checking = false;
     });
