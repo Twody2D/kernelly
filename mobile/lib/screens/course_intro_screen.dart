@@ -2,14 +2,27 @@ import 'package:flutter/material.dart';
 import 'package:mobile/screens/sections_screen.dart';
 import 'package:mobile/services/user_prefs.dart';
 import 'package:mobile/widgets/animated_mascot.dart';
+import 'package:mobile/widgets/mascot.dart';
 import 'package:mobile/widgets/primary_button.dart';
 
 class _Beat {
   final String eyebrow;
   final String title;
   final String text;
+  final MascotEmotion emotion;
+  final IconData icon;
+  final Color iconColor;
+  final Color iconBg;
 
-  const _Beat({required this.eyebrow, required this.title, required this.text});
+  const _Beat({
+    required this.eyebrow,
+    required this.title,
+    required this.text,
+    required this.emotion,
+    required this.icon,
+    required this.iconColor,
+    required this.iconBg,
+  });
 }
 
 /// Вводная история курса перед первым уроком — контент сейчас захардкожен под
@@ -18,27 +31,46 @@ class _Beat {
 /// больше, содержимое стоит вынести на бэкенд вместо списка ниже.
 const _beats = [
   _Beat(
-    eyebrow: '\$ new_hire --start',
-    title: 'Добро пожаловать в Acme Cloud',
-    text: 'Сегодня твой первый день. Acme Cloud — быстрорастущий стартап, '
-        'и тебя наняли инженером в команду эксплуатации.',
+    eyebrow: '\$ man devops',
+    title: 'Что такое DevOps?',
+    text: 'Когда разработчик меняет код, его нужно собрать, проверить и '
+        'доставить на сервер — и так много раз в день. DevOps — это когда '
+        'весь этот путь автоматизирован и происходит сам, без ручной '
+        'возни. Это называется CI/CD.',
+    emotion: MascotEmotion.happy,
+    icon: Icons.autorenew_rounded,
+    iconColor: Color(0xFF00A896),
+    iconBg: Color(0xFFE0F7F4),
   ),
   _Beat(
-    eyebrow: '\$ whoami --role',
-    title: 'Кто такой DevOps-инженер',
-    text: 'Ты в ответе за то, чтобы код разработчиков доезжал до серверов '
-        'и продолжал там работать — даже когда что-то ломается.',
+    eyebrow: '\$ new_hire --start',
+    title: 'Твой первый день в офисе Acme Cloud',
+    text: 'Acme Cloud — быстрорастущий стартап. Тебя только что наняли '
+        'инженером, который будет всё это настраивать, и сегодня — твой '
+        'первый рабочий день.',
+    emotion: MascotEmotion.surprised,
+    icon: Icons.apartment_rounded,
+    iconColor: Color(0xFFFF9500),
+    iconBg: Color(0xFFFFF1DC),
   ),
   _Beat(
     eyebrow: '\$ cat README.md',
     title: 'Здесь не будет лекций',
     text: 'Только реальные задачи: терминал, конфиги, упавшие сервисы. '
         'Каждая миссия — что-то, что тебе правда придётся чинить.',
+    emotion: MascotEmotion.happy,
+    icon: Icons.terminal_rounded,
+    iconColor: Color(0xFF58CC02),
+    iconBg: Color(0xFFEAF9DC),
   ),
   _Beat(
     eyebrow: '\$ ./start.sh',
     title: 'Готов начать?',
     text: 'Первая миссия уже ждёт на сервере. Погнали.',
+    emotion: MascotEmotion.surprised,
+    icon: Icons.rocket_launch_rounded,
+    iconColor: Color(0xFFCC9327),
+    iconBg: Color(0xFFFFF3D6),
   ),
 ];
 
@@ -164,7 +196,30 @@ class _CourseIntroScreenState extends State<CourseIntroScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const AnimatedMascot(size: 152),
+              Stack(
+                alignment: Alignment.center,
+                children: [
+                  AnimatedMascot(size: 152, emotion: beat.emotion),
+                  Positioned(
+                    right: 18,
+                    bottom: 14,
+                    child: Container(
+                      width: 42,
+                      height: 42,
+                      decoration: BoxDecoration(
+                        color: beat.iconBg,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: const Color(0xFFF6F9F9), width: 3),
+                        boxShadow: [
+                          BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 6, offset: const Offset(0, 2)),
+                        ],
+                      ),
+                      alignment: Alignment.center,
+                      child: Icon(beat.icon, size: 20, color: beat.iconColor),
+                    ),
+                  ),
+                ],
+              ),
               const SizedBox(height: 16),
               Text(
                 beat.eyebrow,
