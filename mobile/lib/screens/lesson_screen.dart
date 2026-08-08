@@ -201,63 +201,149 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
     final example = exercise['content']?['example'] as String?;
 
     return Scaffold(
+      backgroundColor: const Color(0xFFF6F9F9),
       appBar: _buildAppBar(progress: progress),
-      body: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+      body: SafeArea(
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
-              '\$ ${widget.sectionTitle}',
-              style: TextStyle(
-                fontFamily: 'JetBrains Mono',
-                fontWeight: FontWeight.w600,
-                fontSize: 12,
-                color: const Color(0xFF00A896),
-                letterSpacing: 0.5,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'ЧТО НУЖНО ЗНАТЬ',
-              style: TextStyle(
-                fontFamily: 'JetBrains Mono',
-                fontWeight: FontWeight.w600,
-                fontSize: 10.5,
-                color: const Color(0xFF9AAAAA),
-                letterSpacing: 0.5,
-              ),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              exercise['question'],
-              style: TextStyle(
-                fontFamily: 'Fredoka',
-                fontWeight: FontWeight.w500,
-                fontSize: 19,
-                height: 1.35,
-                color: const Color(0xFF1B2430),
-              ),
-            ),
-            if (example != null && example.isNotEmpty) ...[
-              const SizedBox(height: 20),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1B2430),
-                  borderRadius: BorderRadius.circular(14),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(24, 4, 24, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    const AnimatedMascot(size: 96),
+                    const SizedBox(height: 12),
+                    Text(
+                      '\$ ${widget.sectionTitle}',
+                      style: TextStyle(
+                        fontFamily: 'JetBrains Mono',
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12,
+                        color: const Color(0xFF00A896),
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                      decoration: BoxDecoration(color: const Color(0xFFE0F7F4), borderRadius: BorderRadius.circular(10)),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.lightbulb_outline_rounded, size: 14, color: Color(0xFF00A896)),
+                          const SizedBox(width: 5),
+                          Text(
+                            'ЧТО НУЖНО ЗНАТЬ',
+                            style: TextStyle(
+                              fontFamily: 'JetBrains Mono',
+                              fontWeight: FontWeight.w600,
+                              fontSize: 10.5,
+                              color: const Color(0xFF00A896),
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    RichText(
+                      textAlign: TextAlign.center,
+                      text: TextSpan(
+                        children: _parseInlineCode(
+                          exercise['question'] as String,
+                          baseStyle: TextStyle(
+                            fontFamily: 'Fredoka',
+                            fontWeight: FontWeight.w500,
+                            fontSize: 18,
+                            height: 1.4,
+                            color: const Color(0xFF1B2430),
+                          ),
+                        ),
+                      ),
+                    ),
+                    if (example != null && example.isNotEmpty) ...[
+                      const SizedBox(height: 20),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1B2430),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [for (final line in example.split('\n')) _terminalLine(line)],
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
-                child: Text(
-                  example,
-                  style: TextStyle(fontFamily: 'JetBrains Mono', fontSize: 13.5, height: 1.6, color: const Color(0xFF58CC02)),
-                ),
               ),
-            ],
-            const Spacer(),
-            PrimaryButton(text: 'Понятно', onPressed: _acknowledgeTheory),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+              child: PrimaryButton(text: 'Понятно', onPressed: _acknowledgeTheory),
+            ),
           ],
         ),
+      ),
+    );
+  }
+
+  /// Разбивает текст по `бэктикам` и подсвечивает код как моноширинный чип —
+  /// без этого команды вроде `pwd` тонули бы в обычном тексте.
+  List<InlineSpan> _parseInlineCode(String text, {required TextStyle baseStyle}) {
+    final spans = <InlineSpan>[];
+    final parts = text.split('`');
+    for (int i = 0; i < parts.length; i++) {
+      if (parts[i].isEmpty) continue;
+      final isCode = i.isOdd;
+      spans.add(
+        TextSpan(
+          text: parts[i],
+          style: isCode
+              ? baseStyle.copyWith(
+                  fontFamily: 'JetBrains Mono',
+                  fontWeight: FontWeight.w600,
+                  fontSize: baseStyle.fontSize! - 2,
+                  color: const Color(0xFF00A896),
+                  backgroundColor: const Color(0xFFE0F7F4),
+                )
+              : baseStyle,
+        ),
+      );
+    }
+    return spans;
+  }
+
+  /// Простая подсветка строк терминального примера: `$ команда` — приглашение
+  /// бирюзовое, сама команда белая; всё остальное — приглушённый вывод.
+  Widget _terminalLine(String line) {
+    const promptColor = Color(0xFF00C9B7);
+    const commandColor = Colors.white;
+    const outputColor = Color(0xFF8FE4DA);
+
+    if (line.startsWith('\$ ')) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 4),
+        child: RichText(
+          text: TextSpan(
+            style: const TextStyle(fontFamily: 'JetBrains Mono', fontSize: 13.5, height: 1.6),
+            children: [
+              const TextSpan(text: '\$ ', style: TextStyle(color: promptColor, fontWeight: FontWeight.w700)),
+              TextSpan(text: line.substring(2), style: const TextStyle(color: commandColor, fontWeight: FontWeight.w600)),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Text(
+        line,
+        style: const TextStyle(fontFamily: 'JetBrains Mono', fontSize: 13.5, height: 1.6, color: outputColor),
       ),
     );
   }
