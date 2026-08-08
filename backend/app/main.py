@@ -6,9 +6,35 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 from app.database import Base, engine, get_db
 from app import models, schemas
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
+import random
 
 XP_PER_CORRECT = 10
+
+# Алгоритм Лейтнера: box → через сколько дней повторять. Правильный ответ по
+# тегу навыка поднимает его на box выше (интервал растёт), неправильный
+# сбрасывает в box 1 — «повторить завтра». MAX_BOX ограничивает верхнюю границу.
+REVIEW_INTERVALS_DAYS = {1: 1, 2: 3, 3: 7, 4: 16, 5: 35}
+MAX_BOX = max(REVIEW_INTERVALS_DAYS)
+REVIEW_SESSION_SIZE = 12
+
+
+def _update_skill_progress(db: Session, user_id: int, skill_tags: list[str] | None, is_correct: bool) -> None:
+    if not skill_tags:
+        return
+    now = datetime.utcnow()
+    for tag in skill_tags:
+        progress = (
+            db.query(models.SkillProgress)
+            .filter(models.SkillProgress.user_id == user_id, models.SkillProgress.skill_tag == tag)
+            .first()
+        )
+        if progress is None:
+            progress = models.SkillProgress(user_id=user_id, skill_tag=tag, box=1)
+            db.add(progress)
+
+        progress.box = min(progress.box + 1, MAX_BOX) if is_correct else 1
+        progress.next_review_at = now + timedelta(days=REVIEW_INTERVALS_DAYS[progress.box])
 
 # Client ID не секретны (зашиты в приложение), поэтому спокойно живут в коде.
 # Три штуки — по одной на платформу, но токен, пришедший от любой из них, валиден.
@@ -318,6 +344,7 @@ def submit_answer(exercise_id: int, submission: schemas.AnswerSubmit, db: Sessio
         raise HTTPException(status_code=404, detail="User not found")
 
     db.add(models.Answer(user_id=submission.user_id, exercise_id=exercise_id, is_correct=is_correct))
+    _update_skill_progress(db, submission.user_id, exercise.skill_tags, is_correct)
 
     # день засчитывается в streak только за верный ответ
     if is_correct:
@@ -337,6 +364,52 @@ def submit_answer(exercise_id: int, submission: schemas.AnswerSubmit, db: Sessio
         correct_answer = correct_answer.get("answer")
 
     return {"correct": is_correct, "correct_answer": correct_answer}
+
+
+@app.get("/users/{user_id}/review/due")
+def get_review_due(user_id: int, db: Session = Depends(get_db)):
+    """Сколько навыков сейчас просрочено для повторения — бейдж на карточке
+    «Повторение» на главном экране."""
+    count = (
+        db.query(models.SkillProgress)
+        .filter(models.SkillProgress.user_id == user_id, models.SkillProgress.next_review_at <= datetime.utcnow())
+        .count()
+    )
+    return {"due": count}
+
+
+@app.get("/users/{user_id}/review/session", response_model=list[schemas.ReviewExerciseOut])
+def get_review_session(user_id: int, db: Session = Depends(get_db)):
+    """Собирает сессию повторения: по одному случайному упражнению на каждый
+    просроченный навык, самые просроченные — первыми."""
+    due = (
+        db.query(models.SkillProgress)
+        .filter(models.SkillProgress.user_id == user_id, models.SkillProgress.next_review_at <= datetime.utcnow())
+        .order_by(models.SkillProgress.next_review_at)
+        .limit(REVIEW_SESSION_SIZE)
+        .all()
+    )
+    if not due:
+        return []
+
+    due_tags = [row.skill_tag for row in due]
+    candidates = (
+        db.query(models.Exercise)
+        .filter(models.Exercise.type != "theory")
+        .all()
+    )
+
+    by_tag: dict[str, list[models.Exercise]] = {}
+    for exercise in candidates:
+        for tag in exercise.skill_tags or []:
+            by_tag.setdefault(tag, []).append(exercise)
+
+    session = []
+    for tag in due_tags:
+        pool = by_tag.get(tag)
+        if pool:
+            session.append(random.choice(pool))
+    return session
 
 
 @app.post("/users/{user_id}/award-xp")

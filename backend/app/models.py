@@ -75,3 +75,15 @@ class UserProgress(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     lesson_id = Column(Integer, ForeignKey("lessons.id"), nullable=False)
     completed_at = Column(DateTime, default=datetime.utcnow)
+
+
+class SkillProgress(Base):
+    """Состояние spaced repetition (алгоритм Лейтнера) по одному skill_tag
+    для одного пользователя — одна строка на пару (user_id, skill_tag)."""
+
+    __tablename__ = "skill_progress"
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    skill_tag = Column(String, nullable=False)
+    box = Column(Integer, nullable=False, default=1)
+    next_review_at = Column(DateTime, nullable=False, default=datetime.utcnow)

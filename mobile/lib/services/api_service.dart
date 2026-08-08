@@ -181,6 +181,30 @@ Future<Map<String, dynamic>> updateProfile(int userId, String username, String a
   }
 }
 
+/// Сколько навыков сейчас просрочено для повторения — бейдж на карточке ревью.
+Future<int> fetchReviewDue(int userId) async {
+  final response = await http.get(Uri.parse('$apiBaseUrl/users/$userId/review/due'));
+
+  if (response.statusCode == 200) {
+    final data = jsonDecode(utf8.decode(response.bodyBytes));
+    return data['due'] as int;
+  } else {
+    throw Exception('Failed to load review due count');
+  }
+}
+
+/// Набор упражнений для сессии повторения — по одному на каждый просроченный навык.
+Future<List<Map<String, dynamic>>> fetchReviewSession(int userId) async {
+  final response = await http.get(Uri.parse('$apiBaseUrl/users/$userId/review/session'));
+
+  if (response.statusCode == 200) {
+    final List<dynamic> data = jsonDecode(utf8.decode(response.bodyBytes));
+    return data.cast<Map<String, dynamic>>();
+  } else {
+    throw Exception('Failed to load review session');
+  }
+}
+
 Future<List<Map<String, dynamic>>> fetchCoursesOverview(int userId) async {
   final response = await http.get(Uri.parse('$apiBaseUrl/courses/overview?user_id=$userId'));
 

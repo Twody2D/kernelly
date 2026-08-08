@@ -124,3 +124,15 @@ class LessonProgress(BaseModel):
 
 class LessonCompleteRequest(BaseModel):
     lesson_id: int
+
+
+class ReviewExerciseOut(BaseModel):
+    id: int
+    type: str
+    question: str
+    content: dict
+    skill_tags: list[str] | None = None
+    hints: list[str] | None = None
+
+    class Config:
+        from_attributes = True

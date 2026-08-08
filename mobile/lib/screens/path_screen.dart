@@ -4,6 +4,7 @@ import 'package:mobile/services/user_prefs.dart';
 import 'package:mobile/widgets/lesson_node.dart';
 import 'package:mobile/widgets/path_trace_painter.dart';
 import 'package:mobile/screens/lesson_screen.dart';
+import 'package:mobile/screens/review_screen.dart';
 import 'package:mobile/widgets/gradient_banner.dart';
 
 class PathScreen extends StatefulWidget {
@@ -28,6 +29,7 @@ class PathScreenState extends State<PathScreen> {
   List<Map<String, dynamic>> lessons = [];
   bool loading = true;
   bool hasError = false;
+  int reviewDue = 0;
 
   @override
   void initState() {
@@ -52,9 +54,11 @@ class PathScreenState extends State<PathScreen> {
   Future<void> load() async {
     try {
       final data = await fetchLessonsProgress(widget.sectionId, currentUserId);
+      final due = await fetchReviewDue(currentUserId);
       if (!mounted) return;
       setState(() {
         lessons = data;
+        reviewDue = due;
         loading = false;
       });
     } catch (e) {
@@ -65,6 +69,11 @@ class PathScreenState extends State<PathScreen> {
         loading = false;
       });
     }
+  }
+
+  Future<void> _openReview() async {
+    await Navigator.push(context, MaterialPageRoute(builder: (_) => const ReviewScreen()));
+    load();
   }
 
   LessonNodeStatus _statusFor(String status) {
@@ -136,6 +145,10 @@ class PathScreenState extends State<PathScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 20),
         children: [
           GradientBanner(eyebrow: '\$ раздел', title: widget.sectionTitle, badge: '$doneCount / ${lessons.length}'),
+          if (reviewDue > 0) ...[
+            const SizedBox(height: 14),
+            _ReviewCard(due: reviewDue, onTap: _openReview),
+          ],
           const SizedBox(height: 20),
           LayoutBuilder(
             builder: (context, constraints) {
@@ -180,5 +193,61 @@ class PathScreenState extends State<PathScreen> {
         ],
       ),
     );
+  }
+}
+
+/// Карточка-приглашение повторить просроченные навыки — показывается только
+/// когда алгоритм Лейтнера отметил что-то как «пора повторить».
+class _ReviewCard extends StatelessWidget {
+  final int due;
+  final VoidCallback onTap;
+
+  const _ReviewCard({required this.due, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFF3E0),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFFF9500), width: 1.5),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.refresh_rounded, color: Color(0xFFFF9500)),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Пора повторить',
+                    style: TextStyle(fontFamily: 'Fredoka', fontWeight: FontWeight.w600, fontSize: 15, color: const Color(0xFF1B2430)),
+                  ),
+                  Text(
+                    '$due ${_skillWord(due)} — закрепи, пока не забыл',
+                    style: TextStyle(fontFamily: 'Inter', fontSize: 12.5, color: const Color(0xFF5C6B73)),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right_rounded, color: Color(0xFFFF9500)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _skillWord(int count) {
+    final mod10 = count % 10;
+    final mod100 = count % 100;
+    if (mod10 == 1 && mod100 != 11) return 'навык';
+    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return 'навыка';
+    return 'навыков';
   }
 }
