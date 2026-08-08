@@ -32,6 +32,7 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
   int attemptCount = 0;
   Map<String, dynamic>? user;
   int correctCount = 0;
+  bool checking = false;
   bool finishing = false;
   DateTime? startTime;
 
@@ -81,6 +82,9 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
   }
 
   void _checkAnswer() async {
+    if (checking || isCorrect != null) return;
+    setState(() => checking = true);
+
     final currentExercise = exercises[currentIndex];
     final result = await submitAnswer(currentExercise['id'], currentUserId, selectedAnswer!.trim());
     final userData = await fetchUser(currentUserId);
@@ -93,6 +97,7 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
       attemptCount++;
       user = userData;
       if (correct) correctCount++;
+      checking = false;
     });
   }
 
@@ -517,7 +522,7 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
             if (isCorrect == null)
               PrimaryButton(
                 text: 'Проверить',
-                enabled: selectedAnswer != null && selectedAnswer!.trim().isNotEmpty,
+                enabled: !checking && selectedAnswer != null && selectedAnswer!.trim().isNotEmpty,
                 onPressed: _checkAnswer,
               )
             else
