@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mobile/screens/course_overview_screen.dart';
 import 'package:mobile/screens/profile_screen.dart';
-import 'package:mobile/screens/path_tab.dart';
+import 'package:mobile/screens/course_map_tab.dart';
 
 class MainShell extends StatefulWidget {
   const MainShell({super.key});
@@ -13,12 +13,12 @@ class MainShell extends StatefulWidget {
 class _MainShellState extends State<MainShell> {
   int currentIndex = 1;
 
-  final _pathKey = GlobalKey<PathTabState>();
+  final _pathKey = GlobalKey<CourseMapTabState>();
   final _coursesKey = GlobalKey<CourseOverviewScreenState>();
   final _profileKey = GlobalKey<ProfileScreenState>();
 
   late final List<Widget> _tabs = [
-    PathTab(key: _pathKey),
+    CourseMapTab(key: _pathKey),
     CourseOverviewScreen(key: _coursesKey),
     ProfileScreen(key: _profileKey),
   ];
