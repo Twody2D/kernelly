@@ -79,7 +79,12 @@ class CourseIntroScreen extends StatefulWidget {
   final int courseId;
   final String courseTitle;
 
-  const CourseIntroScreen({super.key, required this.courseId, required this.courseTitle});
+  /// true — открыт кнопкой «пересмотреть» поверх уже существующего экрана
+  /// разделов, поэтому по завершении нужно просто закрыться (pop), а не
+  /// заменять текущий маршрут новым SectionsScreen.
+  final bool isReplay;
+
+  const CourseIntroScreen({super.key, required this.courseId, required this.courseTitle, this.isReplay = false});
 
   @override
   State<CourseIntroScreen> createState() => _CourseIntroScreenState();
@@ -137,22 +142,25 @@ class _CourseIntroScreenState extends State<CourseIntroScreen> with SingleTicker
 
   Future<void> _next() async {
     if (page == _beats.length - 1) {
-      await markCourseIntroSeen(widget.courseId);
-      if (!mounted) return;
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) => SectionsScreen(courseId: widget.courseId, courseTitle: widget.courseTitle),
-        ),
-      );
+      await _finish();
       return;
     }
     _controller.nextPage(duration: const Duration(milliseconds: 260), curve: Curves.easeOut);
   }
 
   Future<void> _skip() async {
+    await _finish();
+  }
+
+  Future<void> _finish() async {
     await markCourseIntroSeen(widget.courseId);
     if (!mounted) return;
+
+    if (widget.isReplay) {
+      Navigator.pop(context);
+      return;
+    }
+
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
