@@ -413,13 +413,17 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
               ),
             ),
             const SizedBox(height: 10),
-            Text(
-              question,
-              style: TextStyle(
-                fontFamily: 'Fredoka',
-                fontWeight: FontWeight.w600,
-                fontSize: 21,
-                color: const Color(0xFF1B2430),
+            RichText(
+              text: TextSpan(
+                children: _parseInlineCode(
+                  question as String,
+                  baseStyle: TextStyle(
+                    fontFamily: 'Fredoka',
+                    fontWeight: FontWeight.w600,
+                    fontSize: 21,
+                    color: const Color(0xFF1B2430),
+                  ),
+                ),
               ),
             ),
             const SizedBox(height: 24),
