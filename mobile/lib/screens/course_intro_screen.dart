@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:mobile/screens/sections_screen.dart';
 import 'package:mobile/services/user_prefs.dart';
@@ -84,13 +85,53 @@ class CourseIntroScreen extends StatefulWidget {
   State<CourseIntroScreen> createState() => _CourseIntroScreenState();
 }
 
-class _CourseIntroScreenState extends State<CourseIntroScreen> {
+class _CourseIntroScreenState extends State<CourseIntroScreen> with SingleTickerProviderStateMixin {
   final PageController _controller = PageController();
   int page = 0;
+
+  late final AnimationController _beatController;
+  late final Animation<double> _mascotScale;
+  late final Animation<double> _mascotShake;
+  late final Animation<double> _iconScale;
+  late final Animation<double> _eyebrowFade;
+  late final Animation<Offset> _eyebrowSlide;
+  late final Animation<double> _titleFade;
+  late final Animation<Offset> _titleSlide;
+  late final Animation<double> _textFade;
+  late final Animation<Offset> _textSlide;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _beatController = AnimationController(vsync: this, duration: const Duration(milliseconds: 700));
+
+    _mascotScale = CurvedAnimation(parent: _beatController, curve: const Interval(0.0, 0.55, curve: Curves.easeOutBack));
+    _mascotShake = CurvedAnimation(parent: _beatController, curve: const Interval(0.05, 0.6, curve: Curves.elasticOut));
+    _iconScale = CurvedAnimation(parent: _beatController, curve: const Interval(0.35, 0.75, curve: Curves.easeOutBack));
+
+    const eyebrowInterval = Interval(0.3, 0.7, curve: Curves.easeOut);
+    _eyebrowFade = CurvedAnimation(parent: _beatController, curve: eyebrowInterval);
+    _eyebrowSlide = Tween(begin: const Offset(0, 0.3), end: Offset.zero)
+        .animate(CurvedAnimation(parent: _beatController, curve: eyebrowInterval));
+
+    const titleInterval = Interval(0.4, 0.8, curve: Curves.easeOut);
+    _titleFade = CurvedAnimation(parent: _beatController, curve: titleInterval);
+    _titleSlide = Tween(begin: const Offset(0, 0.3), end: Offset.zero)
+        .animate(CurvedAnimation(parent: _beatController, curve: titleInterval));
+
+    const textInterval = Interval(0.5, 0.9, curve: Curves.easeOut);
+    _textFade = CurvedAnimation(parent: _beatController, curve: textInterval);
+    _textSlide = Tween(begin: const Offset(0, 0.3), end: Offset.zero)
+        .animate(CurvedAnimation(parent: _beatController, curve: textInterval));
+
+    _beatController.forward();
+  }
 
   @override
   void dispose() {
     _controller.dispose();
+    _beatController.dispose();
     super.dispose();
   }
 
@@ -148,7 +189,10 @@ class _CourseIntroScreenState extends State<CourseIntroScreen> {
                 Expanded(
                   child: PageView(
                     controller: _controller,
-                    onPageChanged: (index) => setState(() => page = index),
+                    onPageChanged: (index) {
+                      setState(() => page = index);
+                      _beatController.forward(from: 0);
+                    },
                     children: [for (final beat in _beats) _beatPage(beat)],
                   ),
                 ),
@@ -196,52 +240,86 @@ class _CourseIntroScreenState extends State<CourseIntroScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Stack(
-                alignment: Alignment.center,
-                children: [
-                  AnimatedMascot(size: 152, emotion: beat.emotion),
-                  Positioned(
-                    right: 18,
-                    bottom: 14,
-                    child: Container(
-                      width: 42,
-                      height: 42,
-                      decoration: BoxDecoration(
-                        color: beat.iconBg,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: const Color(0xFFF6F9F9), width: 3),
-                        boxShadow: [
-                          BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 6, offset: const Offset(0, 2)),
-                        ],
+              AnimatedBuilder(
+                animation: _beatController,
+                builder: (context, child) {
+                  final shakeT = _mascotShake.value;
+                  final angle = beat.emotion == MascotEmotion.surprised
+                      ? sin(shakeT * pi * 6) * (1 - shakeT) * 0.12
+                      : 0.0;
+                  return Transform.rotate(
+                    angle: angle,
+                    child: Transform.scale(scale: _mascotScale.value, child: child),
+                  );
+                },
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    AnimatedMascot(size: 152, emotion: beat.emotion),
+                    Positioned(
+                      right: 18,
+                      bottom: 14,
+                      child: ScaleTransition(
+                        scale: _iconScale,
+                        child: Container(
+                          width: 42,
+                          height: 42,
+                          decoration: BoxDecoration(
+                            color: beat.iconBg,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: const Color(0xFFF6F9F9), width: 3),
+                            boxShadow: [
+                              BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 6, offset: const Offset(0, 2)),
+                            ],
+                          ),
+                          alignment: Alignment.center,
+                          child: Icon(beat.icon, size: 20, color: beat.iconColor),
+                        ),
                       ),
-                      alignment: Alignment.center,
-                      child: Icon(beat.icon, size: 20, color: beat.iconColor),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
               const SizedBox(height: 16),
-              Text(
-                beat.eyebrow,
-                style: TextStyle(fontFamily: 'JetBrains Mono', fontSize: 12.5, color: const Color(0xFF00A896)),
+              FadeTransition(
+                opacity: _eyebrowFade,
+                child: SlideTransition(
+                  position: _eyebrowSlide,
+                  child: Text(
+                    beat.eyebrow,
+                    style: TextStyle(fontFamily: 'JetBrains Mono', fontSize: 12.5, color: const Color(0xFF00A896)),
+                  ),
+                ),
               ),
               const SizedBox(height: 8),
-              Text(
-                beat.title,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontFamily: 'Fredoka',
-                  fontWeight: FontWeight.w600,
-                  fontSize: 26,
-                  height: 1.2,
-                  color: const Color(0xFF1B2430),
+              FadeTransition(
+                opacity: _titleFade,
+                child: SlideTransition(
+                  position: _titleSlide,
+                  child: Text(
+                    beat.title,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontFamily: 'Fredoka',
+                      fontWeight: FontWeight.w600,
+                      fontSize: 26,
+                      height: 1.2,
+                      color: const Color(0xFF1B2430),
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(height: 10),
-              Text(
-                beat.text,
-                textAlign: TextAlign.center,
-                style: TextStyle(fontFamily: 'Inter', fontSize: 15.5, height: 1.5, color: const Color(0xFF5C6B73)),
+              FadeTransition(
+                opacity: _textFade,
+                child: SlideTransition(
+                  position: _textSlide,
+                  child: Text(
+                    beat.text,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontFamily: 'Inter', fontSize: 15.5, height: 1.5, color: const Color(0xFF5C6B73)),
+                  ),
+                ),
               ),
             ],
           ),
