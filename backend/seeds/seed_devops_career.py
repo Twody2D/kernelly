@@ -140,7 +140,6 @@ COURSE = {
                             difficulty=2,
                         ),
                         terminal(
-                            "Серебряный уровень: без подсказок.\n\n"
                             "Покажи, под каким пользователем ты работаешь.",
                             "whoami",
                             skill_tags=["linux.whoami"],
@@ -161,7 +160,7 @@ COURSE = {
                             difficulty=2,
                         ),
                         terminal(
-                            "Ещё раз, для закрепления: покажи, под каким пользователем ты работаешь.",
+                            "Покажи, под каким пользователем ты работаешь.",
                             "whoami",
                             skill_tags=["linux.whoami"],
                             difficulty=2,
@@ -169,8 +168,7 @@ COURSE = {
                     ],
                     "exercises_3": [
                         terminal(
-                            "Золотой уровень: без подсказок, без права на ошибку. Покажи, под каким "
-                            "пользователем ты работаешь.",
+                            "Покажи, под каким пользователем ты работаешь.",
                             "whoami",
                             skill_tags=["linux.whoami"],
                             difficulty=3,
@@ -196,7 +194,7 @@ COURSE = {
                             difficulty=3,
                         ),
                         terminal(
-                            "Финальная проверка: снова покажи, под каким пользователем ты работаешь.",
+                            "Снова покажи, под каким пользователем ты работаешь.",
                             "whoami",
                             skill_tags=["linux.whoami"],
                             difficulty=3,
@@ -277,7 +275,7 @@ COURSE = {
                         ),
                     ],
                     "exercises_2": [
-                        terminal("Серебряный уровень: без подсказок. Покажи путь к текущей директории.", "pwd", skill_tags=["linux.pwd"], difficulty=2),
+                        terminal("Покажи путь к текущей директории.", "pwd", skill_tags=["linux.pwd"], difficulty=2),
                         terminal("Покажи, что лежит в текущей папке.", "ls", skill_tags=["linux.ls"], difficulty=2),
                         mc(
                             "Ты в папке /home/engineer и набираешь `cd ..`.\n\n"
@@ -300,7 +298,7 @@ COURSE = {
                         ),
                     ],
                     "exercises_3": [
-                        terminal("Золотой уровень. Покажи текущую директорию.", "pwd", skill_tags=["linux.pwd"], difficulty=3),
+                        terminal("Покажи текущую директорию.", "pwd", skill_tags=["linux.pwd"], difficulty=3),
                         terminal("Покажи содержимое папки.", "ls", skill_tags=["linux.ls"], difficulty=3),
                         terminal("Поднимись на уровень выше.", "cd ..", skill_tags=["linux.cd"], difficulty=3),
                         mc(
@@ -382,7 +380,7 @@ COURSE = {
                             "Выкладывает новую версию приложения на сервер",
                             difficulty=2,
                         ),
-                        terminal("Серебряный уровень: без подсказок. Покажи последние строки лог-файла.", "tail", skill_tags=["linux.tail"], difficulty=2),
+                        terminal("Покажи последние строки лог-файла.", "tail", skill_tags=["linux.tail"], difficulty=2),
                         mc(
                             "После деплоя логи показывают `[ERROR] Connection refused`.\n\n"
                             "Это значит…",
@@ -395,10 +393,10 @@ COURSE = {
                             "Приложение не может к чему-то подключиться (например, к базе данных)",
                             difficulty=2,
                         ),
-                        terminal("Ещё раз, для закрепления: покажи последние строки лог-файла.", "tail", skill_tags=["linux.tail"], difficulty=2),
+                        terminal("Покажи последние строки лог-файла ещё раз.", "tail", skill_tags=["linux.tail"], difficulty=2),
                     ],
                     "exercises_3": [
-                        terminal("Золотой уровень. Покажи последние строки лог-файла.", "tail", skill_tags=["linux.tail"], difficulty=3),
+                        terminal("Покажи последние строки лог-файла.", "tail", skill_tags=["linux.tail"], difficulty=3),
                         mc(
                             "Сайт лёг сразу после деплоя.\n\n"
                             "Каков правильный порядок действий?",
@@ -411,9 +409,9 @@ COURSE = {
                             "Проверить логи → найти ошибку → исправить",
                             difficulty=3,
                         ),
-                        terminal("Смешанное повторение: покажи, под каким пользователем ты работаешь.", "whoami", skill_tags=["linux.whoami"], difficulty=3),
-                        terminal("И покажи текущую директорию.", "pwd", skill_tags=["linux.pwd"], difficulty=3),
-                        terminal("Финальная проверка: снова последние строки лога.", "tail", skill_tags=["linux.tail"], difficulty=3),
+                        terminal("Покажи, под каким пользователем ты работаешь.", "whoami", skill_tags=["linux.whoami"], difficulty=3),
+                        terminal("Покажи текущую директорию.", "pwd", skill_tags=["linux.pwd"], difficulty=3),
+                        terminal("И снова покажи последние строки лог-файла.", "tail", skill_tags=["linux.tail"], difficulty=3),
                     ],
                 },
             ],

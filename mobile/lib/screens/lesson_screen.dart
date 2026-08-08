@@ -22,6 +22,11 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
   List<Map<String, dynamic>> exercises = [];
   Map<String, dynamic>? lesson;
   bool showingStory = false;
+
+  /// Показываем отдельным экраном перед серебряным/золотым прохождением —
+  /// чтобы не писать "Золотой уровень: ..." прямо в тексте задания.
+  bool showingTierIntro = false;
+  int attemptTier = 1;
   int currentIndex = 0;
   String? selectedAnswer;
   bool? isCorrect;
@@ -75,9 +80,12 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
     final lessonData = results[0] as Map<String, dynamic>;
     final data = results[1] as List<Map<String, dynamic>>;
     final userData = results[2] as Map<String, dynamic>;
+    final tier = ((lessonData['mastery'] as int? ?? 0) + 1).clamp(1, 3);
     setState(() {
       lesson = lessonData;
       showingStory = (lessonData['story'] as String?)?.isNotEmpty == true;
+      attemptTier = tier;
+      showingTierIntro = tier > 1;
       exercises = data;
       user = userData;
       startTime = DateTime.now();
@@ -380,6 +388,13 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
         lessonTitle: lesson?['title'] as String? ?? '',
         story: lesson?['story'] as String? ?? '',
         onContinue: () => setState(() => showingStory = false),
+      );
+    }
+
+    if (showingTierIntro) {
+      return _TierIntro(
+        tier: attemptTier,
+        onContinue: () => setState(() => showingTierIntro = false),
       );
     }
 
@@ -706,6 +721,84 @@ class _StoryIntroState extends State<_StoryIntro> with SingleTickerProviderState
                     width: double.infinity,
                     child: PrimaryButton(text: 'Начать миссию', onPressed: widget.onContinue),
                   ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Заставка перед серебряным/золотым прохождением — объясняет, что изменится
+/// (без подсказок, сложнее вопросы), не засоряя этим текст самих заданий.
+class _TierIntro extends StatelessWidget {
+  final int tier;
+  final VoidCallback onContinue;
+
+  const _TierIntro({required this.tier, required this.onContinue});
+
+  static const _tiers = {
+    2: (
+      label: 'Серебряный уровень',
+      color: Color(0xFF8FA0AB),
+      bg: Color(0xFFEDF1F3),
+      description: 'Ты уже проходил этот урок. Теперь — без подсказок и с вопросами похитрее. Проверим, что действительно запомнилось.',
+    ),
+    3: (
+      label: 'Золотой уровень',
+      color: Color(0xFFE0A82E),
+      bg: Color(0xFFFFF3D6),
+      description: 'Финальная проверка. Минимум подсказок, максимум внимания — заодно вспомним то, что учили раньше.',
+    ),
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final style = _tiers[tier] ?? _tiers[2]!;
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFF6F9F9),
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(28, 0, 28, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 96,
+                  height: 96,
+                  decoration: BoxDecoration(
+                    color: style.bg,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: style.color, width: 2),
+                  ),
+                  alignment: Alignment.center,
+                  child: Icon(Icons.workspace_premium_rounded, size: 44, color: style.color),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  style.label,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: 'Fredoka',
+                    fontWeight: FontWeight.w600,
+                    fontSize: 24,
+                    color: const Color(0xFF1B2430),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  style.description,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontFamily: 'Inter', fontSize: 15, height: 1.5, color: const Color(0xFF5C6B73)),
+                ),
+                const SizedBox(height: 28),
+                SizedBox(
+                  width: double.infinity,
+                  child: PrimaryButton(text: 'Начать', onPressed: onContinue),
                 ),
               ],
             ),
