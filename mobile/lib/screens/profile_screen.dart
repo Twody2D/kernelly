@@ -198,6 +198,9 @@ class ProfileScreenState extends State<ProfileScreen> {
                     stats?['auth_provider'] == null ||
                     stats?['auth_provider'] == 'guest',
                 email: stats?['email'] as String?,
+                username: stats?['username'] as String?,
+                avatar: stats?['avatar'] as String?,
+                onProfileChanged: load,
               ),
             ),
           ),

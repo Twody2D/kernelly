@@ -1,36 +1,41 @@
 import 'package:flutter/material.dart';
 import 'package:mobile/services/api_service.dart';
 import 'package:mobile/services/avatars.dart';
+import 'package:mobile/services/user_prefs.dart';
 import 'package:mobile/widgets/primary_button.dart';
 
-/// Показывается один раз сразу после первого входа через Google (пока
-/// avatar == null на бэкенде) — просит придумать имя и выбрать аватарку.
-/// Можно пропустить: тогда профиль просто останется без имени до
-/// следующего раза, когда пользователь зайдёт сюда сам.
-class ProfileSetupScreen extends StatefulWidget {
-  final int userId;
-  final String? suggestedName;
+/// Редактирование имени и аватарки — тот же набор данных, что и на
+/// первичной настройке профиля (profile_setup_screen), но как экран
+/// настроек: с текущими значениями и без принудительного шага.
+class SettingsProfileScreen extends StatefulWidget {
+  final String? username;
+  final String? avatar;
+  final String? email;
+  final bool isGuest;
 
-  const ProfileSetupScreen({
+  const SettingsProfileScreen({
     super.key,
-    required this.userId,
-    this.suggestedName,
+    required this.username,
+    required this.avatar,
+    required this.email,
+    required this.isGuest,
   });
 
   @override
-  State<ProfileSetupScreen> createState() => _ProfileSetupScreenState();
+  State<SettingsProfileScreen> createState() => _SettingsProfileScreenState();
 }
 
-class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
+class _SettingsProfileScreenState extends State<SettingsProfileScreen> {
   late final TextEditingController _nameController;
-  String _selectedAvatar = avatarCatalog.first.$1;
+  late String _selectedAvatar;
   bool _saving = false;
   String? _error;
 
   @override
   void initState() {
     super.initState();
-    _nameController = TextEditingController(text: widget.suggestedName ?? '');
+    _nameController = TextEditingController(text: widget.username ?? '');
+    _selectedAvatar = avatarByCode(widget.avatar).$1;
   }
 
   @override
@@ -52,8 +57,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     });
 
     try {
-      await updateProfile(widget.userId, name, _selectedAvatar);
-      if (mounted) Navigator.pop(context);
+      await updateProfile(currentUserId, name, _selectedAvatar);
+      if (mounted) Navigator.pop(context, true);
     } on UsernameTakenException {
       setState(() {
         _saving = false;
@@ -74,45 +79,33 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       appBar: AppBar(
         backgroundColor: const Color(0xFFF6F9F9),
         elevation: 0,
-        automaticallyImplyLeading: false,
-        actions: [
-          TextButton(
-            onPressed: _saving ? null : () => Navigator.pop(context),
-            child: Text(
-              'Пропустить',
-              style: TextStyle(
-                fontFamily: 'Fredoka',
-                color: const Color(0xFF9AAAAA),
-              ),
-            ),
+        iconTheme: const IconThemeData(color: Color(0xFF5C6B73)),
+        title: Text(
+          'Профиль',
+          style: TextStyle(
+            fontFamily: 'Fredoka',
+            fontWeight: FontWeight.w600,
+            fontSize: 17,
+            color: const Color(0xFF1B2430),
           ),
-        ],
+        ),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Как тебя зовут?',
+                'Никнейм',
                 style: TextStyle(
                   fontFamily: 'Fredoka',
                   fontWeight: FontWeight.w600,
-                  fontSize: 22,
+                  fontSize: 14,
                   color: const Color(0xFF1B2430),
                 ),
               ),
-              const SizedBox(height: 6),
-              Text(
-                'Имя и аватарку увидят другие в рейтинге и ленте',
-                style: TextStyle(
-                  fontFamily: 'Inter',
-                  fontSize: 14,
-                  color: const Color(0xFF5C6B73),
-                ),
-              ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 8),
               TextField(
                 controller: _nameController,
                 maxLength: 24,
@@ -143,17 +136,17 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
               Text(
-                'Выбери аватарку',
+                'Аватарка',
                 style: TextStyle(
                   fontFamily: 'Fredoka',
                   fontWeight: FontWeight.w600,
-                  fontSize: 15,
+                  fontSize: 14,
                   color: const Color(0xFF1B2430),
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
               GridView.count(
                 crossAxisCount: 4,
                 shrinkWrap: true,
@@ -164,9 +157,55 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                   for (final avatar in avatarCatalog) _avatarOption(avatar),
                 ],
               ),
+              const SizedBox(height: 24),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 13,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: const Color(0xFFDCE8E7),
+                    width: 1.5,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Почта',
+                            style: TextStyle(
+                              fontFamily: 'Fredoka',
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                              color: const Color(0xFF1B2430),
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            widget.isGuest
+                                ? 'не привязана'
+                                : (widget.email ?? 'не привязана'),
+                            style: TextStyle(
+                              fontFamily: 'JetBrains Mono',
+                              fontSize: 11.5,
+                              color: const Color(0xFF5C6B73),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
               const SizedBox(height: 28),
               PrimaryButton(
-                text: _saving ? 'Сохраняем…' : 'Продолжить',
+                text: _saving ? 'Сохраняем…' : 'Сохранить',
                 enabled: !_saving,
                 onPressed: _save,
               ),
