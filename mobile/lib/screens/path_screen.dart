@@ -53,12 +53,14 @@ class PathScreenState extends State<PathScreen> {
 
   Future<void> load() async {
     try {
-      final data = await fetchLessonsProgress(widget.sectionId, currentUserId);
-      final due = await fetchReviewDue(currentUserId);
+      final results = await Future.wait([
+        fetchLessonsProgress(widget.sectionId, currentUserId),
+        fetchReviewDue(currentUserId),
+      ]);
       if (!mounted) return;
       setState(() {
-        lessons = data;
-        reviewDue = due;
+        lessons = results[0] as List<Map<String, dynamic>>;
+        reviewDue = results[1] as int;
         loading = false;
       });
     } catch (e) {

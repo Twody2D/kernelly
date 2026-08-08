@@ -31,14 +31,18 @@ class CourseOverviewScreenState extends State<CourseOverviewScreen> {
 
   Future<void> load() async {
     try {
-      final data = await fetchCoursesOverview(currentUserId);
-      final userData = await fetchUser(currentUserId);
-      final daily = await fetchDailyProgress(currentUserId);
-      final prefs = await SharedPreferences.getInstance();
+      final results = await Future.wait([
+        fetchCoursesOverview(currentUserId),
+        fetchUser(currentUserId),
+        fetchDailyProgress(currentUserId),
+        SharedPreferences.getInstance(),
+      ]);
       if (!mounted) return;
+      final daily = results[2] as Map<String, dynamic>;
+      final prefs = results[3] as SharedPreferences;
       setState(() {
-        courses = data;
-        user = userData;
+        courses = results[0] as List<Map<String, dynamic>>;
+        user = results[1] as Map<String, dynamic>;
         dailyCompleted = daily['lessons_completed'] ?? 0;
         dailyGoal = prefs.getInt(PrefKeys.dailyGoal) ?? defaultDailyGoal;
         loading = false;

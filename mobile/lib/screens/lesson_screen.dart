@@ -63,9 +63,14 @@ class _LessonScreenState extends State<LessonScreen> with SingleTickerProviderSt
   }
 
   Future<void> loadLesson() async {
-    final lessonData = await fetchLesson(widget.lessonId, currentUserId);
-    final data = await fetchLessonExercises(widget.lessonId, currentUserId);
-    final userData = await fetchUser(currentUserId);
+    final results = await Future.wait([
+      fetchLesson(widget.lessonId, currentUserId),
+      fetchLessonExercises(widget.lessonId, currentUserId),
+      fetchUser(currentUserId),
+    ]);
+    final lessonData = results[0] as Map<String, dynamic>;
+    final data = results[1] as List<Map<String, dynamic>>;
+    final userData = results[2] as Map<String, dynamic>;
     setState(() {
       lesson = lessonData;
       showingStory = (lessonData['story'] as String?)?.isNotEmpty == true;
