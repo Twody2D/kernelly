@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mobile/services/api_service.dart';
 import 'package:mobile/services/user_prefs.dart';
+import 'package:mobile/screens/course_intro_screen.dart';
 import 'package:mobile/widgets/course_map_body.dart';
+import 'package:mobile/widgets/daily_goal_card.dart';
 
-/// Вкладка «Путь»: карта текущего курса — сама находит, с какого курса
-/// пользователю продолжать, и показывает его карту.
+/// Вкладка «Путь»: шапка приложения (лого, streak), цель дня и карта текущего
+/// курса — сама находит, с какого курса пользователю продолжать. Раньше это
+/// было размазано между вкладками «Путь» и «Курсы», которую убрали, пока в
+/// приложении всего один курс.
 class CourseMapTab extends StatefulWidget {
   const CourseMapTab({super.key});
 
@@ -16,6 +21,10 @@ class CourseMapTabState extends State<CourseMapTab> {
   final GlobalKey<CourseMapBodyState> _mapKey = GlobalKey();
 
   int? courseId;
+  String courseTitle = '';
+  Map<String, dynamic>? user;
+  int dailyCompleted = 0;
+  int dailyGoal = defaultDailyGoal;
   bool loading = true;
 
   @override
@@ -32,8 +41,34 @@ class CourseMapTabState extends State<CourseMapTab> {
       final newCourseId = current == null ? null : current['course_id'] as int;
       final sameCourse = courseId != null && courseId == newCourseId;
 
+      if (newCourseId != null && !sameCourse) {
+        final seenIntro = await hasSeenCourseIntro(newCourseId);
+        if (!seenIntro && mounted) {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => CourseIntroScreen(courseId: newCourseId, courseTitle: current!['course_title']),
+            ),
+          );
+        }
+      }
+      if (!mounted) return;
+
+      final results = await Future.wait([
+        fetchUser(currentUserId),
+        fetchDailyProgress(currentUserId),
+        SharedPreferences.getInstance(),
+      ]);
+      if (!mounted) return;
+      final daily = results[1] as Map<String, dynamic>;
+      final prefs = results[2] as SharedPreferences;
+
       setState(() {
         courseId = newCourseId;
+        courseTitle = newCourseId == null ? '' : current!['course_title'] as String;
+        user = results[0] as Map<String, dynamic>;
+        dailyCompleted = daily['lessons_completed'] ?? 0;
+        dailyGoal = prefs.getInt(PrefKeys.dailyGoal) ?? defaultDailyGoal;
         loading = false;
       });
 
@@ -46,6 +81,14 @@ class CourseMapTabState extends State<CourseMapTab> {
     }
   }
 
+  Future<void> _replayIntro() async {
+    if (courseId == null) return;
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => CourseIntroScreen(courseId: courseId!, courseTitle: courseTitle)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (loading) {
@@ -55,32 +98,111 @@ class CourseMapTabState extends State<CourseMapTab> {
       );
     }
 
-    if (courseId == null) {
-      return const Scaffold(
-        backgroundColor: Color(0xFFF6F9F9),
-        body: Center(
-          child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: 40),
-            child: Text(
-              'Пока нечего проходить —\nвыберите курс на вкладке «Курсы»',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontFamily: 'Fredoka',
-                fontWeight: FontWeight.w500,
-                fontSize: 15,
-                height: 1.4,
-                color: Color(0xFF5C6B73),
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-
     return Scaffold(
       backgroundColor: const Color(0xFFF6F9F9),
-      appBar: AppBar(backgroundColor: const Color(0xFFF6F9F9), elevation: 0),
-      body: CourseMapBody(key: _mapKey, courseId: courseId!),
+      body: SafeArea(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 12, 12),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF58CC02),
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(color: const Color(0xFF58CC02).withOpacity(0.2), spreadRadius: 3, blurRadius: 0),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Kernelly',
+                        style: TextStyle(
+                          fontFamily: 'Fredoka',
+                          fontWeight: FontWeight.w700,
+                          fontSize: 18,
+                          color: const Color(0xFF1B2430),
+                        ),
+                      ),
+                    ],
+                  ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (user != null)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(14),
+                            boxShadow: [
+                              BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 6, offset: const Offset(0, 2)),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Text('🔥', style: TextStyle(fontSize: 14)),
+                              const SizedBox(width: 5),
+                              Text(
+                                '${user!['streak']}',
+                                style: TextStyle(
+                                  fontFamily: 'Fredoka',
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 14,
+                                  color: const Color(0xFFFF9500),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      if (courseId != null)
+                        IconButton(
+                          tooltip: 'Пересмотреть заставку курса',
+                          icon: const Icon(Icons.replay_rounded, color: Color(0xFF5C6B73)),
+                          onPressed: _replayIntro,
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            if (courseId != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                child: DailyGoalCard(completed: dailyCompleted, goal: dailyGoal),
+              ),
+            Expanded(
+              child: courseId == null
+                  ? const Center(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 40),
+                        child: Text(
+                          'Пока нечего проходить',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontFamily: 'Fredoka',
+                            fontWeight: FontWeight.w500,
+                            fontSize: 15,
+                            height: 1.4,
+                            color: Color(0xFF5C6B73),
+                          ),
+                        ),
+                      ),
+                    )
+                  : CourseMapBody(key: _mapKey, courseId: courseId!),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

@@ -1,6 +1,5 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:mobile/screens/sections_screen.dart';
 import 'package:mobile/services/user_prefs.dart';
 import 'package:mobile/widgets/animated_mascot.dart';
 import 'package:mobile/widgets/mascot.dart';
@@ -79,12 +78,7 @@ class CourseIntroScreen extends StatefulWidget {
   final int courseId;
   final String courseTitle;
 
-  /// true — открыт кнопкой «пересмотреть» поверх уже существующего экрана
-  /// разделов, поэтому по завершении нужно просто закрыться (pop), а не
-  /// заменять текущий маршрут новым SectionsScreen.
-  final bool isReplay;
-
-  const CourseIntroScreen({super.key, required this.courseId, required this.courseTitle, this.isReplay = false});
+  const CourseIntroScreen({super.key, required this.courseId, required this.courseTitle});
 
   @override
   State<CourseIntroScreen> createState() => _CourseIntroScreenState();
@@ -155,18 +149,7 @@ class _CourseIntroScreenState extends State<CourseIntroScreen> with SingleTicker
   Future<void> _finish() async {
     await markCourseIntroSeen(widget.courseId);
     if (!mounted) return;
-
-    if (widget.isReplay) {
-      Navigator.pop(context);
-      return;
-    }
-
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (_) => SectionsScreen(courseId: widget.courseId, courseTitle: widget.courseTitle),
-      ),
-    );
+    Navigator.pop(context);
   }
 
   @override

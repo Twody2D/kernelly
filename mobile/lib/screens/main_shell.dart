@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:mobile/screens/course_overview_screen.dart';
 import 'package:mobile/screens/profile_screen.dart';
 import 'package:mobile/screens/course_map_tab.dart';
 
+/// Курсы отдельной вкладкой убраны — пока в приложении один курс, карта на
+/// вкладке «Путь» и есть весь каталог. Топ игроков и лента активности друзей
+/// добавятся сюда следующими вкладками, когда будет готов бэкенд под них.
 class MainShell extends StatefulWidget {
   const MainShell({super.key});
 
@@ -11,15 +13,13 @@ class MainShell extends StatefulWidget {
 }
 
 class _MainShellState extends State<MainShell> {
-  int currentIndex = 1;
+  int currentIndex = 0;
 
   final _pathKey = GlobalKey<CourseMapTabState>();
-  final _coursesKey = GlobalKey<CourseOverviewScreenState>();
   final _profileKey = GlobalKey<ProfileScreenState>();
 
   late final List<Widget> _tabs = [
     CourseMapTab(key: _pathKey),
-    CourseOverviewScreen(key: _coursesKey),
     ProfileScreen(key: _profileKey),
   ];
 
@@ -31,9 +31,6 @@ class _MainShellState extends State<MainShell> {
         _pathKey.currentState?.load();
         break;
       case 1:
-        _coursesKey.currentState?.load();
-        break;
-      case 2:
         _profileKey.currentState?.load();
         break;
     }
@@ -55,7 +52,6 @@ class _MainShellState extends State<MainShell> {
         unselectedLabelStyle: TextStyle(fontFamily: 'JetBrains Mono', fontSize: 11),
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.route), label: 'Путь'),
-          BottomNavigationBarItem(icon: Icon(Icons.menu_book), label: 'Курсы'),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Профиль'),
         ],
       ),
