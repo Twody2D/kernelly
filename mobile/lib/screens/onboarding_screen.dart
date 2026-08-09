@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mobile/screens/main_shell.dart';
+import 'package:mobile/services/api_service.dart';
 import 'package:mobile/services/user_prefs.dart';
 import 'package:mobile/widgets/animated_mascot.dart';
 import 'package:mobile/widgets/primary_button.dart';
 
 const _introTopics = ['bash', 'git', 'python', 'sql'];
-
-const _topics = ['linux', 'bash', 'git', 'docker', 'python', 'sql'];
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -19,8 +18,28 @@ class OnboardingScreen extends StatefulWidget {
 class _OnboardingScreenState extends State<OnboardingScreen> {
   final PageController _controller = PageController();
   int page = 0;
-  final Set<String> selectedTopics = {};
   int goal = defaultDailyGoal;
+
+  List<Map<String, dynamic>>? courses;
+  int? selectedCourseId;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCourses();
+  }
+
+  Future<void> _loadCourses() async {
+    try {
+      final result = await fetchCoursesOverview(currentUserId);
+      if (!mounted) return;
+      setState(() => courses = result);
+    } catch (e) {
+      debugPrint('Ошибка загрузки курсов: $e');
+      if (!mounted) return;
+      setState(() => courses = []);
+    }
+  }
 
   @override
   void dispose() {
@@ -31,7 +50,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   Future<void> _finish() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(PrefKeys.onboardingDone, true);
-    await prefs.setStringList(PrefKeys.onboardingTopics, selectedTopics.toList());
+    if (selectedCourseId != null) {
+      await prefs.setInt(PrefKeys.selectedCourseId, selectedCourseId!);
+    }
     await prefs.setInt(PrefKeys.dailyGoal, goal);
 
     if (!mounted) return;
@@ -230,7 +251,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             children: [
               const SizedBox(height: 20),
               Text(
-                '\$ выбери направление',
+                '\$ выбери курс',
                 style: TextStyle(fontFamily: 'JetBrains Mono', fontSize: 12.5, color: const Color(0xFF00A896)),
               ),
               const SizedBox(height: 8),
@@ -247,27 +268,80 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               ),
               const SizedBox(height: 10),
               Text(
-                'Отметь всё, что интересно. Это можно поменять потом в настройках.',
+                'С этого курса начнём. Поменять можно потом в настройках.',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontFamily: 'Inter', fontSize: 15.5, height: 1.5, color: const Color(0xFF5C6B73)),
               ),
               const SizedBox(height: 22),
-              Wrap(
-                alignment: WrapAlignment.center,
-                spacing: 8,
-                runSpacing: 10,
-                children: [
-                  for (final topic in _topics)
-                    GestureDetector(
-                      onTap: () => setState(() {
-                        if (!selectedTopics.remove(topic)) selectedTopics.add(topic);
-                      }),
-                      child: _chip(topic, selected: selectedTopics.contains(topic)),
-                    ),
+              if (courses == null)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 24),
+                  child: CircularProgressIndicator(),
+                )
+              else
+                for (final course in courses!) ...[
+                  _courseCard(course),
+                  const SizedBox(height: 10),
                 ],
-              ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _courseCard(Map<String, dynamic> course) {
+    final id = course['id'] as int;
+    final locked = course['locked'] == true;
+    final selected = !locked && selectedCourseId == id;
+
+    return GestureDetector(
+      onTap: locked ? null : () => setState(() => selectedCourseId = id),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+        decoration: BoxDecoration(
+          color: selected ? const Color(0xFFE3F8F6) : Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: selected ? const Color(0xFF00C9B7) : const Color(0xFFDCE8E7),
+            width: selected ? 2 : 1.5,
+          ),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    course['title'] as String,
+                    style: TextStyle(
+                      fontFamily: 'Fredoka',
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
+                      color: locked ? const Color(0xFFC2CDCD) : const Color(0xFF1B2430),
+                    ),
+                  ),
+                  if (locked && course['requirement'] != null) ...[
+                    const SizedBox(height: 3),
+                    Text(
+                      course['requirement'] as String,
+                      style: TextStyle(fontFamily: 'JetBrains Mono', fontSize: 12, color: const Color(0xFF5C6B73)),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            Icon(
+              locked
+                  ? Icons.lock_rounded
+                  : (selected ? Icons.check_circle : Icons.circle_outlined),
+              size: 22,
+              color: locked
+                  ? const Color(0xFFC2CDCD)
+                  : (selected ? const Color(0xFF00C9B7) : const Color(0xFFC2CDCD)),
+            ),
+          ],
         ),
       ),
     );

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:mobile/services/api_service.dart';
 import 'package:mobile/services/user_prefs.dart';
 import 'package:mobile/screens/onboarding_screen.dart';
 import 'package:mobile/theme/app_theme.dart';
@@ -21,6 +22,8 @@ class _SettingsCoursesScreenState extends State<SettingsCoursesScreen> {
   bool mascot = true;
   String theme = 'light';
   int goal = defaultDailyGoal;
+  int? selectedCourseId;
+  List<Map<String, dynamic>>? courses;
 
   @override
   void initState() {
@@ -37,7 +40,132 @@ class _SettingsCoursesScreenState extends State<SettingsCoursesScreen> {
       mascot = stored.getBool(PrefKeys.mascotAnimations) ?? true;
       theme = stored.getString(PrefKeys.theme) ?? 'light';
       goal = stored.getInt(PrefKeys.dailyGoal) ?? defaultDailyGoal;
+      selectedCourseId = stored.getInt(PrefKeys.selectedCourseId);
     });
+
+    try {
+      final result = await fetchCoursesOverview(currentUserId);
+      if (!mounted) return;
+      setState(() => courses = result);
+    } catch (e) {
+      debugPrint('Ошибка загрузки курсов: $e');
+    }
+  }
+
+  String get _selectedCourseTitle {
+    if (courses == null || selectedCourseId == null) return 'автоматически';
+    for (final course in courses!) {
+      if (course['id'] == selectedCourseId) return course['title'] as String;
+    }
+    return 'автоматически';
+  }
+
+  Future<void> _pickCourse() async {
+    if (courses == null || courses!.isEmpty) return;
+    final colors = context.colors;
+    final selected = await showModalBottomSheet<int>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => Container(
+        decoration: BoxDecoration(
+          color: colors.background,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 38,
+              height: 4,
+              decoration: BoxDecoration(
+                color: colors.border,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Курс',
+              style: TextStyle(
+                fontFamily: 'Fredoka',
+                fontWeight: FontWeight.w600,
+                fontSize: 17,
+                color: colors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 14),
+            for (final course in courses!) ...[
+              _courseOption(sheetContext, course, colors),
+              const SizedBox(height: 10),
+            ],
+          ],
+        ),
+      ),
+    );
+
+    if (selected != null) {
+      setState(() => selectedCourseId = selected);
+      await prefs?.setInt(PrefKeys.selectedCourseId, selected);
+    }
+  }
+
+  Widget _courseOption(BuildContext sheetContext, Map<String, dynamic> course, AppColors colors) {
+    final id = course['id'] as int;
+    final locked = course['locked'] == true;
+    final selected = !locked && selectedCourseId == id;
+
+    return GestureDetector(
+      onTap: locked ? null : () => Navigator.pop(sheetContext, id),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+        decoration: BoxDecoration(
+          color: selected ? colors.accentBg : colors.card,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: selected ? colors.accent : colors.border,
+            width: selected ? 2 : 1.5,
+          ),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    course['title'] as String,
+                    style: TextStyle(
+                      fontFamily: 'Fredoka',
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                      color: locked ? colors.locked : colors.textPrimary,
+                    ),
+                  ),
+                  if (locked && course['requirement'] != null) ...[
+                    const SizedBox(height: 3),
+                    Text(
+                      course['requirement'] as String,
+                      style: TextStyle(
+                        fontFamily: 'JetBrains Mono',
+                        fontSize: 11.5,
+                        color: colors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            Icon(
+              locked
+                  ? Icons.lock_rounded
+                  : (selected ? Icons.check_circle : Icons.circle_outlined),
+              size: 22,
+              color: locked ? colors.locked : (selected ? colors.accent : colors.locked),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _saveBool(
@@ -194,6 +322,11 @@ class _SettingsCoursesScreenState extends State<SettingsCoursesScreen> {
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
               children: [
                 SettingsCard([
+                  SettingsRow(
+                    title: 'Курс',
+                    subtitle: 'с какого курса продолжать путь',
+                    trailing: SettingsPill(text: _selectedCourseTitle, onTap: _pickCourse),
+                  ),
                   SettingsRow(
                     title: 'Цель на день',
                     subtitle: goalSubtitle(goal),

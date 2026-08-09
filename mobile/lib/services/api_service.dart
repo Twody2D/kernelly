@@ -142,9 +142,13 @@ Future<Map<String, dynamic>> completeLesson(int lessonId, int userId) async {
 }
 
 /// Раздел, с которого продолжать. null — если проходить нечего.
-Future<Map<String, dynamic>?> fetchCurrentSection(int userId) async {
+Future<Map<String, dynamic>?> fetchCurrentSection(
+  int userId, {
+  int? preferredCourseId,
+}) async {
+  final query = preferredCourseId == null ? '' : '?preferred_course_id=$preferredCourseId';
   final response = await http.get(
-    Uri.parse('$apiBaseUrl/users/$userId/current-section'),
+    Uri.parse('$apiBaseUrl/users/$userId/current-section$query'),
     headers: _authHeaders(),
   );
 

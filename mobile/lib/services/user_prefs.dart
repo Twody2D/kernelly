@@ -6,7 +6,7 @@ import 'package:mobile/services/api_service.dart';
 /// Онбординг записывает часть значений, экран настроек их читает и меняет.
 class PrefKeys {
   static const onboardingDone = 'onboarding_done';
-  static const onboardingTopics = 'onboarding_topics';
+  static const selectedCourseId = 'selected_course_id';
   static const dailyGoal = 'daily_goal';
   static const remind = 'settings_remind';
   static const streakShield = 'settings_streak_shield';

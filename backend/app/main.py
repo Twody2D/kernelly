@@ -1111,11 +1111,14 @@ def get_courses_overview(
 @app.get("/users/{user_id}/current-section")
 def get_current_section(
     user_id: int,
+    preferred_course_id: int | None = None,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ):
     """Раздел, с которого пользователю продолжать: первый незавершённый
-    в первом незавершённом доступном курсе."""
+    в первом незавершённом доступном курсе. preferred_course_id — курс,
+    выбранный в онбординге (или потом в настройках) — если он доступен,
+    выводим его вперёд остальных вне зависимости от порядка «в работе»."""
     _require_self(current_user, user_id)
     courses = _courses_with_status(db, user_id)
     available = [c for c in courses if not c["locked"] and c["total"] > 0]
@@ -1132,6 +1135,11 @@ def get_current_section(
     # сначала курсы в работе, потом остальные — как в баннере «продолжить»
     unfinished = [c for c in available if c["completed"] < c["total"]]
     ordered = unfinished + [c for c in available if c not in unfinished]
+
+    if preferred_course_id is not None:
+        preferred = next((c for c in ordered if c["id"] == preferred_course_id), None)
+        if preferred is not None:
+            ordered = [preferred] + [c for c in ordered if c is not preferred]
 
     for course in ordered:
         sections = (

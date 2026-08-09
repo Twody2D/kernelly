@@ -35,7 +35,12 @@ class CourseMapTabState extends State<CourseMapTab> {
 
   Future<void> load() async {
     try {
-      final current = await fetchCurrentSection(currentUserId);
+      final earlyPrefs = await SharedPreferences.getInstance();
+      final preferredCourseId = earlyPrefs.getInt(PrefKeys.selectedCourseId);
+      final current = await fetchCurrentSection(
+        currentUserId,
+        preferredCourseId: preferredCourseId,
+      );
       if (!mounted) return;
 
       final newCourseId = current == null ? null : current['course_id'] as int;
