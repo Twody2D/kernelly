@@ -239,6 +239,27 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                       fontSize: 10.5,
                     ),
                   ),
+                  if (stats!['current_course_title'] != null) ...[
+                    const SizedBox(height: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0x26FFFFFF),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        'сейчас проходит: ${stats!['current_course_title']}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontFamily: 'Inter',
+                          fontWeight: FontWeight.w500,
+                          color: Colors.white,
+                          fontSize: 10.5,
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),

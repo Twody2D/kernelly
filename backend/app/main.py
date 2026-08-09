@@ -1323,6 +1323,36 @@ def _courses_with_status(db: Session, user_id: int) -> list[dict]:
     return result
 
 
+def _current_course_title(db: Session, user_id: int) -> str | None:
+    """Курс, который пользователь сейчас проходит — для бейджа в чужом
+    профиле. В отличие от /current-section (self-only, учитывает клиентский
+    preferred_course_id из настроек), тут просто «курс последнего движения»,
+    без клиентских предпочтений, которые для чужого профиля не применимы."""
+    courses = _courses_with_status(db, user_id)
+    unfinished = [
+        c for c in courses if not c["locked"] and c["total"] > 0 and c["completed"] < c["total"]
+    ]
+    if not unfinished:
+        return None
+
+    last_progress = (
+        db.query(models.UserProgress)
+        .filter(models.UserProgress.user_id == user_id)
+        .order_by(models.UserProgress.completed_at.desc())
+        .first()
+    )
+    if last_progress is not None:
+        lesson = db.query(models.Lesson).filter(models.Lesson.id == last_progress.lesson_id).first()
+        if lesson is not None:
+            section = db.query(models.Section).filter(models.Section.id == lesson.section_id).first()
+            if section is not None:
+                match = next((c for c in unfinished if c["id"] == section.course_id), None)
+                if match is not None:
+                    return match["title"]
+
+    return unfinished[0]["title"]
+
+
 @app.get("/courses/overview")
 def get_courses_overview(
     user_id: int,
@@ -1592,6 +1622,8 @@ def get_user_stats(
         # Место в лиге за последнюю подведённую неделю — видно в любом
         # профиле, как медаль-бейдж (не только своём).
         "last_league_rank": last_league_result.rank if last_league_result else None,
+        # Какой курс сейчас проходит — тоже видно всем, как и достижения.
+        "current_course_title": _current_course_title(db, user_id),
     }
     if current_user.id == user_id:
         result["email"] = user.email
