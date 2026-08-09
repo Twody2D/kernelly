@@ -3,14 +3,14 @@ import 'package:mobile/services/api_service.dart';
 import 'package:mobile/services/user_prefs.dart';
 import 'package:mobile/screens/lesson_screen.dart';
 import 'package:mobile/screens/review_screen.dart';
-import 'package:mobile/widgets/chapter_card.dart';
 import 'package:mobile/widgets/daily_goal_card.dart';
 import 'package:mobile/widgets/gradient_banner.dart';
 import 'package:mobile/widgets/review_card.dart';
 import 'package:mobile/widgets/section_path_nodes.dart';
 
-/// Карта одного курса целиком — пройденные и заблокированные главы
-/// компактными карточками, а глава в работе — развёрнутой дорожкой уроков.
+/// Карта одного курса целиком — единая дорожка уроков сразу по всем
+/// разделам: пройденные и текущий раздел со своим реальным статусом,
+/// а уроки ещё не открытых разделов видны, но помечены заблокированными.
 /// Общая для вкладки «Путь» (текущий курс) и экрана разделов курса в «Курсах».
 class CourseMapBody extends StatefulWidget {
   final int courseId;
@@ -33,7 +33,7 @@ class CourseMapBody extends StatefulWidget {
 class CourseMapBodyState extends State<CourseMapBody> {
   String? courseTitle;
   List<Map<String, dynamic>> sections = [];
-  List<Map<String, dynamic>> currentSectionLessons = [];
+  Map<int, List<Map<String, dynamic>>> lessonsBySection = {};
   int reviewDue = 0;
   bool loading = true;
 
@@ -56,22 +56,32 @@ class CourseMapBodyState extends State<CourseMapBody> {
         sectionsData['sections'] ?? [],
       );
 
-      Map<String, dynamic>? current;
-      for (final section in sectionsList) {
-        if (section['status'] == 'current') {
-          current = section;
-          break;
-        }
-      }
-      final lessons = current == null
-          ? <Map<String, dynamic>>[]
-          : await fetchLessonsProgress(current['id'], currentUserId);
+      // Уроки нужны сразу для всех разделов, не только текущего — путь
+      // показывает их все одной дорожкой. Для ещё не открытых разделов
+      // бэкенд считает первый урок «current» сам по себе (без учёта того,
+      // что раздел целиком заблокирован), поэтому такие статусы
+      // принудительно подменяем на «locked» ниже.
+      final lessonsLists = await Future.wait(
+        sectionsList.map((s) => fetchLessonsProgress(s['id'], currentUserId)),
+      );
       if (!mounted) return;
+
+      final lessonsMap = <int, List<Map<String, dynamic>>>{};
+      for (var i = 0; i < sectionsList.length; i++) {
+        final section = sectionsList[i];
+        var sectionLessons = lessonsLists[i];
+        if (section['status'] == 'locked') {
+          sectionLessons = [
+            for (final lesson in sectionLessons) {...lesson, 'status': 'locked'},
+          ];
+        }
+        lessonsMap[section['id'] as int] = sectionLessons;
+      }
 
       setState(() {
         courseTitle = sectionsData['course_title'] as String?;
         sections = sectionsList;
-        currentSectionLessons = lessons;
+        lessonsBySection = lessonsMap;
         reviewDue = results[1] as int;
         loading = false;
       });
@@ -147,14 +157,13 @@ class CourseMapBodyState extends State<CourseMapBody> {
   }
 
   Widget _sectionBlock(Map<String, dynamic> section) {
-    final isCurrent = section['status'] == 'current';
-
-    if (!isCurrent) {
-      return Padding(
-        padding: const EdgeInsets.only(bottom: 12),
-        child: ChapterCard(section: section),
-      );
-    }
+    final status = section['status'] as String;
+    final lessons = lessonsBySection[section['id'] as int] ?? [];
+    final labelColor = switch (status) {
+      'done' => const Color(0xFF58CC02),
+      'locked' => const Color(0xFF9AAAAA),
+      _ => const Color(0xFF00A896),
+    };
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -163,19 +172,27 @@ class CourseMapBodyState extends State<CourseMapBody> {
         children: [
           Padding(
             padding: const EdgeInsets.only(left: 4, bottom: 4),
-            child: Text(
-              'Раздел ${section['order']} · ${section['title']}',
-              style: TextStyle(
-                fontFamily: 'JetBrains Mono',
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: const Color(0xFF00A896),
-                letterSpacing: 0.4,
-              ),
+            child: Row(
+              children: [
+                if (status == 'locked') ...[
+                  const Icon(Icons.lock, size: 12, color: Color(0xFF9AAAAA)),
+                  const SizedBox(width: 4),
+                ],
+                Text(
+                  'Раздел ${section['order']} · ${section['title']}',
+                  style: TextStyle(
+                    fontFamily: 'JetBrains Mono',
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: labelColor,
+                    letterSpacing: 0.4,
+                  ),
+                ),
+              ],
             ),
           ),
           SectionPathNodes(
-            lessons: currentSectionLessons,
+            lessons: lessons,
             onTapLesson: (lesson) => _openLesson(lesson, section['title']),
           ),
         ],
