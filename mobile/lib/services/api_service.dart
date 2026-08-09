@@ -1,10 +1,23 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:mobile/services/api_config.dart';
+import 'package:mobile/services/user_prefs.dart' show currentDeviceToken;
+
+/// device_token этого устройства как Bearer-токен — сервер проверяет им, что
+/// запрос действительно от заявленного пользователя, а не просто доверяет
+/// user_id, присланному в параметрах (раньше так и было — любой мог
+/// подставить чужой id и читать/менять чужие данные).
+Map<String, String> _authHeaders([Map<String, String>? extra]) => {
+  'Authorization': 'Bearer $currentDeviceToken',
+  ...?extra,
+};
+
+const _jsonHeaders = {'Content-Type': 'application/json'};
 
 Future<Map<String, dynamic>> fetchLesson(int lessonId, int userId) async {
   final response = await http.get(
     Uri.parse('$apiBaseUrl/lessons/$lessonId?user_id=$userId'),
+    headers: _authHeaders(),
   );
 
   if (response.statusCode == 200) {
@@ -20,6 +33,7 @@ Future<List<Map<String, dynamic>>> fetchLessonExercises(
 ) async {
   final response = await http.get(
     Uri.parse('$apiBaseUrl/lessons/$lessonId/exercises?user_id=$userId'),
+    headers: _authHeaders(),
   );
 
   if (response.statusCode == 200) {
@@ -30,11 +44,12 @@ Future<List<Map<String, dynamic>>> fetchLessonExercises(
   }
 }
 
-/// Находит или заводит гостевого пользователя по device_token устройства.
+/// Находит или заводит гостевого пользователя по device_token устройства —
+/// единственный запрос, который выполняется ещё без токена (он его и выдаёт).
 Future<Map<String, dynamic>> fetchOrCreateGuest(String deviceToken) async {
   final response = await http.post(
     Uri.parse('$apiBaseUrl/users/guest'),
-    headers: {'Content-Type': 'application/json'},
+    headers: _jsonHeaders,
     body: jsonEncode({'device_token': deviceToken}),
   );
 
@@ -55,7 +70,7 @@ Future<Map<String, dynamic>> submitAnswer(
 ) async {
   final response = await http.post(
     Uri.parse('$apiBaseUrl/exercises/$exerciseId/submit'),
-    headers: {'Content-Type': 'application/json'},
+    headers: _authHeaders(_jsonHeaders),
     body: jsonEncode({
       'answer': {'answer': answer},
       'user_id': userId,
@@ -70,7 +85,10 @@ Future<Map<String, dynamic>> submitAnswer(
 }
 
 Future<Map<String, dynamic>> fetchUser(int userId) async {
-  final response = await http.get(Uri.parse('$apiBaseUrl/users/$userId'));
+  final response = await http.get(
+    Uri.parse('$apiBaseUrl/users/$userId'),
+    headers: _authHeaders(),
+  );
 
   if (response.statusCode == 200) {
     return jsonDecode(utf8.decode(response.bodyBytes));
@@ -84,7 +102,7 @@ Future<Map<String, dynamic>> fetchUser(int userId) async {
 Future<Map<String, dynamic>> awardXp(int userId, int correctCount) async {
   final response = await http.post(
     Uri.parse('$apiBaseUrl/users/$userId/award-xp'),
-    headers: {'Content-Type': 'application/json'},
+    headers: _authHeaders(_jsonHeaders),
     body: jsonEncode({'correct_count': correctCount}),
   );
   return jsonDecode(utf8.decode(response.bodyBytes));
@@ -98,6 +116,7 @@ Future<List<Map<String, dynamic>>> fetchLessonsProgress(
     Uri.parse(
       '$apiBaseUrl/sections/$sectionId/lessons-progress?user_id=$userId',
     ),
+    headers: _authHeaders(),
   );
 
   if (response.statusCode == 200) {
@@ -112,6 +131,7 @@ Future<List<Map<String, dynamic>>> fetchLessonsProgress(
 Future<Map<String, dynamic>> completeLesson(int lessonId, int userId) async {
   final response = await http.post(
     Uri.parse('$apiBaseUrl/lessons/$lessonId/complete?user_id=$userId'),
+    headers: _authHeaders(),
   );
 
   if (response.statusCode == 200) {
@@ -125,6 +145,7 @@ Future<Map<String, dynamic>> completeLesson(int lessonId, int userId) async {
 Future<Map<String, dynamic>?> fetchCurrentSection(int userId) async {
   final response = await http.get(
     Uri.parse('$apiBaseUrl/users/$userId/current-section'),
+    headers: _authHeaders(),
   );
 
   if (response.statusCode == 200) {
@@ -143,6 +164,7 @@ Future<Map<String, dynamic>> fetchSectionsProgress(
     Uri.parse(
       '$apiBaseUrl/courses/$courseId/sections-progress?user_id=$userId',
     ),
+    headers: _authHeaders(),
   );
 
   if (response.statusCode == 200) {
@@ -156,6 +178,7 @@ Future<Map<String, dynamic>> fetchSectionsProgress(
 Future<Map<String, dynamic>> fetchDailyProgress(int userId) async {
   final response = await http.get(
     Uri.parse('$apiBaseUrl/users/$userId/daily-progress'),
+    headers: _authHeaders(),
   );
 
   if (response.statusCode == 200) {
@@ -166,7 +189,10 @@ Future<Map<String, dynamic>> fetchDailyProgress(int userId) async {
 }
 
 Future<Map<String, dynamic>> fetchUserStats(int userId) async {
-  final response = await http.get(Uri.parse('$apiBaseUrl/users/$userId/stats'));
+  final response = await http.get(
+    Uri.parse('$apiBaseUrl/users/$userId/stats'),
+    headers: _authHeaders(),
+  );
 
   if (response.statusCode == 200) {
     return jsonDecode(utf8.decode(response.bodyBytes));
@@ -178,6 +204,7 @@ Future<Map<String, dynamic>> fetchUserStats(int userId) async {
 Future<Map<String, dynamic>> fetchUserActivity(int userId) async {
   final response = await http.get(
     Uri.parse('$apiBaseUrl/users/$userId/activity'),
+    headers: _authHeaders(),
   );
 
   if (response.statusCode == 200) {
@@ -190,6 +217,7 @@ Future<Map<String, dynamic>> fetchUserActivity(int userId) async {
 Future<Map<String, dynamic>> fetchUserAchievements(int userId) async {
   final response = await http.get(
     Uri.parse('$apiBaseUrl/users/$userId/achievements'),
+    headers: _authHeaders(),
   );
 
   if (response.statusCode == 200) {
@@ -209,7 +237,7 @@ Future<Map<String, dynamic>> updateProfile(
 ) async {
   final response = await http.patch(
     Uri.parse('$apiBaseUrl/users/$userId/profile'),
-    headers: {'Content-Type': 'application/json'},
+    headers: _authHeaders(_jsonHeaders),
     body: jsonEncode({'username': username, 'avatar': avatar}),
   );
 
@@ -227,7 +255,7 @@ Future<Map<String, dynamic>> updateProfile(
 Future<void> updateStreakShield(int userId, bool enabled) async {
   final response = await http.patch(
     Uri.parse('$apiBaseUrl/users/$userId/streak-shield'),
-    headers: {'Content-Type': 'application/json'},
+    headers: _authHeaders(_jsonHeaders),
     body: jsonEncode({'enabled': enabled}),
   );
   if (response.statusCode != 200) {
@@ -241,7 +269,7 @@ class PhoneTakenException implements Exception {}
 Future<Map<String, dynamic>> updatePhone(int userId, String? phone) async {
   final response = await http.patch(
     Uri.parse('$apiBaseUrl/users/$userId/phone'),
-    headers: {'Content-Type': 'application/json'},
+    headers: _authHeaders(_jsonHeaders),
     body: jsonEncode({'phone': phone}),
   );
 
@@ -262,7 +290,7 @@ Future<List<Map<String, dynamic>>> matchContacts(
 ) async {
   final response = await http.post(
     Uri.parse('$apiBaseUrl/users/$userId/contacts-match'),
-    headers: {'Content-Type': 'application/json'},
+    headers: _authHeaders(_jsonHeaders),
     body: jsonEncode({'phones': phones}),
   );
 
@@ -278,6 +306,7 @@ Future<List<Map<String, dynamic>>> matchContacts(
 Future<int> fetchReviewDue(int userId) async {
   final response = await http.get(
     Uri.parse('$apiBaseUrl/users/$userId/review/due'),
+    headers: _authHeaders(),
   );
 
   if (response.statusCode == 200) {
@@ -292,6 +321,7 @@ Future<int> fetchReviewDue(int userId) async {
 Future<List<Map<String, dynamic>>> fetchReviewSession(int userId) async {
   final response = await http.get(
     Uri.parse('$apiBaseUrl/users/$userId/review/session'),
+    headers: _authHeaders(),
   );
 
   if (response.statusCode == 200) {
@@ -305,6 +335,7 @@ Future<List<Map<String, dynamic>>> fetchReviewSession(int userId) async {
 Future<List<Map<String, dynamic>>> fetchCoursesOverview(int userId) async {
   final response = await http.get(
     Uri.parse('$apiBaseUrl/courses/overview?user_id=$userId'),
+    headers: _authHeaders(),
   );
 
   if (response.statusCode == 200) {
@@ -319,6 +350,7 @@ Future<List<Map<String, dynamic>>> fetchCoursesOverview(int userId) async {
 Future<Map<String, dynamic>> fetchLeaderboard(int userId) async {
   final response = await http.get(
     Uri.parse('$apiBaseUrl/leaderboard?user_id=$userId'),
+    headers: _authHeaders(),
   );
 
   if (response.statusCode == 200) {
@@ -331,6 +363,7 @@ Future<Map<String, dynamic>> fetchLeaderboard(int userId) async {
 Future<void> followUser(int userId, int targetId) async {
   final response = await http.post(
     Uri.parse('$apiBaseUrl/users/$userId/follow/$targetId'),
+    headers: _authHeaders(),
   );
   if (response.statusCode != 200) {
     throw Exception('Failed to follow user');
@@ -340,14 +373,16 @@ Future<void> followUser(int userId, int targetId) async {
 Future<void> unfollowUser(int userId, int targetId) async {
   final response = await http.delete(
     Uri.parse('$apiBaseUrl/users/$userId/follow/$targetId'),
+    headers: _authHeaders(),
   );
   if (response.statusCode != 200) {
     throw Exception('Failed to unfollow user');
   }
 }
 
-/// [viewerId] — от чьего лица считать is_following/is_friend в списке; нужен,
-/// когда смотрим подписки чужого профиля, а не свои собственные.
+/// [viewerId] сохранён для обратной совместимости вызовов, но сервер больше
+/// не доверяет этому параметру — is_following/is_friend всегда считаются от
+/// токена, поэтому по факту он теперь ни на что не влияет.
 Future<List<Map<String, dynamic>>> fetchFollowing(
   int userId, {
   int? viewerId,
@@ -356,6 +391,7 @@ Future<List<Map<String, dynamic>>> fetchFollowing(
     Uri.parse(
       '$apiBaseUrl/users/$userId/following${viewerId == null ? '' : '?viewer_id=$viewerId'}',
     ),
+    headers: _authHeaders(),
   );
 
   if (response.statusCode == 200) {
@@ -374,6 +410,7 @@ Future<List<Map<String, dynamic>>> fetchFollowers(
     Uri.parse(
       '$apiBaseUrl/users/$userId/followers${viewerId == null ? '' : '?viewer_id=$viewerId'}',
     ),
+    headers: _authHeaders(),
   );
 
   if (response.statusCode == 200) {
@@ -388,6 +425,7 @@ Future<List<Map<String, dynamic>>> fetchFollowers(
 Future<List<Map<String, dynamic>>> fetchSuggestions(int userId) async {
   final response = await http.get(
     Uri.parse('$apiBaseUrl/users/$userId/suggestions'),
+    headers: _authHeaders(),
   );
 
   if (response.statusCode == 200) {
@@ -403,6 +441,7 @@ Future<List<Map<String, dynamic>>> searchUsers(int userId, String query) async {
     Uri.parse(
       '$apiBaseUrl/users/search?user_id=$userId&q=${Uri.encodeQueryComponent(query)}',
     ),
+    headers: _authHeaders(),
   );
 
   if (response.statusCode == 200) {
@@ -416,7 +455,7 @@ Future<List<Map<String, dynamic>>> searchUsers(int userId, String query) async {
 Future<void> createPost(int userId, String text) async {
   final response = await http.post(
     Uri.parse('$apiBaseUrl/users/$userId/posts'),
-    headers: {'Content-Type': 'application/json'},
+    headers: _authHeaders(_jsonHeaders),
     body: jsonEncode({'text': text}),
   );
   if (response.statusCode != 200) {
@@ -426,7 +465,10 @@ Future<void> createPost(int userId, String text) async {
 
 /// Лента активности: посты и разблокировки достижений от тех, на кого подписан.
 Future<List<Map<String, dynamic>>> fetchFeed(int userId) async {
-  final response = await http.get(Uri.parse('$apiBaseUrl/users/$userId/feed'));
+  final response = await http.get(
+    Uri.parse('$apiBaseUrl/users/$userId/feed'),
+    headers: _authHeaders(),
+  );
 
   if (response.statusCode == 200) {
     final List<dynamic> data = jsonDecode(utf8.decode(response.bodyBytes));

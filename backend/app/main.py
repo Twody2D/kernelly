@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
 from google.auth.transport import requests as google_requests
 from google.oauth2 import id_token as google_id_token
@@ -86,6 +86,31 @@ GOOGLE_CLIENT_IDS = {
 }
 _google_request = google_requests.Request()
 
+
+def get_current_user(authorization: str | None = Header(None), db: Session = Depends(get_db)) -> models.User:
+    """Раньше почти все эндпоинты принимали user_id прямо от клиента и ничего
+    не проверяли — любой мог подставить чужой id и читать/менять чужие данные
+    (IDOR). Теперь device_token — который и так уникален и выдаётся один раз
+    на пользователя при /users/guest или /auth/google — передаётся как
+    Bearer-токен и подтверждает, кто на самом деле делает запрос."""
+    if not authorization or not authorization.lower().startswith("bearer "):
+        raise HTTPException(status_code=401, detail="Missing bearer token")
+    token = authorization[7:].strip()
+    if not token:
+        raise HTTPException(status_code=401, detail="Missing bearer token")
+    user = db.query(models.User).filter(models.User.device_token == token).first()
+    if user is None:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    return user
+
+
+def _require_self(current_user: models.User, user_id: int) -> None:
+    """Для эндпоинтов, где user_id в пути/параметре — это тот, от чьего лица
+    делается запрос (не произвольная просматриваемая цель)."""
+    if current_user.id != user_id:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+
 app = FastAPI() #test backend
 
 app.add_middleware(
@@ -104,12 +129,16 @@ def read_root():
 
 
 @app.get("/courses", response_model=list[schemas.CourseOut])
-def get_courses(db: Session = Depends(get_db)):
+def get_courses(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     return db.query(models.Course).all()
 
 
 @app.post("/courses", response_model=schemas.CourseOut)
-def create_course(course: schemas.CourseCreate, db: Session = Depends(get_db)):
+def create_course(
+    course: schemas.CourseCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
     new_course = models.Course(title=course.title, description=course.description)
     db.add(new_course)
     db.commit()
@@ -118,12 +147,16 @@ def create_course(course: schemas.CourseCreate, db: Session = Depends(get_db)):
 
 
 @app.get("/sections", response_model=list[schemas.SectionOut])
-def get_sections(db: Session = Depends(get_db)):
+def get_sections(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     return db.query(models.Section).all()
 
 
 @app.post("/sections", response_model=schemas.SectionOut)
-def create_section(section: schemas.SectionCreate, db: Session = Depends(get_db)):
+def create_section(
+    section: schemas.SectionCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
     new_section = models.Section(
         title=section.title,
         order=section.order,
@@ -136,12 +169,16 @@ def create_section(section: schemas.SectionCreate, db: Session = Depends(get_db)
 
 
 @app.get("/lessons", response_model=list[schemas.LessonOut])
-def get_lessons(db: Session = Depends(get_db)):
+def get_lessons(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     return db.query(models.Lesson).all()
 
 
 @app.post("/lessons", response_model=schemas.LessonOut)
-def create_lesson(lesson: schemas.LessonCreate, db: Session = Depends(get_db)):
+def create_lesson(
+    lesson: schemas.LessonCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
     new_lesson = models.Lesson(
         title=lesson.title,
         order=lesson.order,
@@ -154,12 +191,16 @@ def create_lesson(lesson: schemas.LessonCreate, db: Session = Depends(get_db)):
 
 
 @app.get("/exercises", response_model=list[schemas.ExerciseOut])
-def get_exercises(db: Session = Depends(get_db)):
+def get_exercises(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     return db.query(models.Exercise).all()
 
 
 @app.post("/exercises", response_model=schemas.ExerciseOut)
-def create_exercise(exercise: schemas.ExerciseCreate, db: Session = Depends(get_db)):
+def create_exercise(
+    exercise: schemas.ExerciseCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
     new_exercise = models.Exercise(
         type=exercise.type,
         question=exercise.question,
@@ -175,9 +216,18 @@ def create_exercise(exercise: schemas.ExerciseCreate, db: Session = Depends(get_
 
 
 @app.get("/users/search")
-def search_users(q: str, user_id: int, db: Session = Depends(get_db)):
+def search_users(
+    q: str,
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
     """Литеральный путь должен быть объявлен раньше /users/{user_id} —
-    иначе FastAPI пытается распарсить "search" как user_id и падает в 422."""
+    иначе FastAPI пытается распарсить "search" как user_id и падает в 422.
+    user_id — это тот, от чьего лица ищем (влияет на исключение себя из
+    результатов и на is_following), поэтому обязан совпадать с токеном."""
+    _require_self(current_user, user_id)
+
     query = q.strip()
     if len(query) < 2:
         return []
@@ -198,7 +248,14 @@ def search_users(q: str, user_id: int, db: Session = Depends(get_db)):
 
 
 @app.get("/users/{user_id}", response_model=schemas.UserOut)
-def get_user(user_id: int, db: Session = Depends(get_db)):
+def get_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    """Отдаёт email и телефон, поэтому доступен только самому пользователю —
+    иначе это была бы утечка контактных данных всей базы по перебору id."""
+    _require_self(current_user, user_id)
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
@@ -206,7 +263,11 @@ def get_user(user_id: int, db: Session = Depends(get_db)):
 
 
 @app.post("/users", response_model=schemas.UserOut)
-def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
+def create_user(
+    user: schemas.UserCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
     new_user = models.User(username=user.username)
     db.add(new_user)
     db.commit()
@@ -316,8 +377,14 @@ ALLOWED_AVATARS = {"terminal", "code", "bug", "rocket", "bolt", "shield", "flame
 
 
 @app.patch("/users/{user_id}/profile", response_model=schemas.UserOut)
-def update_profile(user_id: int, payload: schemas.ProfileUpdate, db: Session = Depends(get_db)):
+def update_profile(
+    user_id: int,
+    payload: schemas.ProfileUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
     """Имя и аватарка, которые выбираются один раз после первого входа через Google."""
+    _require_self(current_user, user_id)
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
@@ -345,9 +412,15 @@ def update_profile(user_id: int, payload: schemas.ProfileUpdate, db: Session = D
 
 
 @app.patch("/users/{user_id}/streak-shield")
-def update_streak_shield(user_id: int, payload: schemas.StreakShieldUpdate, db: Session = Depends(get_db)):
+def update_streak_shield(
+    user_id: int,
+    payload: schemas.StreakShieldUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
     """Синхронизирует локальный тумблер «Защита streak» с бэкендом — сама
     логика заморозки применяется в submit_answer."""
+    _require_self(current_user, user_id)
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
@@ -358,9 +431,15 @@ def update_streak_shield(user_id: int, payload: schemas.StreakShieldUpdate, db: 
 
 
 @app.patch("/users/{user_id}/phone", response_model=schemas.UserOut)
-def update_phone(user_id: int, payload: schemas.PhoneUpdate, db: Session = Depends(get_db)):
+def update_phone(
+    user_id: int,
+    payload: schemas.PhoneUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
     """Телефон опционален и нужен только для поиска друзей по контактам —
     никнейм и вход в аккаунт от него не зависят."""
+    _require_self(current_user, user_id)
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
@@ -412,7 +491,13 @@ def _assert_course_unlocked(db: Session, course_id: int | None, user_id: int) ->
 
 
 @app.get("/lessons/{lesson_id}", response_model=schemas.LessonOut)
-def get_lesson(lesson_id: int, user_id: int, db: Session = Depends(get_db)):
+def get_lesson(
+    lesson_id: int,
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    _require_self(current_user, user_id)
     _assert_course_unlocked(db, _course_id_for_lesson(db, lesson_id), user_id)
     lesson = db.query(models.Lesson).filter(models.Lesson.id == lesson_id).first()
     if lesson is None:
@@ -428,7 +513,13 @@ def get_lesson(lesson_id: int, user_id: int, db: Session = Depends(get_db)):
 
 
 @app.get("/lessons/{lesson_id}/exercises", response_model=list[schemas.ExerciseOut])
-def get_lesson_exercises(lesson_id: int, user_id: int, db: Session = Depends(get_db)):
+def get_lesson_exercises(
+    lesson_id: int,
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    _require_self(current_user, user_id)
     _assert_course_unlocked(db, _course_id_for_lesson(db, lesson_id), user_id)
 
     # следующая попытка сложнее предыдущей: 0 успешных прохождений → сложность
@@ -453,7 +544,13 @@ def get_lesson_exercises(lesson_id: int, user_id: int, db: Session = Depends(get
 
 
 @app.post("/exercises/{exercise_id}/submit")
-def submit_answer(exercise_id: int, submission: schemas.AnswerSubmit, db: Session = Depends(get_db)):
+def submit_answer(
+    exercise_id: int,
+    submission: schemas.AnswerSubmit,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    _require_self(current_user, submission.user_id)
     exercise = db.query(models.Exercise).filter(models.Exercise.id == exercise_id).first()
     if exercise is None:
         raise HTTPException(status_code=404, detail="Exercise not found")
@@ -514,9 +611,14 @@ def submit_answer(exercise_id: int, submission: schemas.AnswerSubmit, db: Sessio
 
 
 @app.get("/users/{user_id}/review/due")
-def get_review_due(user_id: int, db: Session = Depends(get_db)):
+def get_review_due(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
     """Сколько навыков сейчас просрочено для повторения — бейдж на карточке
     «Повторение» на главном экране."""
+    _require_self(current_user, user_id)
     count = (
         db.query(models.SkillProgress)
         .filter(models.SkillProgress.user_id == user_id, models.SkillProgress.next_review_at <= datetime.utcnow())
@@ -526,9 +628,14 @@ def get_review_due(user_id: int, db: Session = Depends(get_db)):
 
 
 @app.get("/users/{user_id}/review/session", response_model=list[schemas.ReviewExerciseOut])
-def get_review_session(user_id: int, db: Session = Depends(get_db)):
+def get_review_session(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
     """Собирает сессию повторения: по одному случайному упражнению на каждый
     просроченный навык, самые просроченные — первыми."""
+    _require_self(current_user, user_id)
     due = (
         db.query(models.SkillProgress)
         .filter(models.SkillProgress.user_id == user_id, models.SkillProgress.next_review_at <= datetime.utcnow())
@@ -560,7 +667,13 @@ def get_review_session(user_id: int, db: Session = Depends(get_db)):
 
 
 @app.post("/users/{user_id}/award-xp")
-def award_xp(user_id: int, payload: schemas.LessonComplete, db: Session = Depends(get_db)):
+def award_xp(
+    user_id: int,
+    payload: schemas.LessonComplete,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    _require_self(current_user, user_id)
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
@@ -570,7 +683,13 @@ def award_xp(user_id: int, payload: schemas.LessonComplete, db: Session = Depend
     return {"xp": user.xp, "new_achievements": new_achievements}
 
 @app.get("/sections/{section_id}/lessons-progress")
-def get_lessons_progress(section_id: int, user_id: int, db: Session = Depends(get_db)):
+def get_lessons_progress(
+    section_id: int,
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    _require_self(current_user, user_id)
     _assert_course_unlocked(db, _course_id_for_section(db, section_id), user_id)
 
     lessons = (
@@ -616,7 +735,13 @@ def get_lessons_progress(section_id: int, user_id: int, db: Session = Depends(ge
     return result
 
 @app.post("/lessons/{lesson_id}/complete")
-def complete_lesson(lesson_id: int, user_id: int, db: Session = Depends(get_db)):
+def complete_lesson(
+    lesson_id: int,
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    _require_self(current_user, user_id)
     lesson = db.query(models.Lesson).filter(models.Lesson.id == lesson_id).first()
     if lesson is None:
         raise HTTPException(status_code=404, detail="Lesson not found")
@@ -723,7 +848,13 @@ def complete_lesson(lesson_id: int, user_id: int, db: Session = Depends(get_db))
 
 
 @app.get("/courses/{course_id}/sections", response_model=list[schemas.SectionOut])
-def get_course_sections(course_id: int, user_id: int, db: Session = Depends(get_db)):
+def get_course_sections(
+    course_id: int,
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    _require_self(current_user, user_id)
     _assert_course_unlocked(db, course_id, user_id)
     return (
         db.query(models.Section)
@@ -734,7 +865,13 @@ def get_course_sections(course_id: int, user_id: int, db: Session = Depends(get_
 
 
 @app.get("/courses/{course_id}/sections-progress")
-def get_sections_progress(course_id: int, user_id: int, db: Session = Depends(get_db)):
+def get_sections_progress(
+    course_id: int,
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    _require_self(current_user, user_id)
     course = db.query(models.Course).filter(models.Course.id == course_id).first()
     if course is None:
         raise HTTPException(status_code=404, detail="Course not found")
@@ -794,7 +931,13 @@ def get_sections_progress(course_id: int, user_id: int, db: Session = Depends(ge
 
 
 @app.get("/courses/{course_id}/progress")
-def get_course_progress(course_id: int, user_id: int, db: Session = Depends(get_db)):
+def get_course_progress(
+    course_id: int,
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    _require_self(current_user, user_id)
     _assert_course_unlocked(db, course_id, user_id)
 
     lesson_ids = [
@@ -884,14 +1027,24 @@ def _courses_with_status(db: Session, user_id: int) -> list[dict]:
 
 
 @app.get("/courses/overview")
-def get_courses_overview(user_id: int, db: Session = Depends(get_db)):
+def get_courses_overview(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    _require_self(current_user, user_id)
     return _courses_with_status(db, user_id)
 
 
 @app.get("/users/{user_id}/current-section")
-def get_current_section(user_id: int, db: Session = Depends(get_db)):
+def get_current_section(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
     """Раздел, с которого пользователю продолжать: первый незавершённый
     в первом незавершённом доступном курсе."""
+    _require_self(current_user, user_id)
     courses = _courses_with_status(db, user_id)
     available = [c for c in courses if not c["locked"] and c["total"] > 0]
     if not available:
@@ -1051,7 +1204,13 @@ def _record_achievement_unlocks(db: Session, user: models.User) -> list[dict]:
 
 
 @app.get("/users/{user_id}/stats")
-def get_user_stats(user_id: int, db: Session = Depends(get_db)):
+def get_user_stats(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    """Доступен для просмотра любого пользователя (нужно для чужих профилей),
+    но email и настройки защиты streak — личные и отдаются только себе."""
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
@@ -1060,27 +1219,34 @@ def get_user_stats(user_id: int, db: Session = Depends(get_db)):
     followers_count = db.query(models.Follow).filter(models.Follow.followee_id == user_id).count()
     following_count = db.query(models.Follow).filter(models.Follow.follower_id == user_id).count()
 
-    return {
+    result = {
         "id": user.id,
         "username": user.username,
         "avatar": user.avatar,
-        "email": user.email,
         "xp": user.xp,
         "streak": user.streak,
         "lessons_completed": stats["lessons_completed"],
         "accuracy": stats["accuracy"],
         "created_at": user.created_at,
-        "auth_provider": user.auth_provider,
         "followers_count": followers_count,
         "following_count": following_count,
-        "streak_shield_enabled": user.streak_shield_enabled,
-        "streak_freezes": user.streak_freezes,
     }
+    if current_user.id == user_id:
+        result["email"] = user.email
+        result["auth_provider"] = user.auth_provider
+        result["streak_shield_enabled"] = user.streak_shield_enabled
+        result["streak_freezes"] = user.streak_freezes
+    return result
 
 
 @app.get("/users/{user_id}/daily-progress")
-def get_daily_progress(user_id: int, db: Session = Depends(get_db)):
+def get_daily_progress(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
     """Сколько уроков пройдено сегодня. Саму цель хранит приложение локально."""
+    _require_self(current_user, user_id)
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
@@ -1099,7 +1265,13 @@ def get_daily_progress(user_id: int, db: Session = Depends(get_db)):
 
 
 @app.get("/users/{user_id}/activity")
-def get_user_activity(user_id: int, db: Session = Depends(get_db)):
+def get_user_activity(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    """Доступен для любого user_id (нужно для сравнения графиков в чужом
+    профиле) — данных без личной информации, только требуется валидный токен."""
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
@@ -1134,7 +1306,12 @@ def get_user_activity(user_id: int, db: Session = Depends(get_db)):
 
 
 @app.get("/users/{user_id}/achievements")
-def get_user_achievements(user_id: int, db: Session = Depends(get_db)):
+def get_user_achievements(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    """Доступен для любого user_id (просмотр достижений в чужом профиле)."""
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
@@ -1185,9 +1362,14 @@ LEADERBOARD_SIZE = 20
 
 
 @app.get("/leaderboard")
-def get_leaderboard(user_id: int, db: Session = Depends(get_db)):
+def get_leaderboard(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
     """Топ по XP за последние 7 дней — та же агрегация, что в /activity,
     но сгруппированная по всем пользователям, а не по одному."""
+    _require_self(current_user, user_id)
     start = _today() - timedelta(days=6)
     rows = (
         db.query(models.Answer.user_id, func.count(models.Answer.id).label("correct"))
@@ -1223,7 +1405,13 @@ def get_leaderboard(user_id: int, db: Session = Depends(get_db)):
 
 
 @app.post("/users/{user_id}/follow/{target_id}")
-def follow_user(user_id: int, target_id: int, db: Session = Depends(get_db)):
+def follow_user(
+    user_id: int,
+    target_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    _require_self(current_user, user_id)
     if user_id == target_id:
         raise HTTPException(status_code=400, detail="Cannot follow yourself")
     target = db.query(models.User).filter(models.User.id == target_id).first()
@@ -1242,7 +1430,13 @@ def follow_user(user_id: int, target_id: int, db: Session = Depends(get_db)):
 
 
 @app.delete("/users/{user_id}/follow/{target_id}")
-def unfollow_user(user_id: int, target_id: int, db: Session = Depends(get_db)):
+def unfollow_user(
+    user_id: int,
+    target_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    _require_self(current_user, user_id)
     db.query(models.Follow).filter(
         models.Follow.follower_id == user_id, models.Follow.followee_id == target_id
     ).delete()
@@ -1270,8 +1464,15 @@ def _viewer_follow_flags(db: Session, ids: set[int], viewer_id: int) -> tuple[se
 
 
 @app.get("/users/{user_id}/following")
-def get_following(user_id: int, viewer_id: int | None = None, db: Session = Depends(get_db)):
-    viewer_id = viewer_id or user_id
+def get_following(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    """user_id — чей список подписок смотрим (может быть любой), а
+    is_following/is_friend всегда считаются от лица токена, а не клиентского
+    параметра — иначе можно было бы подсмотреть чужое состояние подписки."""
+    viewer_id = current_user.id
 
     following_ids = {
         row.followee_id for row in db.query(models.Follow).filter(models.Follow.follower_id == user_id).all()
@@ -1295,8 +1496,12 @@ def get_following(user_id: int, viewer_id: int | None = None, db: Session = Depe
 
 
 @app.get("/users/{user_id}/followers")
-def get_followers(user_id: int, viewer_id: int | None = None, db: Session = Depends(get_db)):
-    viewer_id = viewer_id or user_id
+def get_followers(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    viewer_id = current_user.id
 
     follower_ids = {
         row.follower_id for row in db.query(models.Follow).filter(models.Follow.followee_id == user_id).all()
@@ -1323,9 +1528,14 @@ SUGGESTIONS_LIMIT = 20
 
 
 @app.get("/users/{user_id}/suggestions")
-def get_suggestions(user_id: int, db: Session = Depends(get_db)):
+def get_suggestions(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
     """«Вы можете их знать» — те, на кого подписаны люди, на которых
     подписан сам пользователь (друзья друзей), кроме уже подписанных и себя."""
+    _require_self(current_user, user_id)
     following_ids = {
         row.followee_id for row in db.query(models.Follow).filter(models.Follow.follower_id == user_id).all()
     }
@@ -1363,9 +1573,17 @@ def _normalized_phone_suffix(phone: str) -> str | None:
 
 
 @app.post("/users/{user_id}/contacts-match")
-def match_contacts(user_id: int, payload: schemas.ContactsMatchRequest, db: Session = Depends(get_db)):
+def match_contacts(
+    user_id: int,
+    payload: schemas.ContactsMatchRequest,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
     """Сопоставляет номера из телефонной книги пользователя с телефонами,
-    привязанными другими пользователями к своим аккаунтам."""
+    привязанными другими пользователями к своим аккаунтам. Без привязки к
+    токену это был бы открытый «оракул номеров» — любой мог бы перебирать
+    произвольные телефоны и узнавать, кто из них зарегистрирован в Kernelly."""
+    _require_self(current_user, user_id)
     wanted_suffixes = {
         suffix for phone in payload.phones if (suffix := _normalized_phone_suffix(phone)) is not None
     }
@@ -1400,7 +1618,13 @@ def match_contacts(user_id: int, payload: schemas.ContactsMatchRequest, db: Sess
 
 
 @app.post("/users/{user_id}/posts")
-def create_post(user_id: int, payload: schemas.PostCreate, db: Session = Depends(get_db)):
+def create_post(
+    user_id: int,
+    payload: schemas.PostCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    _require_self(current_user, user_id)
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
@@ -1420,10 +1644,15 @@ FEED_PAGE_SIZE = 50
 
 
 @app.get("/users/{user_id}/feed")
-def get_feed(user_id: int, db: Session = Depends(get_db)):
+def get_feed(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
     """Лента активности: посты и разблокировки достижений от тех, на кого
     подписан пользователь, плюс его собственные — подписка односторонняя,
     видимость взаимности не требует."""
+    _require_self(current_user, user_id)
     following_ids = {
         row.followee_id for row in db.query(models.Follow).filter(models.Follow.follower_id == user_id).all()
     }
