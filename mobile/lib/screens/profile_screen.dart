@@ -529,6 +529,7 @@ class ProfileScreenState extends State<ProfileScreen> {
               style: item['style'] as String,
               unlocked: unlocked,
               size: constraints.maxWidth,
+              seed: item['code'] as String?,
             ),
           ),
           const SizedBox(height: 6),
@@ -569,6 +570,7 @@ class ProfileScreenState extends State<ProfileScreen> {
               style: item['style'] as String,
               unlocked: unlocked,
               size: 84,
+              seed: item['code'] as String?,
             ),
             const SizedBox(height: 16),
             Text(

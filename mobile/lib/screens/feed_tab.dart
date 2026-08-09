@@ -251,6 +251,7 @@ class FeedTabState extends State<FeedTab> {
               style: achievement['style'] as String,
               unlocked: true,
               size: 40,
+              seed: achievement['code'] as String?,
             ),
             const SizedBox(width: 12),
             Expanded(

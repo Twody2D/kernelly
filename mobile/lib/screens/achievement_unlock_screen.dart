@@ -141,6 +141,7 @@ class _AchievementUnlockScreenState extends State<AchievementUnlockScreen>
                               style: achievement['style'] as String,
                               unlocked: true,
                               size: 140,
+                              seed: achievement['code'] as String?,
                             ),
                           ),
                         ],
