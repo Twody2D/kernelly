@@ -128,9 +128,13 @@ Future<List<Map<String, dynamic>>> fetchLessonsProgress(
 }
 
 /// Возвращает контекст завершения: прогресс раздела, курса и что дальше.
-Future<Map<String, dynamic>> completeLesson(int lessonId, int userId) async {
+Future<Map<String, dynamic>> completeLesson(
+  int lessonId,
+  int userId, {
+  bool perfect = false,
+}) async {
   final response = await http.post(
-    Uri.parse('$apiBaseUrl/lessons/$lessonId/complete?user_id=$userId'),
+    Uri.parse('$apiBaseUrl/lessons/$lessonId/complete?user_id=$userId&perfect=$perfect'),
     headers: _authHeaders(),
   );
 

@@ -73,6 +73,11 @@ class User(Base):
     # точки начисления в main.py); тратятся на покупку заморозок streak.
     cores = Column(Integer, nullable=False, default=0)
     last_chest_login_date = Column(Date, nullable=True)
+    # Число попыток прохождения урока без единой ошибки — метрика для семьи
+    # достижений «Точность» (см. ACHIEVEMENT_FAMILIES в main.py). Растёт при
+    # каждом идеальном прохождении, не только при первом (в отличие от
+    # lessons_completed, который считает уникальные уроки).
+    perfect_lessons_count = Column(Integer, nullable=False, default=0)
 
 
 class Answer(Base):

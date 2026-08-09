@@ -24,21 +24,32 @@ class AchievementBadge extends StatelessWidget {
     this.seed,
   });
 
+  // 5 уровней достижений (бронза → бедрок) плюс запертое состояние.
   static const _colors = {
+    'bronze': (
+      light: Color(0xFFE8B98C),
+      base: Color(0xFFC97A3D),
+      dark: Color(0xFF8A4E1F),
+    ),
+    'silver': (
+      light: Color(0xFFE8EDF0),
+      base: Color(0xFFB8C4CC),
+      dark: Color(0xFF7A8A94),
+    ),
     'gold': (
       light: Color(0xFFFFE9B0),
       base: Color(0xFFFFC72E),
       dark: Color(0xFFB8791A),
     ),
-    'green': (
-      light: Color(0xFFBEF08A),
-      base: Color(0xFF6FCB2E),
-      dark: Color(0xFF2E7D0E),
+    'diamond': (
+      light: Color(0xFFC2F0F5),
+      base: Color(0xFF4FD8E8),
+      dark: Color(0xFF1E9CAD),
     ),
-    'teal': (
-      light: Color(0xFFA0F0E4),
-      base: Color(0xFF1FC2AE),
-      dark: Color(0xFF0B7C6E),
+    'bedrock': (
+      light: Color(0xFFB3A8C4),
+      base: Color(0xFF6B5A80),
+      dark: Color(0xFF3A2E4D),
     ),
   };
 
@@ -50,7 +61,7 @@ class AchievementBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final palette = unlocked ? (_colors[style] ?? _colors['teal']!) : _locked;
+    final palette = unlocked ? (_colors[style] ?? _colors['bronze']!) : _locked;
     final showChip = unlocked && icon.length > 2;
 
     return SizedBox(

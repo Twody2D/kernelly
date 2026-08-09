@@ -83,9 +83,21 @@ CI/CD: push в `backend/**` автоматически передеплоива�
 по тапу. Сундук за достижение — иначе: сумма НЕ начисляется при разблокировке (`chest_claimed`
 у `AchievementUnlock` = False), а только когда пользователь сам открывает его в профиле
 (`POST /users/{id}/achievements/{code}/claim-chest`, `showClaimableChestReward` — тап на сундук
-сам вызывает claim). Неоткрытые сундуки помечены «NEW» на бейдже (`profile_screen.dart`,
-`achievements_catalog_screen.dart`) — поле `chest_claimed` в ответе `/achievements` есть только
-при просмотре своего профиля.
+сам вызывает claim).
+
+**Достижения — 4 семьи × 5 уровней** (бронза/серебро/золото/алмаз/бедрок; `ACHIEVEMENT_FAMILIES`/
+`ACHIEVEMENT_LEVELS` в `main.py`): streak (3/14/30/60/100 дней), XP (100/500/1000/2500/5000),
+уроки (5/10/25/50/100), точность — **не** % правильных ответов за всё время, а число уроков,
+пройденных со 100% точностью (`User.perfect_lessons_count`, инкрементируется в `complete_lesson`
+по параметру `perfect`, который считает клиент — все упражнения решены с первой попытки).
+Код разблокировки — `{family}_{level}`, например `streak_3`. Ядра за уровень растут
+(`CORES_BY_LEVEL`). На максимальном уровне `description` в ответе `/achievements` — «Получено:
+…, текущий счёт: N», а не следующий порог. Неоткрытые сундуки помечены «NEW» на бейдже
+(`profile_screen.dart`, `achievements_catalog_screen.dart`) — поля `chest_claimed`/
+`has_unclaimed_chest`/`next_unclaimed_code` в ответе `/achievements` есть только при просмотре
+своего профиля. Переход со старой плоской системы (24 отдельных достижения) — одноразовый
+скрипт `seeds/migrate_achievements_v2.py`, пересчитывает всех пользователей по новым порогам
+и помечает уже пройденные уровни как `chest_claimed=True` (без повторной выдачи ядер).
 
 Заряды защиты streak (`streak_freezes`) пополняются автоматически раз в неделю и их можно
 докупить за ядра (`POST /users/{id}/streak-freezes/purchase`, `MAX_STREAK_FREEZES`/

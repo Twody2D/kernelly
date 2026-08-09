@@ -215,7 +215,11 @@ class _LessonScreenState extends State<LessonScreen>
           List<Map<String, dynamic>>.from(xpResult['new_achievements'] ?? []),
         );
       }
-      final data = await completeLesson(widget.lessonId, currentUserId);
+      // «Идеально» — все упражнения решены верно с первой попытки, без
+      // единой ошибки (retry внутри прохождения не предусмотрен, поэтому
+      // correctCount == exercises.length и значит именно это).
+      final perfect = correctCount == exercises.length;
+      final data = await completeLesson(widget.lessonId, currentUserId, perfect: perfect);
       newAchievements.addAll(
         List<Map<String, dynamic>>.from(data['new_achievements'] ?? []),
       );

@@ -29,7 +29,7 @@ XP_PER_CORRECT = 10
 CORES_GOLD_LESSON = (5, 15)
 CORES_COURSE_COMPLETE = (40, 80)
 CORES_DAILY_LOGIN = (3, 8)
-CORES_ACHIEVEMENT = (15, 30)
+# Ядра за достижения зависят от уровня (бронза..бедрок) — см. CORES_BY_LEVEL ниже.
 
 MAX_STREAK_FREEZES = 3
 STREAK_FREEZE_PRICE_CORES = 40
@@ -570,8 +570,14 @@ def claim_achievement_chest(
     if unlock.chest_claimed:
         raise HTTPException(status_code=409, detail="Chest already claimed")
 
+    try:
+        level_index = int(code.rsplit("_", 1)[1])
+        level_name = ACHIEVEMENT_LEVELS[level_index - 1]
+    except (IndexError, ValueError):
+        raise HTTPException(status_code=400, detail="Invalid achievement code")
+
     user = db.query(models.User).filter(models.User.id == user_id).first()
-    amount = _award_cores(user, *CORES_ACHIEVEMENT)
+    amount = _award_cores(user, *CORES_BY_LEVEL[level_name])
     unlock.chest_claimed = True
     db.commit()
     return {"amount": amount, "cores": user.cores}
@@ -903,6 +909,7 @@ def get_lessons_progress(
 def complete_lesson(
     lesson_id: int,
     user_id: int,
+    perfect: bool = False,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ):
@@ -988,6 +995,9 @@ def complete_lesson(
     previous_level = min(mastery.completions, MAX_MASTERY)
     mastery.completions = min(mastery.completions + 1, MAX_MASTERY)
     new_level = mastery.completions
+
+    if perfect:
+        user.perfect_lessons_count += 1
 
     course_complete = bool(course_sections) and sections_done == len(course_sections)
 
@@ -1294,35 +1304,86 @@ def get_current_section(
 # точность считается только когда ответов достаточно, иначе один верный ответ даёт 100%
 MIN_ANSWERS_FOR_ACCURACY = 20
 
-ACHIEVEMENTS = [
-    {"code": "streak_3", "title": "3 дня", "description": "Три дня подряд", "icon": "🔥", "style": "gold", "metric": "streak", "target": 3},
-    {"code": "streak_7", "title": "7 дней", "description": "Неделя без пропусков", "icon": "🔥", "style": "gold", "metric": "streak", "target": 7},
-    {"code": "streak_14", "title": "14 дней", "description": "Две недели подряд", "icon": "🔥", "style": "gold", "metric": "streak", "target": 14},
-    {"code": "streak_30", "title": "30 дней", "description": "Месяц без пропусков", "icon": "🔥", "style": "gold", "metric": "streak", "target": 30},
-    {"code": "streak_60", "title": "60 дней", "description": "Два месяца подряд", "icon": "🔥", "style": "gold", "metric": "streak", "target": 60},
-    {"code": "streak_100", "title": "100 дней", "description": "Сто дней подряд", "icon": "🔥", "style": "gold", "metric": "streak", "target": 100},
+# Каждое достижение теперь — не плоский список порогов, а «семья» с 5
+# уровнями (бронза → бедрок), растянутыми из прежних 6 плоских порогов.
+ACHIEVEMENT_LEVELS = ["bronze", "silver", "gold", "diamond", "bedrock"]
+ACHIEVEMENT_LEVEL_TITLES = {
+    "bronze": "Бронза",
+    "silver": "Серебро",
+    "gold": "Золото",
+    "diamond": "Алмаз",
+    "bedrock": "Бедрок",
+}
+# Ядра растут с уровнем — бедрок ощутимо ценнее бронзы
+CORES_BY_LEVEL = {
+    "bronze": (10, 20),
+    "silver": (20, 35),
+    "gold": (35, 55),
+    "diamond": (55, 80),
+    "bedrock": (80, 120),
+}
 
-    {"code": "lessons_1", "title": "первый", "description": "Первый пройденный урок", "icon": "✓", "style": "green", "metric": "lessons", "target": 1},
-    {"code": "lessons_5", "title": "5 уроков", "description": "Пять пройденных уроков", "icon": "✓", "style": "green", "metric": "lessons", "target": 5},
-    {"code": "lessons_10", "title": "10 уроков", "description": "Десять пройденных уроков", "icon": "✓", "style": "green", "metric": "lessons", "target": 10},
-    {"code": "lessons_25", "title": "25 уроков", "description": "Двадцать пять уроков", "icon": "✓", "style": "green", "metric": "lessons", "target": 25},
-    {"code": "lessons_50", "title": "50 уроков", "description": "Полсотни уроков", "icon": "✓", "style": "green", "metric": "lessons", "target": 50},
-    {"code": "lessons_100", "title": "100 уроков", "description": "Сто пройденных уроков", "icon": "✓", "style": "green", "metric": "lessons", "target": 100},
-
-    {"code": "xp_100", "title": "старт", "description": "Первые 100 XP", "icon": "100", "style": "teal", "metric": "xp", "target": 100},
-    {"code": "xp_500", "title": "разгон", "description": "500 XP", "icon": "500", "style": "teal", "metric": "xp", "target": 500},
-    {"code": "xp_1000", "title": "root", "description": "1000 XP", "icon": "sudo", "style": "teal", "metric": "xp", "target": 1000},
-    {"code": "xp_2500", "title": "2.5k", "description": "2500 XP", "icon": "2.5k", "style": "teal", "metric": "xp", "target": 2500},
-    {"code": "xp_5000", "title": "5k", "description": "5000 XP", "icon": "5k", "style": "teal", "metric": "xp", "target": 5000},
-    {"code": "xp_10000", "title": "10k", "description": "10000 XP", "icon": "10k", "style": "teal", "metric": "xp", "target": 10000},
-
-    {"code": "acc_70", "title": "70%", "description": "Точность 70%", "icon": "🎯", "style": "teal", "metric": "accuracy", "target": 70},
-    {"code": "acc_80", "title": "80%", "description": "Точность 80%", "icon": "🎯", "style": "teal", "metric": "accuracy", "target": 80},
-    {"code": "acc_90", "title": "90%", "description": "Точность 90%", "icon": "🎯", "style": "teal", "metric": "accuracy", "target": 90},
-    {"code": "acc_95", "title": "95%", "description": "Точность 95%", "icon": "🎯", "style": "teal", "metric": "accuracy", "target": 95},
-    {"code": "acc_99", "title": "99%", "description": "Точность 99%", "icon": "🎯", "style": "teal", "metric": "accuracy", "target": 99},
-    {"code": "acc_100", "title": "без ошибок", "description": "Точность 100%", "icon": "🎯", "style": "teal", "metric": "accuracy", "target": 100},
+ACHIEVEMENT_FAMILIES = [
+    {
+        "family": "streak",
+        "metric": "streak",
+        "title": "Серия дней",
+        "icon": "🔥",
+        "unit": "дней подряд",
+        "thresholds": [3, 14, 30, 60, 100],
+    },
+    {
+        "family": "xp",
+        "metric": "xp",
+        "title": "Опыт",
+        "icon": "⚡",
+        "unit": "XP",
+        "thresholds": [100, 500, 1000, 2500, 5000],
+    },
+    {
+        "family": "lessons",
+        "metric": "lessons",
+        "title": "Уроки",
+        "icon": "✓",
+        "unit": "уроков",
+        "thresholds": [5, 10, 25, 50, 100],
+    },
+    {
+        # Раньше «точность» — % правильных ответов за всё время; теперь —
+        # число уроков, пройденных со 100% точностью (см. complete_lesson).
+        "family": "accuracy",
+        "metric": "perfect_lessons",
+        "title": "Точность",
+        "icon": "🎯",
+        "unit": "уроков со 100% точностью",
+        "thresholds": [1, 5, 10, 25, 50],
+    },
 ]
+FAMILIES_BY_KEY = {f["family"]: f for f in ACHIEVEMENT_FAMILIES}
+
+
+def _achievement_code(family: str, level_index: int) -> str:
+    return f"{family}_{level_index}"
+
+
+def _family_level(value: int, thresholds: list[int]) -> int:
+    """Сколько порогов (0..5) уже пройдено этим значением."""
+    level = 0
+    for threshold in thresholds:
+        if value >= threshold:
+            level += 1
+        else:
+            break
+    return level
+
+
+def _achievement_values(user: models.User, stats: dict) -> dict:
+    return {
+        "streak": user.streak,
+        "xp": user.xp,
+        "lessons": stats["lessons_completed"],
+        "perfect_lessons": user.perfect_lessons_count,
+    }
 
 
 def _collect_stats(user: models.User, db: Session) -> dict:
@@ -1353,40 +1414,35 @@ def _collect_stats(user: models.User, db: Session) -> dict:
 
 
 def _record_achievement_unlocks(db: Session, user: models.User) -> list[dict]:
-    """Достижения считаются на лету, но для ленты активности и всплывающего
-    поздравления нужен сам факт разблокировки — записываем событие один раз,
-    при первом пересечении порога, и возвращаем то, что разблокировалось только что."""
+    """Достижения считаются на лету по 4 семьям × 5 уровней (бронза..бедрок),
+    но для ленты активности и всплывающего поздравления нужен сам факт
+    разблокировки уровня — записываем его один раз, при первом пересечении
+    порога, и возвращаем то, что разблокировалось только что."""
     stats = _collect_stats(user, db)
-    enough_answers = stats["total_answers"] >= MIN_ANSWERS_FOR_ACCURACY
-    values = {
-        "streak": user.streak,
-        "xp": user.xp,
-        "lessons": stats["lessons_completed"],
-        "accuracy": stats["accuracy"] or 0,
-    }
+    values = _achievement_values(user, stats)
+
     already = {
         row.code
         for row in db.query(models.AchievementUnlock).filter(models.AchievementUnlock.user_id == user.id).all()
     }
+
     newly_unlocked = []
-    for achievement in ACHIEVEMENTS:
-        code = achievement["code"]
-        if code in already:
-            continue
-        metric = achievement["metric"]
-        unlocked = values[metric] >= achievement["target"]
-        if metric == "accuracy" and not enough_answers:
-            unlocked = False
-        if unlocked:
+    for family in ACHIEVEMENT_FAMILIES:
+        reached_level = _family_level(values[family["metric"]], family["thresholds"])
+        for level_index in range(1, reached_level + 1):
+            code = _achievement_code(family["family"], level_index)
+            if code in already:
+                continue
             # chest_claimed=False — сундук с ядрами открывается вручную в
             # профиле (см. claim_achievement_chest), не начисляется тут же.
             db.add(models.AchievementUnlock(user_id=user.id, code=code, chest_claimed=False))
+            level_name = ACHIEVEMENT_LEVELS[level_index - 1]
             newly_unlocked.append({
-                "code": achievement["code"],
-                "title": achievement["title"],
-                "description": achievement["description"],
-                "icon": achievement["icon"],
-                "style": achievement["style"],
+                "code": code,
+                "title": family["title"],
+                "description": f'{family["thresholds"][level_index - 1]} {family["unit"]}',
+                "icon": family["icon"],
+                "style": level_name,
             })
     if newly_unlocked:
         db.commit()
@@ -1502,20 +1558,15 @@ def get_user_achievements(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ):
-    """Доступен для любого user_id (просмотр достижений в чужом профиле)."""
+    """Доступен для любого user_id (просмотр достижений в чужом профиле).
+    Каждый item — целая семья (streak/xp/lessons/accuracy) с текущим уровнем
+    0..5, а не отдельное плоское достижение, как раньше."""
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
 
     stats = _collect_stats(user, db)
-    values = {
-        "streak": user.streak,
-        "xp": user.xp,
-        "lessons": stats["lessons_completed"],
-        "accuracy": stats["accuracy"] or 0,
-    }
-
-    enough_answers = stats["total_answers"] >= MIN_ANSWERS_FOR_ACCURACY
+    values = _achievement_values(user, stats)
 
     unlocks_by_code = {
         row.code: row
@@ -1524,33 +1575,47 @@ def get_user_achievements(
     is_self = current_user.id == user_id
 
     items = []
-    for achievement in ACHIEVEMENTS:
-        metric = achievement["metric"]
-        value = values[metric]
-        unlocked = value >= achievement["target"]
-        if metric == "accuracy" and not enough_answers:
-            unlocked = False
+    for family in ACHIEVEMENT_FAMILIES:
+        value = values[family["metric"]]
+        max_level = len(family["thresholds"])
+        reached_level = _family_level(value, family["thresholds"])
+        style = ACHIEVEMENT_LEVELS[reached_level - 1] if reached_level > 0 else "locked"
 
-        unlock = unlocks_by_code.get(achievement["code"])
+        if reached_level >= max_level:
+            next_threshold = None
+            description = f'Получено: {family["title"]}, текущий счёт: {value}'
+        else:
+            next_threshold = family["thresholds"][reached_level]
+            description = f'{next_threshold} {family["unit"]}'
 
         item = {
-            "code": achievement["code"],
-            "title": achievement["title"],
-            "description": achievement["description"],
-            "icon": achievement["icon"],
-            "style": achievement["style"],
-            "unlocked": unlocked,
-            "unlocked_at": unlock.unlocked_at.isoformat() if unlock else None,
+            "family": family["family"],
+            "title": family["title"],
+            "icon": family["icon"],
+            "style": style,
+            "level": reached_level,
+            "max_level": max_level,
+            "value": value,
+            "next_threshold": next_threshold,
+            "description": description,
         }
         # «Новое» на карточке имеет смысл только в своём профиле — не
         # раскрываем это состояние про чужой сундук на просмотре чужого профиля.
         if is_self:
-            item["chest_claimed"] = unlock.chest_claimed if unlock else True
+            next_unclaimed_code = None
+            for level_index in range(1, reached_level + 1):
+                code = _achievement_code(family["family"], level_index)
+                unlock = unlocks_by_code.get(code)
+                if unlock is not None and not unlock.chest_claimed:
+                    next_unclaimed_code = code
+                    break
+            item["has_unclaimed_chest"] = next_unclaimed_code is not None
+            item["next_unclaimed_code"] = next_unclaimed_code
         items.append(item)
 
     return {
-        "unlocked": sum(1 for i in items if i["unlocked"]),
-        "total": len(items),
+        "unlocked": sum(i["level"] for i in items),
+        "total": sum(i["max_level"] for i in items),
         "items": items,
     }
 
@@ -1835,7 +1900,24 @@ def create_post(
     return {"status": "ok"}
 
 
-ACHIEVEMENTS_BY_CODE = {a["code"]: a for a in ACHIEVEMENTS}
+def _achievement_feed_info(code: str) -> dict | None:
+    """Разбирает code вида "streak_3" (семья_уровень) для отображения в ленте."""
+    try:
+        family_key, level_str = code.rsplit("_", 1)
+        level_index = int(level_str)
+    except ValueError:
+        return None
+    family = FAMILIES_BY_KEY.get(family_key)
+    if family is None or not (1 <= level_index <= len(family["thresholds"])):
+        return None
+    level_name = ACHIEVEMENT_LEVELS[level_index - 1]
+    return {
+        "code": code,
+        "title": f'{family["title"]} · {ACHIEVEMENT_LEVEL_TITLES[level_name]}',
+        "icon": family["icon"],
+        "style": level_name,
+    }
+
 
 FEED_PAGE_SIZE = 50
 
@@ -1886,7 +1968,7 @@ def get_feed(
     )
     for unlock in unlocks:
         author = users_by_id.get(unlock.user_id)
-        achievement = ACHIEVEMENTS_BY_CODE.get(unlock.code)
+        achievement = _achievement_feed_info(unlock.code)
         if author is None or achievement is None:
             continue
         events.append({

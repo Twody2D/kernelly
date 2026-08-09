@@ -8,20 +8,21 @@ import 'package:mobile/services/user_prefs.dart';
 import 'package:mobile/widgets/achievement_badge.dart';
 import 'package:mobile/widgets/primary_button.dart';
 
-const _months = [
-  'янв.',
-  'февр.',
-  'марта',
-  'апр.',
-  'мая',
-  'июня',
-  'июля',
-  'авг.',
-  'сент.',
-  'окт.',
-  'нояб.',
-  'дек.',
-];
+const _levelStyles = ['bronze', 'silver', 'gold', 'diamond', 'bedrock'];
+const _levelDotColors = {
+  'bronze': Color(0xFFC97A3D),
+  'silver': Color(0xFFB8C4CC),
+  'gold': Color(0xFFFFC72E),
+  'diamond': Color(0xFF4FD8E8),
+  'bedrock': Color(0xFF6B5A80),
+};
+const _levelTitles = {
+  'bronze': 'Бронза',
+  'silver': 'Серебро',
+  'gold': 'Золото',
+  'diamond': 'Алмаз',
+  'bedrock': 'Бедрок',
+};
 
 /// Полноэкранное "окошко" достижения — открывается по тапу на медаль как в
 /// профиле, так и в чужом профиле. Показывает дату разблокировки (или
@@ -51,20 +52,32 @@ class _AchievementDetailScreenState extends State<AchievementDetailScreen>
   late final Animation<double> _descOpacity;
   late final Animation<Offset> _descSlide;
 
-  bool get _unlocked => widget.item['unlocked'] == true;
+  int get _level => widget.item['level'] as int? ?? 0;
+
+  int get _maxLevel => widget.item['max_level'] as int? ?? 5;
+
+  bool get _unlocked => _level > 0;
+
+  bool get _maxed => _level >= _maxLevel;
 
   String get _title => widget.item['title'] as String? ?? '';
 
+  /// Уже полностью сформировано на сервере: следующий порог, либо, если
+  /// достигнут максимум — «Получено: …, текущий счёт: N».
   String get _description => widget.item['description'] as String? ?? '';
 
-  /// Отсутствует вовсе при просмотре чужого профиля (сервер не отдаёт это
-  /// поле не для себя) — тогда по умолчанию считаем «уже забран», кнопки не будет.
-  late bool _chestClaimed = widget.item['chest_claimed'] != false;
+  /// Стиль текущего уровня — тот же код, что и у бейджа ('locked' если ещё
+  /// не разблокировано ни разу).
+  String get _currentStyle => widget.item['style'] as String? ?? 'locked';
 
-  bool get _hasUnclaimedChest => _unlocked && !_chestClaimed;
+  /// Отсутствует вовсе при просмотре чужого профиля (сервер не отдаёт это
+  /// поле не для себя) — тогда по умолчанию считаем «нечего открывать».
+  late bool _hasUnclaimedChest = widget.item['has_unclaimed_chest'] == true;
+  late String? _nextUnclaimedCode = widget.item['next_unclaimed_code'] as String?;
 
   Future<void> _openChest() async {
-    final code = widget.item['code'] as String;
+    final code = _nextUnclaimedCode;
+    if (code == null) return;
     final amount = await showClaimableChestReward(
       context,
       reason: 'achievement',
@@ -74,17 +87,15 @@ class _AchievementDetailScreenState extends State<AchievementDetailScreen>
       // Map передаётся по ссылке — правим прямо тот объект, что держит
       // список в родительском экране, чтобы пометка «новое» пропала там
       // сразу после возврата, без отдельной перезагрузки всего списка.
-      widget.item['chest_claimed'] = true;
-      if (mounted) setState(() => _chestClaimed = true);
+      widget.item['has_unclaimed_chest'] = false;
+      widget.item['next_unclaimed_code'] = null;
+      if (mounted) {
+        setState(() {
+          _hasUnclaimedChest = false;
+          _nextUnclaimedCode = null;
+        });
+      }
     }
-  }
-
-  String? get _formattedDate {
-    final iso = widget.item['unlocked_at'] as String?;
-    if (iso == null) return null;
-    final parsed = DateTime.tryParse(iso);
-    if (parsed == null) return null;
-    return '${parsed.day} ${_months[parsed.month - 1]} ${parsed.year}';
   }
 
   @override
@@ -183,10 +194,14 @@ class _AchievementDetailScreenState extends State<AchievementDetailScreen>
       );
   }
 
+  String get _pillText {
+    if (!_unlocked) return 'ЕЩЁ НЕ ОТКРЫТО';
+    if (_maxed) return 'ПОЛУЧЕНО · ${(_levelTitles[_currentStyle] ?? '').toUpperCase()}';
+    return 'УРОВЕНЬ $_level ИЗ $_maxLevel';
+  }
+
   @override
   Widget build(BuildContext context) {
-    final date = _formattedDate;
-
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -254,7 +269,7 @@ class _AchievementDetailScreenState extends State<AchievementDetailScreen>
                                   style: widget.item['style'] as String,
                                   unlocked: _unlocked,
                                   size: 150,
-                                  seed: widget.item['code'] as String?,
+                                  seed: widget.item['family'] as String?,
                                 ),
                               ),
                             ],
@@ -277,9 +292,7 @@ class _AchievementDetailScreenState extends State<AchievementDetailScreen>
                                 borderRadius: BorderRadius.circular(20),
                               ),
                               child: Text(
-                                _unlocked
-                                    ? date?.toUpperCase() ?? ''
-                                    : 'ЕЩЁ НЕ ОТКРЫТО',
+                                _pillText,
                                 style: TextStyle(
                                   fontFamily: 'JetBrains Mono',
                                   fontWeight: FontWeight.w600,
@@ -291,6 +304,28 @@ class _AchievementDetailScreenState extends State<AchievementDetailScreen>
                                 ),
                               ),
                             ),
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        FadeTransition(
+                          opacity: _pillOpacity,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              for (int i = 0; i < _maxLevel; i++) ...[
+                                if (i > 0) const SizedBox(width: 6),
+                                Container(
+                                  width: 10,
+                                  height: 10,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: i < _level
+                                        ? (_levelDotColors[_levelStyles[i]] ?? const Color(0xFF00C9B7))
+                                        : const Color(0xFFE7EEEE),
+                                  ),
+                                ),
+                              ],
+                            ],
                           ),
                         ),
                         const SizedBox(height: 22),

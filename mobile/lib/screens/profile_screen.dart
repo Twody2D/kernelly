@@ -551,13 +551,6 @@ class ProfileScreenState extends State<ProfileScreen> {
     final unlockedCount = achievements?['unlocked'] ?? 0;
     final total = achievements?['total'] ?? 0;
 
-    final sorted = [...items]
-      ..sort((a, b) {
-        if (a['unlocked'] == b['unlocked']) return 0;
-        return a['unlocked'] == true ? -1 : 1;
-      });
-    final visible = sorted.take(8).toList();
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -609,29 +602,24 @@ class ProfileScreenState extends State<ProfileScreen> {
           ],
         ),
         const SizedBox(height: 10),
-        for (int row = 0; row < (visible.length / 4).ceil(); row++) ...[
-          if (row > 0) const SizedBox(height: 10),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              for (int col = 0; col < 4; col++) ...[
-                if (col > 0) const SizedBox(width: 10),
-                Expanded(
-                  child: row * 4 + col < visible.length
-                      ? _achievementBadge(visible[row * 4 + col])
-                      : const SizedBox.shrink(),
-                ),
-              ],
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            for (int i = 0; i < items.length; i++) ...[
+              if (i > 0) const SizedBox(width: 10),
+              Expanded(child: _achievementBadge(items[i])),
             ],
-          ),
-        ],
+          ],
+        ),
       ],
     );
   }
 
   Widget _achievementBadge(Map<String, dynamic> item) {
-    final unlocked = item['unlocked'] == true;
-    final hasUnclaimedChest = unlocked && item['chest_claimed'] == false;
+    final level = item['level'] as int? ?? 0;
+    final maxLevel = item['max_level'] as int? ?? 5;
+    final unlocked = level > 0;
+    final hasUnclaimedChest = item['has_unclaimed_chest'] == true;
 
     return GestureDetector(
       onTap: () async {
@@ -656,7 +644,7 @@ class ProfileScreenState extends State<ProfileScreen> {
                   style: item['style'] as String,
                   unlocked: unlocked,
                   size: constraints.maxWidth,
-                  seed: item['code'] as String?,
+                  seed: item['family'] as String?,
                 ),
               ),
               if (hasUnclaimedChest)
@@ -696,6 +684,15 @@ class ProfileScreenState extends State<ProfileScreen> {
               color: unlocked
                   ? const Color(0xFF5C6B73)
                   : const Color(0xFF9AAAAA),
+            ),
+          ),
+          Text(
+            '$level/$maxLevel',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontFamily: 'JetBrains Mono',
+              fontSize: 8,
+              color: const Color(0xFF9AAAAA),
             ),
           ),
         ],
