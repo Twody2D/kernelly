@@ -8,6 +8,7 @@ class FollowUserRow extends StatelessWidget {
   final bool isPending;
   final String? subtitle;
   final VoidCallback onToggleFollow;
+  final VoidCallback? onTap;
 
   const FollowUserRow({
     super.key,
@@ -16,10 +17,15 @@ class FollowUserRow extends StatelessWidget {
     required this.isPending,
     required this.onToggleFollow,
     this.subtitle,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
+    return GestureDetector(onTap: onTap, child: _content());
+  }
+
+  Widget _content() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mobile/services/api_service.dart';
 import 'package:mobile/services/user_prefs.dart';
+import 'package:mobile/screens/user_profile_screen.dart';
 import 'package:mobile/widgets/follow_user_row.dart';
 
 /// Поиск людей по нику и подписка на них — подписка одностороняя, как в
@@ -384,13 +385,25 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
 
   Widget _userRow(Map<String, dynamic> user, {required bool fromSuggestions}) {
     final mutual = user['mutual'] as int?;
+    final username = user['username'] as String? ?? 'Игрок';
+    final isFollowing = user['is_following'] == true;
     return FollowUserRow(
-      username: user['username'] as String? ?? 'Игрок',
-      isFollowing: user['is_following'] == true,
+      username: username,
+      isFollowing: isFollowing,
       isPending: _pending.contains(user['id']),
       onToggleFollow: () =>
           _toggleFollow(user, fromSuggestions: fromSuggestions),
       subtitle: mutual == null ? null : '$mutual общих подписок',
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => UserProfileScreen(
+            userId: user['id'] as int,
+            username: username,
+            initialIsFollowing: isFollowing,
+          ),
+        ),
+      ),
     );
   }
 }

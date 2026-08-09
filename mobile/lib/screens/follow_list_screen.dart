@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mobile/services/api_service.dart';
 import 'package:mobile/services/user_prefs.dart';
+import 'package:mobile/screens/user_profile_screen.dart';
 import 'package:mobile/widgets/follow_user_row.dart';
 
 enum FollowListMode { followers, following }
@@ -138,6 +139,17 @@ class _FollowListScreenState extends State<FollowListScreen> {
                               subtitle: user['is_friend'] == true
                                   ? 'друзья'
                                   : null,
+                              onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => UserProfileScreen(
+                                    userId: user['id'] as int,
+                                    username:
+                                        user['username'] as String? ?? 'Игрок',
+                                    initialIsFollowing: isFollowing,
+                                  ),
+                                ),
+                              ),
                             );
                           },
                         ),
