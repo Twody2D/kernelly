@@ -8,6 +8,7 @@ const _chestReasonTitles = {
   'course_complete': 'КУРС ПРОЙДЕН',
   'daily_login': 'ЕЖЕДНЕВНЫЙ ВХОД',
   'achievement': 'ДОСТИЖЕНИЕ',
+  'league': 'МЕСТО В ТОПЕ',
 };
 
 /// Показывает сундуки с уже известной суммой (золото за урок, курс, вход) —
@@ -207,7 +208,7 @@ class _ChestRewardScreenState extends State<ChestRewardScreen>
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  'Потрать их на заморозку streak в настройках',
+                  'Потрать их в магазине на заморозку streak',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontFamily: 'Inter',

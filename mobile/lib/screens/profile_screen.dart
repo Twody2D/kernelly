@@ -10,6 +10,7 @@ import 'package:mobile/screens/friend_search_screen.dart';
 import 'package:mobile/screens/follow_list_screen.dart';
 import 'package:mobile/screens/achievement_detail_screen.dart';
 import 'package:mobile/screens/achievements_catalog_screen.dart';
+import 'package:mobile/screens/chest_reward_screen.dart';
 import 'package:mobile/widgets/mascot.dart';
 import 'package:mobile/widgets/achievement_badge.dart';
 import 'package:mobile/widgets/weekly_activity_chart.dart';
@@ -139,6 +140,10 @@ class ProfileScreenState extends State<ProfileScreen> {
           _banner(),
           const SizedBox(height: 14),
           _socialRow(),
+          if (stats!['last_league_rank'] != null) ...[
+            const SizedBox(height: 14),
+            _leagueBadge(),
+          ],
           const SizedBox(height: 20),
           _activityCard(),
           const SizedBox(height: 20),
@@ -324,6 +329,86 @@ class ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  static const _leagueMedals = {1: '🥇', 2: '🥈', 3: '🥉'};
+  static const _leagueLabels = {1: '1 место', 2: '2 место', 3: '3 место'};
+
+  Future<void> _claimLeagueChest() async {
+    final amount = await showClaimableChestReward(
+      context,
+      reason: 'league',
+      onOpen: () => claimLeagueChest(currentUserId),
+    );
+    if (amount != null) load();
+  }
+
+  Widget _leagueBadge() {
+    final colors = context.colors;
+    final rank = stats!['last_league_rank'] as int;
+    final hasUnclaimed = stats!['has_unclaimed_league_chest'] == true;
+
+    return GestureDetector(
+      onTap: hasUnclaimed ? _claimLeagueChest : null,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: colors.card,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFFFFD98A), width: 1.5),
+        ),
+        child: Row(
+          children: [
+            Text(_leagueMedals[rank] ?? '🏅', style: const TextStyle(fontSize: 22)),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${_leagueLabels[rank] ?? '$rank место'} на прошлой неделе',
+                    style: TextStyle(
+                      fontFamily: 'Fredoka',
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13.5,
+                      color: colors.textPrimary,
+                    ),
+                  ),
+                  if (hasUnclaimed) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      'тапни, чтобы открыть сундук',
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 11.5,
+                        color: colors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            if (hasUnclaimed)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFF4B4B),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Text(
+                  'NEW',
+                  style: TextStyle(
+                    fontFamily: 'JetBrains Mono',
+                    fontWeight: FontWeight.w700,
+                    fontSize: 9,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

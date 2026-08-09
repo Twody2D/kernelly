@@ -34,6 +34,80 @@ CORES_DAILY_LOGIN = (3, 8)
 MAX_STREAK_FREEZES = 3
 STREAK_FREEZE_PRICE_CORES = 40
 
+# Ядра за топ-3 места в еженедельной лиге (см. _finalize_league_week).
+LEAGUE_REWARD_CORES = {1: (80, 120), 2: (50, 80), 3: (25, 45)}
+
+
+def _msk_week_start(dt: datetime) -> date:
+    """Понедельник 00:00 по МСК (UTC+3), которому принадлежит момент dt
+    (naive datetime в UTC, как и все остальные timestamp в проекте)."""
+    msk = dt + timedelta(hours=3)
+    monday_msk = msk - timedelta(days=msk.weekday())
+    return monday_msk.date()
+
+
+def _week_start_to_utc(week_start_msk: date) -> datetime:
+    return datetime(week_start_msk.year, week_start_msk.month, week_start_msk.day) - timedelta(hours=3)
+
+
+def _finalize_league_week(db: Session) -> None:
+    """Вызывается перед каждым чтением топа игроков. Если с прошлого раза
+    наступил новый понедельник по МСК — подводит итог только что закончившейся
+    недели (топ-3 по XP получают LeagueResult, сундук открывается вручную —
+    см. AchievementUnlock.chest_claimed) и сдвигает окно живого топа на новую
+    неделю. При гонке параллельных запросов возможна редкая двойная попытка
+    записи итогов — эта ветка защищена уникальным (user_id, week_start) и
+    просто больше ничего не сделает при повторе, поэтому не критично."""
+    current_week = _msk_week_start(datetime.utcnow())
+    state = db.query(models.LeaderboardState).first()
+    if state is None:
+        db.add(models.LeaderboardState(week_start=current_week))
+        db.commit()
+        return
+    if state.week_start >= current_week:
+        return
+
+    prev_start_utc = _week_start_to_utc(state.week_start)
+    prev_end_utc = prev_start_utc + timedelta(days=7)
+    rows = (
+        db.query(models.Answer.user_id, func.count(models.Answer.id).label("correct"))
+        .filter(
+            models.Answer.is_correct.is_(True),
+            models.Answer.created_at >= prev_start_utc,
+            models.Answer.created_at < prev_end_utc,
+        )
+        .group_by(models.Answer.user_id)
+        .all()
+    )
+    ranked = sorted(rows, key=lambda r: r.correct, reverse=True)[:3]
+    for i, row in enumerate(ranked):
+        if row.correct <= 0:
+            continue
+        rank = i + 1
+        exists = (
+            db.query(models.LeagueResult)
+            .filter(
+                models.LeagueResult.user_id == row.user_id,
+                models.LeagueResult.week_start == state.week_start,
+            )
+            .first()
+        )
+        if exists is not None:
+            continue
+        amount = random.randint(*LEAGUE_REWARD_CORES[rank])
+        db.add(
+            models.LeagueResult(
+                user_id=row.user_id,
+                week_start=state.week_start,
+                rank=rank,
+                cores=amount,
+                chest_claimed=False,
+            )
+        )
+
+    state.week_start = current_week
+    db.commit()
+
 
 def _award_cores(user: models.User, low: int, high: int) -> int:
     amount = random.randint(low, high)
@@ -581,6 +655,33 @@ def claim_achievement_chest(
     unlock.chest_claimed = True
     db.commit()
     return {"amount": amount, "cores": user.cores}
+
+
+@app.post("/users/{user_id}/league-chest/claim")
+def claim_league_chest(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    """Открывает сундук за последнее подведённое место в лиге — тот же
+    паттерн отложенного начисления, что и у claim_achievement_chest."""
+    _require_self(current_user, user_id)
+    last_result = (
+        db.query(models.LeagueResult)
+        .filter(models.LeagueResult.user_id == user_id)
+        .order_by(models.LeagueResult.week_start.desc())
+        .first()
+    )
+    if last_result is None:
+        raise HTTPException(status_code=404, detail="No league result")
+    if last_result.chest_claimed:
+        raise HTTPException(status_code=409, detail="Chest already claimed")
+
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    user.cores += last_result.cores
+    last_result.chest_claimed = True
+    db.commit()
+    return {"amount": last_result.cores, "cores": user.cores}
 
 
 @app.patch("/users/{user_id}/phone", response_model=schemas.UserOut)
@@ -1470,6 +1571,12 @@ def get_user_stats(
     stats = _collect_stats(user, db)
     followers_count = db.query(models.Follow).filter(models.Follow.followee_id == user_id).count()
     following_count = db.query(models.Follow).filter(models.Follow.follower_id == user_id).count()
+    last_league_result = (
+        db.query(models.LeagueResult)
+        .filter(models.LeagueResult.user_id == user_id)
+        .order_by(models.LeagueResult.week_start.desc())
+        .first()
+    )
 
     result = {
         "id": user.id,
@@ -1482,6 +1589,9 @@ def get_user_stats(
         "created_at": user.created_at,
         "followers_count": followers_count,
         "following_count": following_count,
+        # Место в лиге за последнюю подведённую неделю — видно в любом
+        # профиле, как медаль-бейдж (не только своём).
+        "last_league_rank": last_league_result.rank if last_league_result else None,
     }
     if current_user.id == user_id:
         result["email"] = user.email
@@ -1490,6 +1600,9 @@ def get_user_stats(
         result["streak_shield_enabled"] = user.streak_shield_enabled
         result["streak_freezes"] = user.streak_freezes
         result["cores"] = user.cores
+        result["has_unclaimed_league_chest"] = (
+            last_league_result is not None and not last_league_result.chest_claimed
+        )
     return result
 
 
@@ -1636,13 +1749,16 @@ def get_leaderboard(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ):
-    """Топ по XP за последние 7 дней — та же агрегация, что в /activity,
-    но сгруппированная по всем пользователям, а не по одному."""
+    """Топ по XP за текущую неделю лиги (Пн 00:00 МСК — следующий Пн 00:00
+    МСК), а не скользящие 7 дней — так у топа есть чёткая точка сброса, и
+    топ-3 прошлой недели получают награду (см. _finalize_league_week)."""
     _require_self(current_user, user_id)
-    start = _today() - timedelta(days=6)
+    _finalize_league_week(db)
+
+    start_utc = _week_start_to_utc(_msk_week_start(datetime.utcnow()))
     rows = (
         db.query(models.Answer.user_id, func.count(models.Answer.id).label("correct"))
-        .filter(models.Answer.is_correct.is_(True), func.date(models.Answer.created_at) >= start)
+        .filter(models.Answer.is_correct.is_(True), models.Answer.created_at >= start_utc)
         .group_by(models.Answer.user_id)
         .all()
     )
@@ -1659,13 +1775,13 @@ def get_leaderboard(
             "user_id": u.id,
             "username": u.username or "Игрок",
             "avatar": u.avatar,
-            "xp_7d": xp_by_user.get(u.id, 0),
+            "xp_week": xp_by_user.get(u.id, 0),
             "streak": u.streak,
             "is_following": u.id in following_ids,
         }
         for u in users
     ]
-    entries.sort(key=lambda e: e["xp_7d"], reverse=True)
+    entries.sort(key=lambda e: e["xp_week"], reverse=True)
     for i, entry in enumerate(entries):
         entry["rank"] = i + 1
 

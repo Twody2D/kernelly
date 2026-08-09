@@ -320,6 +320,20 @@ Future<int> claimAchievementChest(int userId, String code) async {
   return data['amount'] as int;
 }
 
+/// Открывает сундук за последнее подведённое место в еженедельной лиге —
+/// ядра начисляются этим вызовом, не при появлении бейджа в профиле.
+Future<int> claimLeagueChest(int userId) async {
+  final response = await http.post(
+    Uri.parse('$apiBaseUrl/users/$userId/league-chest/claim'),
+    headers: _authHeaders(),
+  );
+  if (response.statusCode != 200) {
+    throw Exception('Failed to claim league chest');
+  }
+  final data = jsonDecode(utf8.decode(response.bodyBytes));
+  return data['amount'] as int;
+}
+
 /// Бросается, когда номер телефона уже привязан к другому аккаунту (409 от сервера).
 class PhoneTakenException implements Exception {}
 
@@ -419,7 +433,7 @@ Future<List<Map<String, dynamic>>> fetchCoursesOverview(int userId) async {
   }
 }
 
-/// Топ игроков по XP за последние 7 дней: {entries: [...], me: {...}?}.
+/// Топ игроков по XP за текущую неделю лиги: {entries: [...], me: {...}?}.
 Future<Map<String, dynamic>> fetchLeaderboard(int userId) async {
   final response = await http.get(
     Uri.parse('$apiBaseUrl/leaderboard?user_id=$userId'),

@@ -3,7 +3,9 @@ import 'package:mobile/services/api_service.dart';
 import 'package:mobile/services/user_prefs.dart';
 import 'package:mobile/screens/user_profile_screen.dart';
 
-/// Вкладка «Топ»: рейтинг игроков по XP за последние 7 дней.
+/// Вкладка «Топ»: рейтинг игроков по XP за текущую неделю лиги — сбрасывается
+/// каждый понедельник в 00:00 МСК, топ-3 прошлой недели получают сундук с
+/// ядрами (см. бейдж в профиле, ShopScreen — для наград за заморозки).
 class LeaderboardTab extends StatefulWidget {
   const LeaderboardTab({super.key});
 
@@ -69,7 +71,7 @@ class LeaderboardTabState extends State<LeaderboardTab> {
                             children: [
                               const SizedBox(height: 80),
                               Text(
-                                'За последнюю неделю пока никто не набрал XP.\nБудь первым!',
+                                'На этой неделе пока никто не набрал XP.\nБудь первым!',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   fontFamily: 'Fredoka',
@@ -193,7 +195,7 @@ class LeaderboardTabState extends State<LeaderboardTab> {
             const SizedBox(width: 10),
           ],
           Text(
-            '${entry['xp_7d']} XP',
+            '${entry['xp_week']} XP',
             style: TextStyle(
               fontFamily: 'JetBrains Mono',
               fontWeight: FontWeight.w600,

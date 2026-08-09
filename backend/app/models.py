@@ -190,6 +190,33 @@ class Notification(Base):
     updated_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
 
+class LeaderboardState(Base):
+    """Singleton-строка: начало (Пн 00:00 МСК) недели, за которую сейчас
+    считается живой топ игроков. Когда наступает новый понедельник, первый
+    же запрос к /leaderboard подводит итог прошедшей недели (см.
+    _finalize_league_week в main.py) и продвигает week_start дальше."""
+
+    __tablename__ = "leaderboard_state"
+    id = Column(Integer, primary_key=True)
+    week_start = Column(Date, nullable=False)
+
+
+class LeagueResult(Base):
+    """Итог одной прошедшей недели лиги для игрока, попавшего в топ-3.
+    Сундук с ядрами открывается вручную в профиле — тот же паттерн, что и
+    у AchievementUnlock.chest_claimed."""
+
+    __tablename__ = "league_results"
+    __table_args__ = (UniqueConstraint("user_id", "week_start", name="uq_league_result"),)
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    week_start = Column(Date, nullable=False)
+    rank = Column(Integer, nullable=False)
+    cores = Column(Integer, nullable=False)
+    chest_claimed = Column(Boolean, nullable=False, default=False)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+
 class AchievementUnlock(Base):
     """Момент разблокировки достижения — сами достижения считаются на лету
     (см. ACHIEVEMENTS в main.py), но для ленты нужен факт и время события."""
