@@ -1097,6 +1097,11 @@ def get_user_achievements(user_id: int, db: Session = Depends(get_db)):
 
     enough_answers = stats["total_answers"] >= MIN_ANSWERS_FOR_ACCURACY
 
+    unlocked_at_by_code = {
+        row.code: row.unlocked_at
+        for row in db.query(models.AchievementUnlock).filter(models.AchievementUnlock.user_id == user.id).all()
+    }
+
     items = []
     for achievement in ACHIEVEMENTS:
         metric = achievement["metric"]
@@ -1105,6 +1110,8 @@ def get_user_achievements(user_id: int, db: Session = Depends(get_db)):
         if metric == "accuracy" and not enough_answers:
             unlocked = False
 
+        unlocked_at = unlocked_at_by_code.get(achievement["code"])
+
         items.append({
             "code": achievement["code"],
             "title": achievement["title"],
@@ -1112,6 +1119,7 @@ def get_user_achievements(user_id: int, db: Session = Depends(get_db)):
             "icon": achievement["icon"],
             "style": achievement["style"],
             "unlocked": unlocked,
+            "unlocked_at": unlocked_at.isoformat() if unlocked_at else None,
         })
 
     return {
