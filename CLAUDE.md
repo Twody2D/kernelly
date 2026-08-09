@@ -77,6 +77,10 @@ CI/CD: push в `backend/**` автоматически передеплоива�
 (`/contacts-match`); контакты из телефонной книги пользователя **не сохраняются**, сверка
 происходит только «на лету» в рамках одного запроса.
 
+Заряды защиты streak (`streak_freezes`) пополняются автоматически раз в неделю и их можно
+докупить за XP (`POST /users/{id}/streak-freezes/purchase`, `MAX_STREAK_FREEZES`/
+`STREAK_FREEZE_PRICE_XP` в `main.py`) — до максимума. Отдельной игровой валюты нет, используется XP.
+
 Локальные настройки (`SharedPreferences`) — ключи и цели в `lib/services/user_prefs.dart`.
 
 ## Что не реализовано

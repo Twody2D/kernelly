@@ -14,16 +14,26 @@ class SettingsNotificationsScreen extends StatefulWidget {
       _SettingsNotificationsScreenState();
 }
 
+// Должны совпадать с MAX_STREAK_FREEZES/STREAK_FREEZE_PRICE_XP в backend/app/main.py —
+// используются только для подписи и отключения кнопки, сама проверка на сервере.
+const _maxStreakFreezes = 3;
+const _streakFreezePriceXp = 200;
+
 class _SettingsNotificationsScreenState
     extends State<SettingsNotificationsScreen> {
   SharedPreferences? prefs;
   bool remind = true;
   bool shield = false;
+  int xp = 0;
+  int streakFreezes = 0;
+  bool loadingStats = true;
+  bool purchasing = false;
 
   @override
   void initState() {
     super.initState();
     _load();
+    _loadStats();
   }
 
   Future<void> _load() async {
@@ -34,6 +44,53 @@ class _SettingsNotificationsScreenState
       remind = stored.getBool(PrefKeys.remind) ?? true;
       shield = stored.getBool(PrefKeys.streakShield) ?? false;
     });
+  }
+
+  Future<void> _loadStats() async {
+    try {
+      final stats = await fetchUserStats(currentUserId);
+      if (!mounted) return;
+      setState(() {
+        xp = stats['xp'] as int? ?? 0;
+        streakFreezes = stats['streak_freezes'] as int? ?? 0;
+        loadingStats = false;
+      });
+    } catch (e) {
+      debugPrint('Не удалось загрузить XP/заряды: $e');
+      if (!mounted) return;
+      setState(() => loadingStats = false);
+    }
+  }
+
+  Future<void> _purchaseFreeze() async {
+    setState(() => purchasing = true);
+    try {
+      final result = await purchaseStreakFreeze(currentUserId);
+      if (!mounted) return;
+      setState(() {
+        xp = result['xp'] as int;
+        streakFreezes = result['streak_freezes'] as int;
+        purchasing = false;
+      });
+    } on InsufficientXpException {
+      if (!mounted) return;
+      setState(() => purchasing = false);
+      _showSnackBar('Не хватает XP — нужно $_streakFreezePriceXp');
+    } on StreakFreezesMaxedException {
+      if (!mounted) return;
+      setState(() => purchasing = false);
+      _showSnackBar('Уже максимум зарядов ($_maxStreakFreezes)');
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => purchasing = false);
+      _showSnackBar('Не удалось купить, попробуй ещё раз');
+    }
+  }
+
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<void> _saveBool(
@@ -104,9 +161,41 @@ class _SettingsNotificationsScreenState
                       onChanged: _onShieldChanged,
                     ),
                   ),
+                  SettingsRow(
+                    title: 'Заряды защиты',
+                    subtitle: loadingStats
+                        ? 'загрузка…'
+                        : '$streakFreezes из $_maxStreakFreezes · пополняется раз в неделю',
+                    trailing: _freezeAction(),
+                  ),
                 ]),
               ],
             ),
+    );
+  }
+
+  Widget _freezeAction() {
+    if (loadingStats || purchasing) {
+      return const SizedBox(
+        width: 16,
+        height: 16,
+        child: CircularProgressIndicator(strokeWidth: 2),
+      );
+    }
+    if (streakFreezes >= _maxStreakFreezes) {
+      final colors = context.colors;
+      return Text(
+        'максимум',
+        style: TextStyle(
+          fontFamily: 'JetBrains Mono',
+          fontSize: 11,
+          color: colors.textSecondary,
+        ),
+      );
+    }
+    return SettingsPill(
+      text: xp >= _streakFreezePriceXp ? 'купить за $_streakFreezePriceXp XP' : 'нужно $_streakFreezePriceXp XP',
+      onTap: _purchaseFreeze,
     );
   }
 }

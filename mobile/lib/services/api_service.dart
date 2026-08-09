@@ -267,6 +267,28 @@ Future<void> updateStreakShield(int userId, bool enabled) async {
   }
 }
 
+/// Бросается, когда XP не хватает на покупку (402 от сервера).
+class InsufficientXpException implements Exception {}
+
+/// Бросается, когда заряды защиты streak уже на максимуме (409 от сервера).
+class StreakFreezesMaxedException implements Exception {}
+
+Future<Map<String, dynamic>> purchaseStreakFreeze(int userId) async {
+  final response = await http.post(
+    Uri.parse('$apiBaseUrl/users/$userId/streak-freezes/purchase'),
+    headers: _authHeaders(),
+  );
+  if (response.statusCode == 200) {
+    return jsonDecode(utf8.decode(response.bodyBytes));
+  } else if (response.statusCode == 402) {
+    throw InsufficientXpException();
+  } else if (response.statusCode == 409) {
+    throw StreakFreezesMaxedException();
+  } else {
+    throw Exception('Failed to purchase streak freeze');
+  }
+}
+
 /// Бросается, когда номер телефона уже привязан к другому аккаунту (409 от сервера).
 class PhoneTakenException implements Exception {}
 

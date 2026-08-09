@@ -24,6 +24,12 @@ def _today() -> date:
 
 XP_PER_CORRECT = 10
 
+# Заряды защиты streak можно докупить за накопленный XP — раньше это было
+# заявлено как «за игровую валюту из сундучков» (отдельная большая фича, вне
+# скоупа), поэтому пока используем уже существующий XP как цену напрямую.
+MAX_STREAK_FREEZES = 3
+STREAK_FREEZE_PRICE_XP = 200
+
 # Алгоритм Лейтнера: box → через сколько дней повторять. Правильный ответ по
 # тегу навыка поднимает его на box выше (интервал растёт), неправильный
 # сбрасывает в box 1 — «повторить завтра». MAX_BOX ограничивает верхнюю границу.
@@ -485,6 +491,30 @@ def update_streak_shield(
     return {"streak_shield_enabled": user.streak_shield_enabled, "streak_freezes": user.streak_freezes}
 
 
+@app.post("/users/{user_id}/streak-freezes/purchase")
+def purchase_streak_freeze(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    """Докупить заряд защиты streak за XP, не дожидаясь еженедельного
+    пополнения (см. submit_answer) — ограничено ценой и максимумом зарядов."""
+    _require_self(current_user, user_id)
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if user.streak_freezes >= MAX_STREAK_FREEZES:
+        raise HTTPException(status_code=409, detail="Уже максимум зарядов")
+    if user.xp < STREAK_FREEZE_PRICE_XP:
+        raise HTTPException(status_code=402, detail="Недостаточно XP")
+
+    user.xp -= STREAK_FREEZE_PRICE_XP
+    user.streak_freezes += 1
+    db.commit()
+    return {"xp": user.xp, "streak_freezes": user.streak_freezes}
+
+
 @app.patch("/users/{user_id}/phone", response_model=schemas.UserOut)
 def update_phone(
     user_id: int,
@@ -648,9 +678,11 @@ def submit_answer(
         today = _today()
         if user.last_activity_date != today:
             # заряды заморозки пополняются раз в неделю, независимо от того,
-            # включена ли защита — чтобы «неделя без пропуска» не сгорала впустую
+            # включена ли защита — чтобы «неделя без пропуска» не сгорала впустую.
+            # max(...) — а не прямое присваивание 1 — чтобы еженедельный рефилл
+            # не срезал заряды, докупленные за XP (см. purchase_streak_freeze)
             if user.streak_freeze_refreshed_at is None or (today - user.streak_freeze_refreshed_at).days >= 7:
-                user.streak_freezes = 1
+                user.streak_freezes = max(user.streak_freezes, 1)
                 user.streak_freeze_refreshed_at = today
 
             if user.last_activity_date == today - timedelta(days=1):
@@ -658,7 +690,6 @@ def submit_answer(
             elif user.streak_shield_enabled and user.streak_freezes > 0:
                 # пропущенный день, но есть активная защита и заряд — тратим
                 # заряд и продолжаем streak как обычный день (без сброса).
-                # Покупка доп. зарядов за игровую валюту — вне скоупа сейчас.
                 user.streak_freezes -= 1
                 user.streak += 1
             else:
