@@ -235,6 +235,45 @@ Future<void> updateStreakShield(int userId, bool enabled) async {
   }
 }
 
+/// Бросается, когда номер телефона уже привязан к другому аккаунту (409 от сервера).
+class PhoneTakenException implements Exception {}
+
+Future<Map<String, dynamic>> updatePhone(int userId, String? phone) async {
+  final response = await http.patch(
+    Uri.parse('$apiBaseUrl/users/$userId/phone'),
+    headers: {'Content-Type': 'application/json'},
+    body: jsonEncode({'phone': phone}),
+  );
+
+  if (response.statusCode == 200) {
+    return jsonDecode(utf8.decode(response.bodyBytes));
+  } else if (response.statusCode == 409) {
+    throw PhoneTakenException();
+  } else {
+    throw Exception('Failed to update phone');
+  }
+}
+
+/// Сопоставляет номера из телефонной книги с пользователями Kernelly,
+/// у которых привязан телефон.
+Future<List<Map<String, dynamic>>> matchContacts(
+  int userId,
+  List<String> phones,
+) async {
+  final response = await http.post(
+    Uri.parse('$apiBaseUrl/users/$userId/contacts-match'),
+    headers: {'Content-Type': 'application/json'},
+    body: jsonEncode({'phones': phones}),
+  );
+
+  if (response.statusCode == 200) {
+    final List<dynamic> data = jsonDecode(utf8.decode(response.bodyBytes));
+    return data.cast<Map<String, dynamic>>();
+  } else {
+    throw Exception('Failed to match contacts');
+  }
+}
+
 /// Сколько навыков сейчас просрочено для повторения — бейдж на карточке ревью.
 Future<int> fetchReviewDue(int userId) async {
   final response = await http.get(

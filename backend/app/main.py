@@ -357,6 +357,31 @@ def update_streak_shield(user_id: int, payload: schemas.StreakShieldUpdate, db: 
     return {"streak_shield_enabled": user.streak_shield_enabled, "streak_freezes": user.streak_freezes}
 
 
+@app.patch("/users/{user_id}/phone", response_model=schemas.UserOut)
+def update_phone(user_id: int, payload: schemas.PhoneUpdate, db: Session = Depends(get_db)):
+    """Телефон опционален и нужен только для поиска друзей по контактам —
+    никнейм и вход в аккаунт от него не зависят."""
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    phone = payload.phone.strip() if payload.phone else None
+
+    if phone:
+        conflict = (
+            db.query(models.User)
+            .filter(models.User.phone == phone, models.User.id != user_id)
+            .first()
+        )
+        if conflict is not None:
+            raise HTTPException(status_code=409, detail="Этот номер уже привязан к другому аккаунту")
+
+    user.phone = phone
+    db.commit()
+    db.refresh(user)
+    return user
+
+
 def _course_id_for_lesson(db: Session, lesson_id: int) -> int | None:
     row = (
         db.query(models.Section.course_id)
@@ -1325,6 +1350,52 @@ def get_suggestions(user_id: int, db: Session = Depends(get_db)):
         {"id": uid, "username": users_by_id[uid].username, "avatar": users_by_id[uid].avatar, "mutual": mutual_by_id[uid]}
         for uid in suggested_ids
         if uid in users_by_id
+    ]
+
+
+def _normalized_phone_suffix(phone: str) -> str | None:
+    """Сравниваем по последним 10 цифрам, чтобы различия в префиксе кода
+    страны (+7 vs 8, +1 vs без плюса и т.д.) не мешали найти совпадение."""
+    digits = "".join(ch for ch in phone if ch.isdigit())
+    if len(digits) < 10:
+        return None
+    return digits[-10:]
+
+
+@app.post("/users/{user_id}/contacts-match")
+def match_contacts(user_id: int, payload: schemas.ContactsMatchRequest, db: Session = Depends(get_db)):
+    """Сопоставляет номера из телефонной книги пользователя с телефонами,
+    привязанными другими пользователями к своим аккаунтам."""
+    wanted_suffixes = {
+        suffix for phone in payload.phones if (suffix := _normalized_phone_suffix(phone)) is not None
+    }
+    if not wanted_suffixes:
+        return []
+
+    candidates = (
+        db.query(models.User)
+        .filter(models.User.phone.isnot(None), models.User.id != user_id)
+        .all()
+    )
+    matched = [
+        u for u in candidates if _normalized_phone_suffix(u.phone) in wanted_suffixes
+    ]
+    if not matched:
+        return []
+
+    matched_ids = {u.id for u in matched}
+    viewer_following, viewer_followers = _viewer_follow_flags(db, matched_ids, user_id)
+    return [
+        {
+            "id": u.id,
+            "username": u.username,
+            "avatar": u.avatar,
+            "is_following": u.id in viewer_following,
+            # клиенту нужен исходный телефон, чтобы понять, какой именно контакт
+            # из книги совпал, и не предлагать его повторно в списке «Пригласить»
+            "phone": u.phone,
+        }
+        for u in matched
     ]
 
 

@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:mobile/services/api_service.dart';
 import 'package:mobile/services/user_prefs.dart';
 import 'package:mobile/screens/user_profile_screen.dart';
+import 'package:mobile/screens/contacts_import_screen.dart';
 import 'package:mobile/widgets/follow_user_row.dart';
 
 /// Поиск людей по нику и подписка на них — подписка одностороняя, как в
@@ -139,28 +140,6 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
       );
   }
 
-  void _soon(String message) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text(
-            message,
-            style: TextStyle(
-              fontFamily: 'Fredoka',
-              fontWeight: FontWeight.w500,
-              fontSize: 14,
-            ),
-          ),
-          backgroundColor: const Color(0xFF1B2430),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-          ),
-        ),
-      );
-  }
-
   @override
   Widget build(BuildContext context) {
     final query = _controller.text.trim();
@@ -275,45 +254,51 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
         ),
         const SizedBox(height: 8),
         GestureDetector(
-          onTap: () => _soon('Импорт контактов появится позже'),
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const ContactsImportScreen()),
+          ),
           child: _actionRow(
             icon: Icons.contacts_rounded,
             title: 'Из контактов телефона',
-            subtitle: 'скоро',
+            subtitle: 'найти друзей по номеру телефона',
           ),
         ),
-        const SizedBox(height: 20),
-        Padding(
-          padding: const EdgeInsets.only(left: 4, bottom: 8),
-          child: Text(
-            'ВЫ МОЖЕТЕ ИХ ЗНАТЬ',
-            style: TextStyle(
-              fontFamily: 'JetBrains Mono',
-              fontSize: 10.5,
-              color: const Color(0xFF00A896),
+        if (_loadingSuggestions) ...[
+          const SizedBox(height: 20),
+          Padding(
+            padding: const EdgeInsets.only(left: 4, bottom: 8),
+            child: Text(
+              'ВЫ МОЖЕТЕ ИХ ЗНАТЬ',
+              style: TextStyle(
+                fontFamily: 'JetBrains Mono',
+                fontSize: 10.5,
+                color: const Color(0xFF00A896),
+              ),
             ),
           ),
-        ),
-        if (_loadingSuggestions)
           const Padding(
-            padding: EdgeInsets.only(top: 20),
+            padding: EdgeInsets.only(top: 4),
             child: Center(child: CircularProgressIndicator()),
-          )
-        else if (_suggestions.isEmpty)
-          Text(
-            'Пока нечего предложить — подпишись на кого-нибудь через поиск',
-            style: TextStyle(
-              fontFamily: 'Fredoka',
-              fontWeight: FontWeight.w500,
-              fontSize: 13.5,
-              color: const Color(0xFF9AAAAA),
+          ),
+        ] else if (_suggestions.isNotEmpty) ...[
+          const SizedBox(height: 20),
+          Padding(
+            padding: const EdgeInsets.only(left: 4, bottom: 8),
+            child: Text(
+              'ВЫ МОЖЕТЕ ИХ ЗНАТЬ',
+              style: TextStyle(
+                fontFamily: 'JetBrains Mono',
+                fontSize: 10.5,
+                color: const Color(0xFF00A896),
+              ),
             ),
-          )
-        else
+          ),
           for (int i = 0; i < _suggestions.length; i++) ...[
             if (i > 0) const SizedBox(height: 8),
             _userRow(_suggestions[i], fromSuggestions: true),
           ],
+        ],
       ],
     );
   }
