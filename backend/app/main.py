@@ -1649,6 +1649,9 @@ def get_leaderboard(
 
     user_ids = set(xp_by_user.keys()) | {user_id}
     users = db.query(models.User).filter(models.User.id.in_(user_ids)).all()
+    following_ids = {
+        row.followee_id for row in db.query(models.Follow).filter(models.Follow.follower_id == user_id).all()
+    }
 
     entries = [
         {
@@ -1657,6 +1660,7 @@ def get_leaderboard(
             "avatar": u.avatar,
             "xp_7d": xp_by_user.get(u.id, 0),
             "streak": u.streak,
+            "is_following": u.id in following_ids,
         }
         for u in users
     ]
@@ -1906,6 +1910,203 @@ def create_post(
     return {"status": "ok"}
 
 
+def _post_or_404(db: Session, post_id: int) -> models.Post:
+    post = db.query(models.Post).filter(models.Post.id == post_id).first()
+    if post is None:
+        raise HTTPException(status_code=404, detail="Post not found")
+    return post
+
+
+@app.post("/posts/{post_id}/like")
+def toggle_post_like(
+    post_id: int,
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    """Переключает лайк. При проставлении — обновляет/создаёт агрегированное
+    уведомление автору поста (не уведомляем самого себя о своих лайках)."""
+    _require_self(current_user, user_id)
+    post = _post_or_404(db, post_id)
+
+    existing = (
+        db.query(models.PostLike)
+        .filter(models.PostLike.post_id == post_id, models.PostLike.user_id == user_id)
+        .first()
+    )
+    if existing is not None:
+        db.delete(existing)
+        db.commit()
+        liked = False
+    else:
+        db.add(models.PostLike(post_id=post_id, user_id=user_id))
+        db.commit()
+        liked = True
+
+        if post.user_id != user_id:
+            notif = (
+                db.query(models.Notification)
+                .filter(
+                    models.Notification.post_id == post_id,
+                    models.Notification.type == "like",
+                )
+                .first()
+            )
+            if notif is None:
+                db.add(models.Notification(
+                    user_id=post.user_id, actor_id=user_id, post_id=post_id,
+                    type="like", count=1, read=False,
+                ))
+            else:
+                notif.count += 1
+                notif.actor_id = user_id
+                notif.read = False
+                notif.updated_at = datetime.utcnow()
+            db.commit()
+
+    like_count = db.query(models.PostLike).filter(models.PostLike.post_id == post_id).count()
+    return {"liked": liked, "like_count": like_count}
+
+
+@app.get("/posts/{post_id}")
+def get_post(
+    post_id: int,
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    _require_self(current_user, user_id)
+    post = _post_or_404(db, post_id)
+    author = db.query(models.User).filter(models.User.id == post.user_id).first()
+    like_count = db.query(models.PostLike).filter(models.PostLike.post_id == post_id).count()
+    comment_count = db.query(models.PostComment).filter(models.PostComment.post_id == post_id).count()
+    liked_by_me = (
+        db.query(models.PostLike)
+        .filter(models.PostLike.post_id == post_id, models.PostLike.user_id == user_id)
+        .first()
+        is not None
+    )
+    return {
+        "id": post.id,
+        "user": {"id": author.id, "username": author.username, "avatar": author.avatar},
+        "text": post.text,
+        "created_at": post.created_at,
+        "like_count": like_count,
+        "comment_count": comment_count,
+        "liked_by_me": liked_by_me,
+    }
+
+
+@app.get("/posts/{post_id}/comments")
+def get_post_comments(
+    post_id: int,
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    _require_self(current_user, user_id)
+    _post_or_404(db, post_id)
+
+    comments = (
+        db.query(models.PostComment)
+        .filter(models.PostComment.post_id == post_id)
+        .order_by(models.PostComment.created_at.asc())
+        .all()
+    )
+    author_ids = {c.user_id for c in comments}
+    users_by_id = {u.id: u for u in db.query(models.User).filter(models.User.id.in_(author_ids)).all()}
+    return [
+        {
+            "id": c.id,
+            "user": {
+                "id": c.user_id,
+                "username": users_by_id[c.user_id].username if c.user_id in users_by_id else "Игрок",
+                "avatar": users_by_id[c.user_id].avatar if c.user_id in users_by_id else None,
+            },
+            "text": c.text,
+            "created_at": c.created_at,
+        }
+        for c in comments
+    ]
+
+
+@app.post("/posts/{post_id}/comments")
+def add_post_comment(
+    post_id: int,
+    user_id: int,
+    payload: schemas.CommentCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    _require_self(current_user, user_id)
+    post = _post_or_404(db, post_id)
+
+    text = payload.text.strip()
+    if not text:
+        raise HTTPException(status_code=400, detail="Comment text is empty")
+    text = text[:300]
+
+    comment = models.PostComment(post_id=post_id, user_id=user_id, text=text)
+    db.add(comment)
+
+    if post.user_id != user_id:
+        db.add(models.Notification(
+            user_id=post.user_id, actor_id=user_id, post_id=post_id,
+            type="comment", count=1, comment_text=text, read=False,
+        ))
+
+    db.commit()
+    return {"status": "ok"}
+
+
+@app.get("/users/{user_id}/notifications")
+def get_notifications(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    _require_self(current_user, user_id)
+    notifications = (
+        db.query(models.Notification)
+        .filter(models.Notification.user_id == user_id)
+        .order_by(models.Notification.updated_at.desc())
+        .limit(50)
+        .all()
+    )
+    actor_ids = {n.actor_id for n in notifications}
+    users_by_id = {u.id: u for u in db.query(models.User).filter(models.User.id.in_(actor_ids)).all()}
+    return [
+        {
+            "id": n.id,
+            "type": n.type,
+            "post_id": n.post_id,
+            "count": n.count,
+            "comment_text": n.comment_text,
+            "read": n.read,
+            "actor": {
+                "id": n.actor_id,
+                "username": users_by_id[n.actor_id].username if n.actor_id in users_by_id else "Игрок",
+            },
+            "updated_at": n.updated_at,
+        }
+        for n in notifications
+    ]
+
+
+@app.post("/users/{user_id}/notifications/read")
+def mark_notifications_read(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    _require_self(current_user, user_id)
+    db.query(models.Notification).filter(
+        models.Notification.user_id == user_id, models.Notification.read.is_(False)
+    ).update({"read": True})
+    db.commit()
+    return {"status": "ok"}
+
+
 def _achievement_feed_info(code: str) -> dict | None:
     """Разбирает code вида "streak_3" (семья_уровень) для отображения в ленте."""
     try:
@@ -1954,15 +2155,38 @@ def get_feed(
         .limit(FEED_PAGE_SIZE)
         .all()
     )
+    post_ids = [post.id for post in posts]
+    like_counts = dict(
+        db.query(models.PostLike.post_id, func.count(models.PostLike.id))
+        .filter(models.PostLike.post_id.in_(post_ids))
+        .group_by(models.PostLike.post_id)
+        .all()
+    )
+    comment_counts = dict(
+        db.query(models.PostComment.post_id, func.count(models.PostComment.id))
+        .filter(models.PostComment.post_id.in_(post_ids))
+        .group_by(models.PostComment.post_id)
+        .all()
+    )
+    liked_post_ids = {
+        row.post_id
+        for row in db.query(models.PostLike.post_id)
+        .filter(models.PostLike.post_id.in_(post_ids), models.PostLike.user_id == user_id)
+        .all()
+    }
     for post in posts:
         author = users_by_id.get(post.user_id)
         if author is None:
             continue
         events.append({
             "type": "post",
+            "post_id": post.id,
             "user": {"id": author.id, "username": author.username, "avatar": author.avatar},
             "text": post.text,
             "created_at": post.created_at,
+            "like_count": like_counts.get(post.id, 0),
+            "comment_count": comment_counts.get(post.id, 0),
+            "liked_by_me": post.id in liked_post_ids,
         })
 
     unlocks = (

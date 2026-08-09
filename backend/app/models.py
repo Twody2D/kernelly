@@ -143,6 +143,43 @@ class Post(Base):
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
 
+class PostLike(Base):
+    __tablename__ = "post_likes"
+    __table_args__ = (UniqueConstraint("post_id", "user_id", name="uq_post_like"),)
+    id = Column(Integer, primary_key=True)
+    post_id = Column(Integer, ForeignKey("posts.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+
+class PostComment(Base):
+    __tablename__ = "post_comments"
+    id = Column(Integer, primary_key=True)
+    post_id = Column(Integer, ForeignKey("posts.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    text = Column(String, nullable=False)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+
+class Notification(Base):
+    """Уведомление владельцу поста. Лайки одного поста агрегируются в одну
+    строку (count растёт, read сбрасывается в False при каждом новом лайке,
+    actor_id — последний лайкнувший) — иначе десять лайков дали бы десять
+    отдельных уведомлений. У комментариев — отдельная строка на каждый."""
+
+    __tablename__ = "notifications"
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    actor_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    post_id = Column(Integer, ForeignKey("posts.id"), nullable=False)
+    type = Column(String, nullable=False)  # 'like' | 'comment'
+    count = Column(Integer, nullable=False, default=1)
+    comment_text = Column(String, nullable=True)
+    read = Column(Boolean, nullable=False, default=False)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+
 class AchievementUnlock(Base):
     """Момент разблокировки достижения — сами достижения считаются на лету
     (см. ACHIEVEMENTS в main.py), но для ленты нужен факт и время события."""

@@ -79,7 +79,7 @@ class FeedTabState extends State<FeedTab> {
         backgroundColor: const Color(0xFFF6F9F9),
         elevation: 0,
         title: Text(
-          'Новости',
+          'Лента',
           style: TextStyle(
             fontFamily: 'Fredoka',
             fontWeight: FontWeight.w600,

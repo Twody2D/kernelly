@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mobile/services/api_service.dart';
 import 'package:mobile/services/user_prefs.dart';
+import 'package:mobile/screens/user_profile_screen.dart';
 
 /// Вкладка «Топ»: рейтинг игроков по XP за последние 7 дней.
 class LeaderboardTab extends StatefulWidget {
@@ -95,6 +96,20 @@ class LeaderboardTabState extends State<LeaderboardTab> {
     );
   }
 
+  Future<void> _openProfile(Map<String, dynamic> entry) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => UserProfileScreen(
+          userId: entry['user_id'] as int,
+          username: entry['username'] as String? ?? 'Игрок',
+          initialIsFollowing: entry['is_following'] == true,
+        ),
+      ),
+    );
+    load();
+  }
+
   Widget _row(Map<String, dynamic> entry) {
     final rank = entry['rank'] as int;
     final isMe = entry['user_id'] == currentUserId;
@@ -115,7 +130,9 @@ class LeaderboardTabState extends State<LeaderboardTab> {
       rankColor = const Color(0xFF9AAAAA);
     }
 
-    return Container(
+    return GestureDetector(
+      onTap: isMe ? null : () => _openProfile(entry),
+      child: Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -185,6 +202,7 @@ class LeaderboardTabState extends State<LeaderboardTab> {
             ),
           ),
         ],
+      ),
       ),
     );
   }

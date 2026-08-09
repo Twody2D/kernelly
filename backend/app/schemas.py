@@ -144,6 +144,10 @@ class PostCreate(BaseModel):
     text: str
 
 
+class CommentCreate(BaseModel):
+    text: str
+
+
 class ReviewExerciseOut(BaseModel):
     id: int
     type: str

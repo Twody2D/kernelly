@@ -96,7 +96,7 @@ class _MainShellState extends State<MainShell> {
           BottomNavigationBarItem(icon: Icon(Icons.leaderboard), label: 'Топ'),
           BottomNavigationBarItem(
             icon: Icon(Icons.dynamic_feed),
-            label: 'Новости',
+            label: 'Лента',
           ),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Профиль'),
         ],
