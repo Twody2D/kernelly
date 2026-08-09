@@ -1007,6 +1007,8 @@ def get_user_stats(user_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="User not found")
 
     stats = _collect_stats(user, db)
+    followers_count = db.query(models.Follow).filter(models.Follow.followee_id == user_id).count()
+    following_count = db.query(models.Follow).filter(models.Follow.follower_id == user_id).count()
 
     return {
         "id": user.id,
@@ -1019,6 +1021,8 @@ def get_user_stats(user_id: int, db: Session = Depends(get_db)):
         "accuracy": stats["accuracy"],
         "created_at": user.created_at,
         "auth_provider": user.auth_provider,
+        "followers_count": followers_count,
+        "following_count": following_count,
     }
 
 
@@ -1205,6 +1209,59 @@ def get_following(user_id: int, db: Session = Depends(get_db)):
     return [
         {"id": u.id, "username": u.username, "avatar": u.avatar, "is_friend": u.id in friend_ids}
         for u in users
+    ]
+
+
+@app.get("/users/{user_id}/followers")
+def get_followers(user_id: int, db: Session = Depends(get_db)):
+    follower_ids = {
+        row.follower_id for row in db.query(models.Follow).filter(models.Follow.followee_id == user_id).all()
+    }
+    if not follower_ids:
+        return []
+
+    following_ids = {
+        row.followee_id for row in db.query(models.Follow).filter(models.Follow.follower_id == user_id).all()
+    }
+
+    users = db.query(models.User).filter(models.User.id.in_(follower_ids)).all()
+    return [
+        {"id": u.id, "username": u.username, "avatar": u.avatar, "is_friend": u.id in following_ids}
+        for u in users
+    ]
+
+
+SUGGESTIONS_LIMIT = 20
+
+
+@app.get("/users/{user_id}/suggestions")
+def get_suggestions(user_id: int, db: Session = Depends(get_db)):
+    """«Вы можете их знать» — те, на кого подписаны люди, на которых
+    подписан сам пользователь (друзья друзей), кроме уже подписанных и себя."""
+    following_ids = {
+        row.followee_id for row in db.query(models.Follow).filter(models.Follow.follower_id == user_id).all()
+    }
+
+    candidates = (
+        db.query(models.Follow.followee_id, func.count(models.Follow.id).label("mutual"))
+        .filter(models.Follow.follower_id.in_(following_ids), models.Follow.followee_id != user_id)
+        .group_by(models.Follow.followee_id)
+        .order_by(func.count(models.Follow.id).desc())
+        .limit(SUGGESTIONS_LIMIT + len(following_ids))
+        .all()
+    )
+
+    suggested_ids = [row.followee_id for row in candidates if row.followee_id not in following_ids][:SUGGESTIONS_LIMIT]
+    if not suggested_ids:
+        return []
+
+    mutual_by_id = {row.followee_id: row.mutual for row in candidates}
+    users = db.query(models.User).filter(models.User.id.in_(suggested_ids)).all()
+    users_by_id = {u.id: u for u in users}
+    return [
+        {"id": uid, "username": users_by_id[uid].username, "avatar": users_by_id[uid].avatar, "mutual": mutual_by_id[uid]}
+        for uid in suggested_ids
+        if uid in users_by_id
     ]
 
 
