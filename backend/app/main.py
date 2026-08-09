@@ -1226,7 +1226,13 @@ def get_followers(user_id: int, db: Session = Depends(get_db)):
 
     users = db.query(models.User).filter(models.User.id.in_(follower_ids)).all()
     return [
-        {"id": u.id, "username": u.username, "avatar": u.avatar, "is_friend": u.id in following_ids}
+        {
+            "id": u.id,
+            "username": u.username,
+            "avatar": u.avatar,
+            "is_following": u.id in following_ids,
+            "is_friend": u.id in following_ids,
+        }
         for u in users
     ]
 
