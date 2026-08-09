@@ -84,6 +84,7 @@ class UserOut(BaseModel):
     username: str | None = None
     avatar: str | None = None
     email: str | None = None
+    phone: str | None = None
     xp: int
     streak: int
 
@@ -107,6 +108,14 @@ class GoogleSignIn(BaseModel):
 class ProfileUpdate(BaseModel):
     username: str
     avatar: str
+
+
+class PhoneUpdate(BaseModel):
+    phone: str | None = None
+
+
+class ContactsMatchRequest(BaseModel):
+    phones: list[str]
 
 
 class LessonComplete(BaseModel):
