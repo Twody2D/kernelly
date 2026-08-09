@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mobile/screens/main_shell.dart';
@@ -6,6 +8,7 @@ import 'package:mobile/services/notifications_service.dart';
 import 'package:mobile/services/user_prefs.dart';
 import 'package:mobile/theme/app_theme.dart';
 import 'package:mobile/theme/theme_controller.dart';
+import 'package:mobile/widgets/mascot.dart';
 
 /// На Android 12+ Flutter по умолчанию растягивает контент при овер-скролле
 /// (StretchingOverscrollIndicator) — визуально ломает жёстко заданные по
@@ -31,15 +34,8 @@ Future<void> main() async {
   final prefs = await SharedPreferences.getInstance();
   final onboardingDone = prefs.getBool(PrefKeys.onboardingDone) ?? false;
 
-  await ensureUserId();
+  // Тема — синхронная, читается локально, поэтому не задерживает первый кадр.
   await themeController.loadFromPrefs();
-
-  // если пропущенный тумблер уже был включён (переустановка приложения —
-  // локальные запланированные уведомления Android не переживают её), нужно
-  // заново поставить напоминание в систему
-  if (prefs.getBool(PrefKeys.remind) ?? true) {
-    await NotificationsService.instance.scheduleDaily();
-  }
 
   runApp(KernellyApp(onboardingDone: onboardingDone));
 }
@@ -60,9 +56,65 @@ class KernellyApp extends StatelessWidget {
           theme: AppTheme.light,
           darkTheme: AppTheme.dark,
           themeMode: mode,
-          home: onboardingDone ? const MainShell() : const OnboardingScreen(),
+          home: _Startup(onboardingDone: onboardingDone),
         );
       },
+    );
+  }
+}
+
+/// Раньше сетевой запрос за пользователем и системный диалог разрешения на
+/// уведомления блокировали первый кадр приложения (runApp вызывался только
+/// после обоих) — на слабой сети или медленном холодном старте бэкенда это
+/// было заметное чёрное окно перед любой отрисовкой. Теперь runApp происходит
+/// сразу, а currentUserId (обязателен для загрузки любого экрана) дожидаемся
+/// за лёгким сплэшем; уведомления и вовсе планируются в фоне, не блокируя UI.
+class _Startup extends StatefulWidget {
+  final bool onboardingDone;
+
+  const _Startup({required this.onboardingDone});
+
+  @override
+  State<_Startup> createState() => _StartupState();
+}
+
+class _StartupState extends State<_Startup> {
+  bool _ready = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _bootstrap();
+  }
+
+  Future<void> _bootstrap() async {
+    await ensureUserId();
+    if (mounted) setState(() => _ready = true);
+
+    // если тумблер напоминания уже был включён (переустановка приложения —
+    // локальные запланированные уведомления Android не переживают её), нужно
+    // заново поставить напоминание в систему; делаем это фоном, не блокируя UI
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.getBool(PrefKeys.remind) ?? true) {
+      unawaited(NotificationsService.instance.scheduleDaily());
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_ready) return const _SplashScreen();
+    return widget.onboardingDone ? const MainShell() : const OnboardingScreen();
+  }
+}
+
+class _SplashScreen extends StatelessWidget {
+  const _SplashScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      backgroundColor: Color(0xFFF6F9F9),
+      body: Center(child: Mascot(size: 110)),
     );
   }
 }
