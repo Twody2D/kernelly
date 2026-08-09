@@ -28,6 +28,38 @@ class _AppScrollBehavior extends MaterialScrollBehavior {
       child: child,
     );
   }
+
+  @override
+  ScrollPhysics getScrollPhysics(BuildContext context) {
+    return _SlowerScrollPhysics(parent: super.getScrollPhysics(context));
+  }
+}
+
+/// Стандартная скорость скролла ощущалась слишком резкой — что палец
+/// проходит по экрану, что бросок (fling) списка, контент улетал заметно
+/// дальше, чем на привычных приложениях. Множим и перетаскивание пальцем,
+/// и скорость броска на один и тот же коэффициент, а платформенную физику
+/// (bounce на iOS / clamping на Android) оставляем как есть через parent —
+/// меняется только "скорость", а не характер скролла.
+class _SlowerScrollPhysics extends ScrollPhysics {
+  const _SlowerScrollPhysics({super.parent});
+
+  static const _factor = 0.4;
+
+  @override
+  _SlowerScrollPhysics applyTo(ScrollPhysics? ancestor) {
+    return _SlowerScrollPhysics(parent: buildParent(ancestor));
+  }
+
+  @override
+  double applyPhysicsToUserOffset(ScrollMetrics position, double offset) {
+    return super.applyPhysicsToUserOffset(position, offset * _factor);
+  }
+
+  @override
+  Simulation? createBallisticSimulation(ScrollMetrics position, double velocity) {
+    return super.createBallisticSimulation(position, velocity * _factor);
+  }
 }
 
 Future<void> main() async {
