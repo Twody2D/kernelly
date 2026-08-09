@@ -133,6 +133,7 @@ class _FollowListScreenState extends State<FollowListScreen> {
                                 : user['is_following'] == true;
                             return FollowUserRow(
                               username: user['username'] as String? ?? 'Игрок',
+                              avatar: user['avatar'] as String?,
                               isFollowing: isFollowing,
                               isPending: _pending.contains(user['id']),
                               onToggleFollow: () => _toggleFollow(user),

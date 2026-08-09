@@ -389,6 +389,7 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
     final isFollowing = user['is_following'] == true;
     return FollowUserRow(
       username: username,
+      avatar: user['avatar'] as String?,
       isFollowing: isFollowing,
       isPending: _pending.contains(user['id']),
       onToggleFollow: () =>

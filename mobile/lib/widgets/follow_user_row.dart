@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:mobile/services/avatars.dart';
 
 /// Строка одного пользователя в списках подписок/подписчиков/поиска —
-/// аватар-заглушка, ник, опциональная подпись и кнопка подписки.
+/// аватар, ник, опциональная подпись и кнопка подписки.
 class FollowUserRow extends StatelessWidget {
   final String username;
+  final String? avatar;
   final bool isFollowing;
   final bool isPending;
   final String? subtitle;
@@ -16,6 +18,7 @@ class FollowUserRow extends StatelessWidget {
     required this.isFollowing,
     required this.isPending,
     required this.onToggleFollow,
+    this.avatar,
     this.subtitle,
     this.onTap,
   });
@@ -26,6 +29,8 @@ class FollowUserRow extends StatelessWidget {
   }
 
   Widget _content() {
+    final (_, icon, fg, bg) = avatarByCode(avatar);
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
@@ -44,16 +49,9 @@ class FollowUserRow extends StatelessWidget {
           Container(
             width: 36,
             height: 36,
-            decoration: const BoxDecoration(
-              color: Color(0xFFE0F7F4),
-              shape: BoxShape.circle,
-            ),
+            decoration: BoxDecoration(color: bg, shape: BoxShape.circle),
             alignment: Alignment.center,
-            child: const Icon(
-              Icons.person_rounded,
-              color: Color(0xFF00A896),
-              size: 20,
-            ),
+            child: Icon(icon, color: fg, size: 20),
           ),
           const SizedBox(width: 12),
           Expanded(
