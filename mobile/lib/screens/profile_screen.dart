@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import 'package:mobile/services/api_service.dart';
 import 'package:mobile/services/user_prefs.dart';
+import 'package:mobile/services/avatars.dart';
 import 'package:mobile/screens/settings_screen.dart';
 import 'package:mobile/screens/register_prompt_screen.dart';
 import 'package:mobile/screens/friend_search_screen.dart';
@@ -324,21 +327,35 @@ class ProfileScreenState extends State<ProfileScreen> {
     final followers = stats!['followers_count'] ?? 0;
     final following = stats!['following_count'] ?? 0;
 
-    return Row(
+    return Column(
       children: [
-        Expanded(
-          child: _socialCount(
-            'Подписчики',
-            followers,
-            FollowListMode.followers,
-          ),
+        Row(
+          children: [
+            Expanded(
+              child: _socialCount(
+                'Подписчики',
+                followers,
+                FollowListMode.followers,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _socialCount(
+                'Подписки',
+                following,
+                FollowListMode.following,
+              ),
+            ),
+          ],
         ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: _socialCount('Подписки', following, FollowListMode.following),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(child: _addFriendsButton()),
+            const SizedBox(width: 10),
+            _qrButton(),
+          ],
         ),
-        const SizedBox(width: 10),
-        _addFriendsButton(),
       ],
     );
   }
@@ -389,6 +406,40 @@ class ProfileScreenState extends State<ProfileScreen> {
         MaterialPageRoute(builder: (_) => const FriendSearchScreen()),
       ).then((_) => load()),
       child: Container(
+        height: 48,
+        decoration: BoxDecoration(
+          color: const Color(0xFFE0F7F4),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        alignment: Alignment.center,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              Icons.person_add_alt_1_rounded,
+              color: Color(0xFF00A896),
+              size: 20,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              'ДОБАВИТЬ ДРУЗЕЙ',
+              style: TextStyle(
+                fontFamily: 'JetBrains Mono',
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
+                color: const Color(0xFF00A896),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _qrButton() {
+    return GestureDetector(
+      onTap: _showQrSheet,
+      child: Container(
         width: 48,
         height: 48,
         decoration: BoxDecoration(
@@ -397,11 +448,23 @@ class ProfileScreenState extends State<ProfileScreen> {
         ),
         alignment: Alignment.center,
         child: const Icon(
-          Icons.person_add_alt_1_rounded,
+          Icons.qr_code_rounded,
           color: Color(0xFF00A896),
           size: 22,
         ),
       ),
+    );
+  }
+
+  void _showQrSheet() {
+    final username = stats!['username'] as String? ?? 'Гость';
+    final avatar = avatarByCode(stats!['avatar'] as String?);
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (_) => _QrSheet(username: username, avatar: avatar),
     );
   }
 
@@ -704,6 +767,216 @@ class ProfileScreenState extends State<ProfileScreen> {
                 ),
               ),
             ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Модалка с QR-кодом профиля — по нему друг может добавить пользователя,
+/// отсканировав камерой (сканер пока не реализован, только генерация).
+class _QrSheet extends StatelessWidget {
+  final String username;
+  final (String, IconData, Color, Color) avatar;
+
+  const _QrSheet({required this.username, required this.avatar});
+
+  String get _profileLink => 'kernelly://u/$username';
+
+  void _copyLink(BuildContext context) {
+    Clipboard.setData(ClipboardData(text: _profileLink));
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: const Text(
+            'Ссылка скопирована',
+            style: TextStyle(
+              fontFamily: 'Fredoka',
+              fontWeight: FontWeight.w500,
+              fontSize: 14,
+            ),
+          ),
+          backgroundColor: const Color(0xFF1B2430),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+        ),
+      );
+  }
+
+  void _shareLink(BuildContext context) {
+    Clipboard.setData(ClipboardData(text: _profileLink));
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: const Text(
+            'Ссылка скопирована — вставь её в сообщение другу',
+            style: TextStyle(
+              fontFamily: 'Fredoka',
+              fontWeight: FontWeight.w500,
+              fontSize: 14,
+            ),
+          ),
+          backgroundColor: const Color(0xFF1B2430),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+        ),
+      );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final (_, icon, fg, bg) = avatar;
+
+    return SafeArea(
+      child: Container(
+        margin: const EdgeInsets.all(12),
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                const SizedBox(width: 32),
+                Expanded(
+                  child: Text(
+                    username,
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontFamily: 'Fredoka',
+                      fontWeight: FontWeight.w600,
+                      fontSize: 17,
+                      color: const Color(0xFF1B2430),
+                    ),
+                  ),
+                ),
+                SizedBox(
+                  width: 32,
+                  child: IconButton(
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    icon: const Icon(
+                      Icons.close_rounded,
+                      color: Color(0xFF9AAAAA),
+                      size: 22,
+                    ),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '@$username',
+              style: TextStyle(
+                fontFamily: 'JetBrains Mono',
+                fontSize: 12,
+                color: const Color(0xFF9AAAAA),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: const Color(0xFFE7EEEE), width: 1.5),
+              ),
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  QrImageView(
+                    data: _profileLink,
+                    version: QrVersions.auto,
+                    size: 220,
+                    eyeStyle: const QrEyeStyle(
+                      eyeShape: QrEyeShape.square,
+                      color: Color(0xFF1B2430),
+                    ),
+                    dataModuleStyle: const QrDataModuleStyle(
+                      dataModuleShape: QrDataModuleShape.square,
+                      color: Color(0xFF1B2430),
+                    ),
+                  ),
+                  Container(
+                    width: 52,
+                    height: 52,
+                    decoration: BoxDecoration(
+                      color: bg,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: Colors.white, width: 3),
+                    ),
+                    alignment: Alignment.center,
+                    child: Icon(icon, color: fg, size: 26),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 22),
+            Row(
+              children: [
+                Expanded(
+                  child: _qrAction(
+                    icon: Icons.ios_share_rounded,
+                    label: 'Отправить ссылку',
+                    onTap: () => _shareLink(context),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _qrAction(
+                    icon: Icons.link_rounded,
+                    label: 'Скопировать ссылку',
+                    onTap: () => _copyLink(context),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _qrAction({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          color: const Color(0xFFE0F7F4),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: const Color(0xFF00A896), size: 20),
+            const SizedBox(height: 6),
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: 'Fredoka',
+                fontWeight: FontWeight.w600,
+                fontSize: 11.5,
+                color: const Color(0xFF00A896),
+              ),
+            ),
           ],
         ),
       ),
