@@ -3,15 +3,17 @@ import 'package:mobile/services/api_service.dart';
 import 'package:mobile/services/user_prefs.dart';
 import 'package:mobile/screens/lesson_screen.dart';
 import 'package:mobile/screens/review_screen.dart';
+import 'package:mobile/widgets/course_path_nodes.dart';
 import 'package:mobile/widgets/daily_goal_card.dart';
 import 'package:mobile/widgets/gradient_banner.dart';
 import 'package:mobile/widgets/review_card.dart';
-import 'package:mobile/widgets/section_path_nodes.dart';
 
-/// Карта одного курса целиком — единая дорожка уроков сразу по всем
-/// разделам: пройденные и текущий раздел со своим реальным статусом,
+/// Карта одного курса целиком — единая непрерывная дорожка уроков сразу по
+/// всем разделам: пройденные и текущий раздел со своим реальным статусом,
 /// а уроки ещё не открытых разделов видны, но помечены заблокированными.
-/// Общая для вкладки «Путь» (текущий курс) и экрана разделов курса в «Курсах».
+/// Начало нового раздела помечается подписью сбоку от узла, без разрыва
+/// самой дорожки (см. CoursePathNodes). Общая для вкладки «Путь» (текущий
+/// курс) и экрана разделов курса в «Курсах».
 class CourseMapBody extends StatefulWidget {
   final int courseId;
   final int? dailyCompleted;
@@ -33,7 +35,7 @@ class CourseMapBody extends StatefulWidget {
 class CourseMapBodyState extends State<CourseMapBody> {
   String? courseTitle;
   List<Map<String, dynamic>> sections = [];
-  Map<int, List<Map<String, dynamic>>> lessonsBySection = {};
+  List<Map<String, dynamic>> combinedLessons = [];
   int reviewDue = 0;
   bool loading = true;
 
@@ -66,22 +68,31 @@ class CourseMapBodyState extends State<CourseMapBody> {
       );
       if (!mounted) return;
 
-      final lessonsMap = <int, List<Map<String, dynamic>>>{};
+      // Одна плоская дорожка на все разделы — начало раздела помечается
+      // 'sectionLabel' на первом его уроке (см. CoursePathNodes), сам путь
+      // при этом не прерывается.
+      final combined = <Map<String, dynamic>>[];
       for (var i = 0; i < sectionsList.length; i++) {
         final section = sectionsList[i];
-        var sectionLessons = lessonsLists[i];
-        if (section['status'] == 'locked') {
-          sectionLessons = [
-            for (final lesson in sectionLessons) {...lesson, 'status': 'locked'},
-          ];
+        final locked = section['status'] == 'locked';
+        final sectionLessons = lessonsLists[i];
+        for (var j = 0; j < sectionLessons.length; j++) {
+          final lesson = sectionLessons[j];
+          combined.add({
+            ...lesson,
+            'status': locked ? 'locked' : lesson['status'],
+            '_sectionTitle': section['title'],
+            'sectionOrder': j == 0 ? section['order'] : null,
+            'sectionName': j == 0 ? section['title'] : null,
+            'sectionLocked': locked,
+          });
         }
-        lessonsMap[section['id'] as int] = sectionLessons;
       }
 
       setState(() {
         courseTitle = sectionsData['course_title'] as String?;
         sections = sectionsList;
-        lessonsBySection = lessonsMap;
+        combinedLessons = combined;
         reviewDue = results[1] as int;
         loading = false;
       });
@@ -100,15 +111,14 @@ class CourseMapBodyState extends State<CourseMapBody> {
     load();
   }
 
-  Future<void> _openLesson(
-    Map<String, dynamic> lesson,
-    String sectionTitle,
-  ) async {
+  Future<void> _openLesson(Map<String, dynamic> lesson) async {
     await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) =>
-            LessonScreen(lessonId: lesson['id'], sectionTitle: sectionTitle),
+        builder: (_) => LessonScreen(
+          lessonId: lesson['id'],
+          sectionTitle: lesson['_sectionTitle'] as String,
+        ),
       ),
     );
     load();
@@ -150,53 +160,9 @@ class CourseMapBodyState extends State<CourseMapBody> {
           ReviewCard(due: reviewDue, onTap: _openReview),
         ],
         const SizedBox(height: 20),
-        for (final section in sections) _sectionBlock(section),
+        CoursePathNodes(lessons: combinedLessons, onTapLesson: _openLesson),
         const SizedBox(height: 12),
       ],
-    );
-  }
-
-  Widget _sectionBlock(Map<String, dynamic> section) {
-    final status = section['status'] as String;
-    final lessons = lessonsBySection[section['id'] as int] ?? [];
-    final labelColor = switch (status) {
-      'done' => const Color(0xFF58CC02),
-      'locked' => const Color(0xFF9AAAAA),
-      _ => const Color(0xFF00A896),
-    };
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(left: 4, bottom: 4),
-            child: Row(
-              children: [
-                if (status == 'locked') ...[
-                  const Icon(Icons.lock, size: 12, color: Color(0xFF9AAAAA)),
-                  const SizedBox(width: 4),
-                ],
-                Text(
-                  'Раздел ${section['order']} · ${section['title']}',
-                  style: TextStyle(
-                    fontFamily: 'JetBrains Mono',
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: labelColor,
-                    letterSpacing: 0.4,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          SectionPathNodes(
-            lessons: lessons,
-            onTapLesson: (lesson) => _openLesson(lesson, section['title']),
-          ),
-        ],
-      ),
     );
   }
 }
