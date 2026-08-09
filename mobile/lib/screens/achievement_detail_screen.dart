@@ -214,10 +214,19 @@ class _AchievementDetailScreenState extends State<AchievementDetailScreen>
       );
   }
 
+  // Следует за свайпом — раньше показывала только реальный прогресс, из-за
+  // чего при просмотре других уровней надпись оставалась «залипшей» на
+  // полученном, хотя картинка и описание уже сменились.
   String get _pillText {
-    if (!_unlocked) return 'ЕЩЁ НЕ ОТКРЫТО';
-    if (_maxed) return 'ПОЛУЧЕНО · ${(_levelTitles[_currentStyle] ?? '').toUpperCase()}';
-    return 'УРОВЕНЬ $_level ИЗ $_maxLevel';
+    if (_levels.isEmpty) {
+      if (!_unlocked) return 'ЕЩЁ НЕ ОТКРЫТО';
+      if (_maxed) return 'ПОЛУЧЕНО · ${(_levelTitles[_currentStyle] ?? '').toUpperCase()}';
+      return 'УРОВЕНЬ $_level ИЗ $_maxLevel';
+    }
+    if (_pageReached) {
+      return 'ПОЛУЧЕНО · ${(_levelTitles[_pageStyle] ?? '').toUpperCase()}';
+    }
+    return 'УРОВЕНЬ ${_descPage + 1} ИЗ $_maxLevel';
   }
 
   // Свайп по всему экрану переключает, какой из 5 уровней показан (картинка
@@ -338,7 +347,7 @@ class _AchievementDetailScreenState extends State<AchievementDetailScreen>
                                 vertical: 8,
                               ),
                               decoration: BoxDecoration(
-                                color: _unlocked
+                                color: _pageReached
                                     ? const Color(0xFFEAF9DC)
                                     : const Color(0xFFE7EEEE),
                                 borderRadius: BorderRadius.circular(20),
@@ -350,7 +359,7 @@ class _AchievementDetailScreenState extends State<AchievementDetailScreen>
                                   fontWeight: FontWeight.w600,
                                   fontSize: 12,
                                   letterSpacing: 0.4,
-                                  color: _unlocked
+                                  color: _pageReached
                                       ? const Color(0xFF58CC02)
                                       : const Color(0xFFC2CDCD),
                                 ),
