@@ -56,6 +56,22 @@ class _AchievementDetailScreenState extends State<AchievementDetailScreen>
 
   int get _maxLevel => widget.item['max_level'] as int? ?? 5;
 
+  List<Map<String, dynamic>> get _levels =>
+      List<Map<String, dynamic>>.from(widget.item['levels'] ?? []);
+
+  late int _descPage;
+
+  /// Уровень (бронза..бедрок), который сейчас показан свайпом — влияет на
+  /// картинку медали и подпись, а не на реальный прогресс пользователя.
+  String get _pageStyle =>
+      _levels.isEmpty ? _currentStyle : _levelStyles[_descPage];
+
+  bool get _pageReached =>
+      _levels.isEmpty ? _unlocked : _levels[_descPage]['reached'] == true;
+
+  String get _pageDescription =>
+      _levels.isEmpty ? _description : _levels[_descPage]['description'] as String;
+
   bool get _unlocked => _level > 0;
 
   bool get _maxed => _level >= _maxLevel;
@@ -101,6 +117,10 @@ class _AchievementDetailScreenState extends State<AchievementDetailScreen>
   @override
   void initState() {
     super.initState();
+
+    // Открываем сразу на следующем непройденном уровне — самое интересное
+    // для игрока сейчас; уже пройденные и более поздние доступны свайпом.
+    _descPage = _level.clamp(0, _maxLevel - 1);
 
     _entrance = AnimationController(
       vsync: this,
@@ -200,6 +220,30 @@ class _AchievementDetailScreenState extends State<AchievementDetailScreen>
     return 'УРОВЕНЬ $_level ИЗ $_maxLevel';
   }
 
+  // Свайп по всему экрану переключает, какой из 5 уровней показан (картинка
+  // медали + подпись). Считаем накопленное смещение пальца, а не скорость в
+  // момент отпускания — velocity на некоторых устройствах/эмуляторах
+  // репортится ненадёжно при неспешном свайпе, а расстояние всегда точное.
+  double _dragAccum = 0;
+
+  void _handleDragUpdate(DragUpdateDetails details) {
+    _dragAccum += details.delta.dx;
+  }
+
+  void _handleDragEnd(DragEndDetails details) {
+    const threshold = 40.0; // немного — не нужно тянуть через весь экран
+    if (_levels.isNotEmpty) {
+      if (_dragAccum <= -threshold && _descPage < _levels.length - 1) {
+        setState(() => _descPage++);
+        HapticFeedback.selectionClick();
+      } else if (_dragAccum >= threshold && _descPage > 0) {
+        setState(() => _descPage--);
+        HapticFeedback.selectionClick();
+      }
+    }
+    _dragAccum = 0;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -230,7 +274,11 @@ class _AchievementDetailScreenState extends State<AchievementDetailScreen>
               ),
             ),
             Expanded(
-              child: Center(
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onHorizontalDragUpdate: _handleDragUpdate,
+                onHorizontalDragEnd: _handleDragEnd,
+                child: Center(
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 420),
                   child: Padding(
@@ -264,12 +312,16 @@ class _AchievementDetailScreenState extends State<AchievementDetailScreen>
                                     child: child,
                                   ),
                                 ),
-                                child: AchievementBadge(
-                                  icon: widget.item['icon'] as String,
-                                  style: widget.item['style'] as String,
-                                  unlocked: _unlocked,
-                                  size: 150,
-                                  seed: widget.item['family'] as String?,
+                                child: AnimatedSwitcher(
+                                  duration: const Duration(milliseconds: 250),
+                                  child: AchievementBadge(
+                                    key: ValueKey(_descPage),
+                                    icon: widget.item['icon'] as String,
+                                    style: _pageStyle,
+                                    unlocked: _pageReached,
+                                    size: 150,
+                                    seed: widget.item['family'] as String?,
+                                  ),
                                 ),
                               ),
                             ],
@@ -314,14 +366,20 @@ class _AchievementDetailScreenState extends State<AchievementDetailScreen>
                             children: [
                               for (int i = 0; i < _maxLevel; i++) ...[
                                 if (i > 0) const SizedBox(width: 6),
-                                Container(
-                                  width: 10,
-                                  height: 10,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: i < _level
-                                        ? (_levelDotColors[_levelStyles[i]] ?? const Color(0xFF00C9B7))
-                                        : const Color(0xFFE7EEEE),
+                                GestureDetector(
+                                  onTap: () => setState(() => _descPage = i),
+                                  child: Container(
+                                    width: 10,
+                                    height: 10,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: i < _level
+                                          ? (_levelDotColors[_levelStyles[i]] ?? const Color(0xFF00C9B7))
+                                          : const Color(0xFFE7EEEE),
+                                      border: i == _descPage
+                                          ? Border.all(color: const Color(0xFF1B2430), width: 1.5)
+                                          : null,
+                                    ),
                                   ),
                                 ),
                               ],
@@ -350,14 +408,38 @@ class _AchievementDetailScreenState extends State<AchievementDetailScreen>
                           opacity: _descOpacity,
                           child: SlideTransition(
                             position: _descSlide,
-                            child: Text(
-                              _description,
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontFamily: 'Inter',
-                                fontSize: 15,
-                                height: 1.4,
-                                color: const Color(0xFF5C6B73),
+                            child: AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 200),
+                              child: Column(
+                                key: ValueKey(_descPage),
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  if (_levels.isNotEmpty) ...[
+                                    Text(
+                                      (_levelTitles[_pageStyle] ?? '').toUpperCase(),
+                                      style: TextStyle(
+                                        fontFamily: 'JetBrains Mono',
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 11,
+                                        letterSpacing: 0.5,
+                                        color: _pageReached
+                                            ? const Color(0xFF58CC02)
+                                            : const Color(0xFF9AAAAA),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                  ],
+                                  Text(
+                                    _pageDescription,
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      fontFamily: 'Inter',
+                                      fontSize: 15,
+                                      height: 1.4,
+                                      color: const Color(0xFF5C6B73),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ),
@@ -375,6 +457,7 @@ class _AchievementDetailScreenState extends State<AchievementDetailScreen>
                       ],
                     ),
                   ),
+                ),
                 ),
               ),
             ),

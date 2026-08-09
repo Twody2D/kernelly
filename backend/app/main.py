@@ -1467,6 +1467,7 @@ ACHIEVEMENT_FAMILIES = [
         "title": "Серия дней",
         "icon": "🔥",
         "unit": "дней подряд",
+        "verb": "Продержи серию",
         "thresholds": [3, 14, 30, 60, 100],
     },
     {
@@ -1475,6 +1476,7 @@ ACHIEVEMENT_FAMILIES = [
         "title": "Опыт",
         "icon": "⚡",
         "unit": "XP",
+        "verb": "Набери",
         "thresholds": [100, 500, 1000, 2500, 5000],
     },
     {
@@ -1483,6 +1485,7 @@ ACHIEVEMENT_FAMILIES = [
         "title": "Уроки",
         "icon": "✓",
         "unit": "уроков",
+        "verb": "Пройди",
         "thresholds": [5, 10, 25, 50, 100],
     },
     {
@@ -1493,6 +1496,7 @@ ACHIEVEMENT_FAMILIES = [
         "title": "Точность",
         "icon": "🎯",
         "unit": "уроков со 100% точностью",
+        "verb": "Пройди",
         "thresholds": [1, 5, 10, 25, 50],
     },
 ]
@@ -1501,6 +1505,12 @@ FAMILIES_BY_KEY = {f["family"]: f for f in ACHIEVEMENT_FAMILIES}
 
 def _achievement_code(family: str, level_index: int) -> str:
     return f"{family}_{level_index}"
+
+
+def _family_level_description(family: dict, threshold: int) -> str:
+    """Полная формулировка условия уровня — «Пройди 25 уроков», а не
+    голое «25 уроков» — так понятно, что вообще нужно сделать."""
+    return f'{family["verb"]} {threshold} {family["unit"]}'
 
 
 def _family_level(value: int, thresholds: list[int]) -> int:
@@ -1738,7 +1748,7 @@ def get_user_achievements(
             description = f'Получено: {family["title"]}, текущий счёт: {value}'
         else:
             next_threshold = family["thresholds"][reached_level]
-            description = f'{next_threshold} {family["unit"]}'
+            description = _family_level_description(family, next_threshold)
 
         item = {
             "family": family["family"],
@@ -1750,6 +1760,17 @@ def get_user_achievements(
             "value": value,
             "next_threshold": next_threshold,
             "description": description,
+            # Условие и статус каждого отдельного уровня — для свайпа по всем
+            # порогам семьи на экране деталей (не только следующего).
+            "levels": [
+                {
+                    "level": i + 1,
+                    "threshold": threshold,
+                    "description": _family_level_description(family, threshold),
+                    "reached": i + 1 <= reached_level,
+                }
+                for i, threshold in enumerate(family["thresholds"])
+            ],
         }
         # «Новое» на карточке имеет смысл только в своём профиле — не
         # раскрываем это состояние про чужой сундук на просмотре чужого профиля.
