@@ -1190,39 +1190,61 @@ def unfollow_user(user_id: int, target_id: int, db: Session = Depends(get_db)):
     return {"status": "ok"}
 
 
+def _viewer_follow_flags(db: Session, ids: set[int], viewer_id: int) -> tuple[set[int], set[int]]:
+    """Кого из ids смотрящий (viewer_id) читает и кто из ids читает его самого —
+    нужно, чтобы кнопка «подписаться» в чужом списке подписок/подписчиков
+    показывала состояние именно смотрящего, а не владельца списка."""
+    viewer_following = {
+        row.followee_id
+        for row in db.query(models.Follow)
+        .filter(models.Follow.follower_id == viewer_id, models.Follow.followee_id.in_(ids))
+        .all()
+    }
+    viewer_followers = {
+        row.follower_id
+        for row in db.query(models.Follow)
+        .filter(models.Follow.followee_id == viewer_id, models.Follow.follower_id.in_(ids))
+        .all()
+    }
+    return viewer_following, viewer_followers
+
+
 @app.get("/users/{user_id}/following")
-def get_following(user_id: int, db: Session = Depends(get_db)):
+def get_following(user_id: int, viewer_id: int | None = None, db: Session = Depends(get_db)):
+    viewer_id = viewer_id or user_id
+
     following_ids = {
         row.followee_id for row in db.query(models.Follow).filter(models.Follow.follower_id == user_id).all()
     }
     if not following_ids:
         return []
 
-    friend_ids = {
-        row.follower_id
-        for row in db.query(models.Follow)
-        .filter(models.Follow.followee_id == user_id, models.Follow.follower_id.in_(following_ids))
-        .all()
-    }
+    viewer_following, viewer_followers = _viewer_follow_flags(db, following_ids, viewer_id)
 
     users = db.query(models.User).filter(models.User.id.in_(following_ids)).all()
     return [
-        {"id": u.id, "username": u.username, "avatar": u.avatar, "is_friend": u.id in friend_ids}
+        {
+            "id": u.id,
+            "username": u.username,
+            "avatar": u.avatar,
+            "is_following": u.id in viewer_following,
+            "is_friend": u.id in viewer_following and u.id in viewer_followers,
+        }
         for u in users
     ]
 
 
 @app.get("/users/{user_id}/followers")
-def get_followers(user_id: int, db: Session = Depends(get_db)):
+def get_followers(user_id: int, viewer_id: int | None = None, db: Session = Depends(get_db)):
+    viewer_id = viewer_id or user_id
+
     follower_ids = {
         row.follower_id for row in db.query(models.Follow).filter(models.Follow.followee_id == user_id).all()
     }
     if not follower_ids:
         return []
 
-    following_ids = {
-        row.followee_id for row in db.query(models.Follow).filter(models.Follow.follower_id == user_id).all()
-    }
+    viewer_following, viewer_followers = _viewer_follow_flags(db, follower_ids, viewer_id)
 
     users = db.query(models.User).filter(models.User.id.in_(follower_ids)).all()
     return [
@@ -1230,8 +1252,8 @@ def get_followers(user_id: int, db: Session = Depends(get_db)):
             "id": u.id,
             "username": u.username,
             "avatar": u.avatar,
-            "is_following": u.id in following_ids,
-            "is_friend": u.id in following_ids,
+            "is_following": u.id in viewer_following,
+            "is_friend": u.id in viewer_following and u.id in viewer_followers,
         }
         for u in users
     ]

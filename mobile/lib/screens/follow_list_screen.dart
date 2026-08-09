@@ -6,12 +6,20 @@ import 'package:mobile/widgets/follow_user_row.dart';
 
 enum FollowListMode { followers, following }
 
-/// Список подписчиков или подписок текущего пользователя, с возможностью
-/// подписаться/отписаться прямо отсюда.
+/// Список подписчиков или подписок любого пользователя (свои по умолчанию),
+/// с возможностью подписаться/отписаться прямо отсюда — от лица того, кто
+/// сейчас смотрит, а не владельца списка.
 class FollowListScreen extends StatefulWidget {
   final FollowListMode mode;
+  final int userId;
+  final String? ownerUsername;
 
-  const FollowListScreen({super.key, required this.mode});
+  FollowListScreen({
+    super.key,
+    required this.mode,
+    int? userId,
+    this.ownerUsername,
+  }) : userId = userId ?? currentUserId;
 
   @override
   State<FollowListScreen> createState() => _FollowListScreenState();
@@ -22,6 +30,8 @@ class _FollowListScreenState extends State<FollowListScreen> {
   bool loading = true;
   final Set<int> _pending = {};
 
+  bool get _isOwnList => widget.userId == currentUserId;
+
   @override
   void initState() {
     super.initState();
@@ -31,8 +41,8 @@ class _FollowListScreenState extends State<FollowListScreen> {
   Future<void> _load() async {
     try {
       final data = widget.mode == FollowListMode.followers
-          ? await fetchFollowers(currentUserId)
-          : await fetchFollowing(currentUserId);
+          ? await fetchFollowers(widget.userId, viewerId: currentUserId)
+          : await fetchFollowing(widget.userId, viewerId: currentUserId);
       if (!mounted) return;
       setState(() {
         users = data;
@@ -47,11 +57,7 @@ class _FollowListScreenState extends State<FollowListScreen> {
 
   Future<void> _toggleFollow(Map<String, dynamic> user) async {
     final id = user['id'] as int;
-    // в /following поле называется is_friend (взаимность), а не is_following —
-    // в этом списке мы и так подписаны на всех, кроме случая /followers
-    final isFollowing = widget.mode == FollowListMode.following
-        ? true
-        : user['is_following'] == true;
+    final isFollowing = user['is_following'] == true;
     setState(() => _pending.add(id));
     try {
       if (isFollowing) {
@@ -61,7 +67,10 @@ class _FollowListScreenState extends State<FollowListScreen> {
       }
       if (!mounted) return;
       setState(() {
-        if (widget.mode == FollowListMode.following) {
+        // из своего списка подписок при отписке строку убираем — она больше
+        // не относится к «на кого я подписан»; в остальных случаях (чужой
+        // список или отписка от подписчика) просто меняем состояние кнопки
+        if (_isOwnList && widget.mode == FollowListMode.following && isFollowing) {
           users.removeWhere((u) => u['id'] == id);
         } else {
           user['is_following'] = !isFollowing;
@@ -77,9 +86,12 @@ class _FollowListScreenState extends State<FollowListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final title = widget.mode == FollowListMode.followers
+    final baseTitle = widget.mode == FollowListMode.followers
         ? 'Подписчики'
         : 'Подписки';
+    final title = widget.ownerUsername == null
+        ? baseTitle
+        : '$baseTitle ${widget.ownerUsername}';
 
     return Scaffold(
       backgroundColor: const Color(0xFFF6F9F9),
@@ -107,9 +119,13 @@ class _FollowListScreenState extends State<FollowListScreen> {
                           padding: const EdgeInsets.symmetric(horizontal: 40),
                           child: Center(
                             child: Text(
-                              widget.mode == FollowListMode.followers
-                                  ? 'Пока никто не подписан на тебя'
-                                  : 'Ты пока ни на кого не подписан',
+                              _isOwnList
+                                  ? (widget.mode == FollowListMode.followers
+                                      ? 'Пока никто не подписан на тебя'
+                                      : 'Ты пока ни на кого не подписан')
+                                  : (widget.mode == FollowListMode.followers
+                                      ? 'У ${widget.ownerUsername ?? 'него'} пока нет подписчиков'
+                                      : '${widget.ownerUsername ?? 'Он'} пока ни на кого не подписан'),
                               textAlign: TextAlign.center,
                               style: TextStyle(
                                 fontFamily: 'Fredoka',
@@ -127,30 +143,34 @@ class _FollowListScreenState extends State<FollowListScreen> {
                               const SizedBox(height: 8),
                           itemBuilder: (context, index) {
                             final user = users[index];
-                            final isFollowing =
-                                widget.mode == FollowListMode.following
-                                ? true
-                                : user['is_following'] == true;
+                            final isSelf = user['id'] == currentUserId;
+                            final isFollowing = user['is_following'] == true;
                             return FollowUserRow(
                               username: user['username'] as String? ?? 'Игрок',
                               avatar: user['avatar'] as String?,
                               isFollowing: isFollowing,
                               isPending: _pending.contains(user['id']),
+                              isSelf: isSelf,
                               onToggleFollow: () => _toggleFollow(user),
-                              subtitle: user['is_friend'] == true
-                                  ? 'друзья'
-                                  : null,
-                              onTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => UserProfileScreen(
-                                    userId: user['id'] as int,
-                                    username:
-                                        user['username'] as String? ?? 'Игрок',
-                                    initialIsFollowing: isFollowing,
-                                  ),
-                                ),
-                              ),
+                              subtitle: isSelf
+                                  ? null
+                                  : (user['is_friend'] == true
+                                      ? 'друзья'
+                                      : null),
+                              onTap: isSelf
+                                  ? null
+                                  : () => Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => UserProfileScreen(
+                                          userId: user['id'] as int,
+                                          username:
+                                              user['username'] as String? ??
+                                              'Игрок',
+                                          initialIsFollowing: isFollowing,
+                                        ),
+                                      ),
+                                    ),
                             );
                           },
                         ),

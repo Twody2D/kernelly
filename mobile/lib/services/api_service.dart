@@ -294,9 +294,16 @@ Future<void> unfollowUser(int userId, int targetId) async {
   }
 }
 
-Future<List<Map<String, dynamic>>> fetchFollowing(int userId) async {
+/// [viewerId] — от чьего лица считать is_following/is_friend в списке; нужен,
+/// когда смотрим подписки чужого профиля, а не свои собственные.
+Future<List<Map<String, dynamic>>> fetchFollowing(
+  int userId, {
+  int? viewerId,
+}) async {
   final response = await http.get(
-    Uri.parse('$apiBaseUrl/users/$userId/following'),
+    Uri.parse(
+      '$apiBaseUrl/users/$userId/following${viewerId == null ? '' : '?viewer_id=$viewerId'}',
+    ),
   );
 
   if (response.statusCode == 200) {
@@ -307,9 +314,14 @@ Future<List<Map<String, dynamic>>> fetchFollowing(int userId) async {
   }
 }
 
-Future<List<Map<String, dynamic>>> fetchFollowers(int userId) async {
+Future<List<Map<String, dynamic>>> fetchFollowers(
+  int userId, {
+  int? viewerId,
+}) async {
   final response = await http.get(
-    Uri.parse('$apiBaseUrl/users/$userId/followers'),
+    Uri.parse(
+      '$apiBaseUrl/users/$userId/followers${viewerId == null ? '' : '?viewer_id=$viewerId'}',
+    ),
   );
 
   if (response.statusCode == 200) {

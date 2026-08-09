@@ -11,6 +11,7 @@ class FollowUserRow extends StatelessWidget {
   final String? subtitle;
   final VoidCallback onToggleFollow;
   final VoidCallback? onTap;
+  final bool isSelf;
 
   const FollowUserRow({
     super.key,
@@ -21,6 +22,7 @@ class FollowUserRow extends StatelessWidget {
     this.avatar,
     this.subtitle,
     this.onTap,
+    this.isSelf = false,
   });
 
   @override
@@ -83,34 +85,54 @@ class FollowUserRow extends StatelessWidget {
               ],
             ),
           ),
-          SizedBox(
-            height: 34,
-            child: OutlinedButton(
-              onPressed: isPending ? null : onToggleFollow,
-              style: OutlinedButton.styleFrom(
-                foregroundColor: isFollowing
-                    ? const Color(0xFF5C6B73)
-                    : const Color(0xFF00A896),
-                side: BorderSide(
-                  color: isFollowing
-                      ? const Color(0xFFC2CDCD)
-                      : const Color(0xFF00C9B7),
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
+          if (isSelf)
+            Container(
+              height: 34,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFE7EEEE),
+                borderRadius: BorderRadius.circular(10),
               ),
+              alignment: Alignment.center,
               child: Text(
-                isFollowing ? 'Отписаться' : 'Подписаться',
-                style: const TextStyle(
+                'Это вы',
+                style: TextStyle(
                   fontFamily: 'Fredoka',
                   fontWeight: FontWeight.w600,
                   fontSize: 12.5,
+                  color: const Color(0xFF5C6B73),
+                ),
+              ),
+            )
+          else
+            SizedBox(
+              height: 34,
+              child: OutlinedButton(
+                onPressed: isPending ? null : onToggleFollow,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: isFollowing
+                      ? const Color(0xFF5C6B73)
+                      : const Color(0xFF00A896),
+                  side: BorderSide(
+                    color: isFollowing
+                        ? const Color(0xFFC2CDCD)
+                        : const Color(0xFF00C9B7),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                child: Text(
+                  isFollowing ? 'Отписаться' : 'Подписаться',
+                  style: const TextStyle(
+                    fontFamily: 'Fredoka',
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12.5,
+                  ),
                 ),
               ),
             ),
-          ),
         ],
       ),
     );

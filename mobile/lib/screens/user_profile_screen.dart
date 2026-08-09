@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mobile/services/api_service.dart';
 import 'package:mobile/services/avatars.dart';
 import 'package:mobile/services/user_prefs.dart';
+import 'package:mobile/screens/follow_list_screen.dart';
 import 'package:mobile/widgets/achievement_badge.dart';
 import 'package:mobile/widgets/weekly_activity_chart.dart';
 
@@ -133,6 +134,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                         children: [
                           _banner(),
                           const SizedBox(height: 14),
+                          _socialRow(),
+                          const SizedBox(height: 10),
                           _followButton(),
                           const SizedBox(height: 20),
                           _comparisonCard(),
@@ -271,6 +274,72 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                 ? const Color(0xFF5C6B73)
                 : const Color(0xFF00A896),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _socialRow() {
+    final followers = stats!['followers_count'] ?? 0;
+    final following = stats!['following_count'] ?? 0;
+
+    return Row(
+      children: [
+        Expanded(
+          child: _socialCount(
+            'Подписчики',
+            followers,
+            FollowListMode.followers,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _socialCount('Подписки', following, FollowListMode.following),
+        ),
+      ],
+    );
+  }
+
+  Widget _socialCount(String label, int count, FollowListMode mode) {
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => FollowListScreen(
+            mode: mode,
+            userId: widget.userId,
+            ownerUsername: widget.username,
+          ),
+        ),
+      ).then((_) => _load()),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFFDCE8E7), width: 1.5),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '$count',
+              style: TextStyle(
+                fontFamily: 'Fredoka',
+                fontWeight: FontWeight.w600,
+                fontSize: 17,
+                color: const Color(0xFF1B2430),
+              ),
+            ),
+            Text(
+              label,
+              style: TextStyle(
+                fontFamily: 'JetBrains Mono',
+                fontSize: 9.5,
+                color: const Color(0xFF9AAAAA),
+              ),
+            ),
+          ],
         ),
       ),
     );
