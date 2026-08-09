@@ -23,6 +23,7 @@ class _SettingsCoursesScreenState extends State<SettingsCoursesScreen> {
   String theme = 'light';
   int goal = defaultDailyGoal;
   int? selectedCourseId;
+  String? selectedCourseTitle;
   List<Map<String, dynamic>>? courses;
 
   @override
@@ -41,12 +42,28 @@ class _SettingsCoursesScreenState extends State<SettingsCoursesScreen> {
       theme = stored.getString(PrefKeys.theme) ?? 'light';
       goal = stored.getInt(PrefKeys.dailyGoal) ?? defaultDailyGoal;
       selectedCourseId = stored.getInt(PrefKeys.selectedCourseId);
+      // Название кэшируется локально при выборе (см. onboarding_screen.dart и
+      // _pickCourse ниже) — читаем сразу отсюда, не дожидаясь сети, чтобы
+      // экран не мигал плейсхолдером перед настоящим названием.
+      selectedCourseTitle = stored.getString(PrefKeys.selectedCourseTitle);
     });
 
     try {
       final result = await fetchCoursesOverview(currentUserId);
       if (!mounted) return;
       setState(() => courses = result);
+
+      // Курс мог быть выбран ещё до того, как название стало кэшироваться
+      // локально (старые данные на устройстве) — подставляем и сохраняем его
+      // сейчас, чтобы в следующий раз экран открылся уже без ожидания сети.
+      if (selectedCourseId != null && selectedCourseTitle == null) {
+        final match = result.where((c) => c['id'] == selectedCourseId);
+        if (match.isNotEmpty) {
+          final title = match.first['title'] as String;
+          setState(() => selectedCourseTitle = title);
+          await prefs?.setString(PrefKeys.selectedCourseTitle, title);
+        }
+      }
     } catch (e) {
       debugPrint('Ошибка загрузки курсов: $e');
     }
@@ -54,14 +71,7 @@ class _SettingsCoursesScreenState extends State<SettingsCoursesScreen> {
 
   String get _selectedCourseTitle {
     if (selectedCourseId == null) return 'автоматически';
-    // Курс уже выбран (id есть в prefs), но список курсов ещё грузится отдельным
-    // запросом — раньше здесь на пару кадров показывалось «автоматически» и
-    // тут же подменялось на настоящее название, что выглядело как мигание.
-    if (courses == null) return '…';
-    for (final course in courses!) {
-      if (course['id'] == selectedCourseId) return course['title'] as String;
-    }
-    return 'автоматически';
+    return selectedCourseTitle ?? '…';
   }
 
   Future<void> _pickCourse() async {
@@ -108,8 +118,13 @@ class _SettingsCoursesScreenState extends State<SettingsCoursesScreen> {
     );
 
     if (selected != null) {
-      setState(() => selectedCourseId = selected);
+      final title = courses!.firstWhere((c) => c['id'] == selected)['title'] as String;
+      setState(() {
+        selectedCourseId = selected;
+        selectedCourseTitle = title;
+      });
       await prefs?.setInt(PrefKeys.selectedCourseId, selected);
+      await prefs?.setString(PrefKeys.selectedCourseTitle, title);
     }
   }
 

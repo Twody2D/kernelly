@@ -52,6 +52,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     await prefs.setBool(PrefKeys.onboardingDone, true);
     if (selectedCourseId != null) {
       await prefs.setInt(PrefKeys.selectedCourseId, selectedCourseId!);
+      // Название уже известно из уже загруженного списка курсов — сохраняем
+      // его тут же, чтобы Настройки → Курсы могли показать его мгновенно,
+      // не дожидаясь отдельного сетевого запроса.
+      final title = courses
+          ?.firstWhere((c) => c['id'] == selectedCourseId, orElse: () => const {})['title']
+          as String?;
+      if (title != null) {
+        await prefs.setString(PrefKeys.selectedCourseTitle, title);
+      }
     }
     await prefs.setInt(PrefKeys.dailyGoal, goal);
 

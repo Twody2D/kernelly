@@ -7,6 +7,7 @@ import 'package:mobile/services/api_service.dart';
 class PrefKeys {
   static const onboardingDone = 'onboarding_done';
   static const selectedCourseId = 'selected_course_id';
+  static const selectedCourseTitle = 'selected_course_title';
   static const dailyGoal = 'daily_goal';
   static const remind = 'settings_remind';
   static const streakShield = 'settings_streak_shield';
