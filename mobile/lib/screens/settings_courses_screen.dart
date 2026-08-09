@@ -53,7 +53,11 @@ class _SettingsCoursesScreenState extends State<SettingsCoursesScreen> {
   }
 
   String get _selectedCourseTitle {
-    if (courses == null || selectedCourseId == null) return 'автоматически';
+    if (selectedCourseId == null) return 'автоматически';
+    // Курс уже выбран (id есть в prefs), но список курсов ещё грузится отдельным
+    // запросом — раньше здесь на пару кадров показывалось «автоматически» и
+    // тут же подменялось на настоящее название, что выглядело как мигание.
+    if (courses == null) return '…';
     for (final course in courses!) {
       if (course['id'] == selectedCourseId) return course['title'] as String;
     }
