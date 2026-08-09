@@ -3,6 +3,7 @@ import 'package:mobile/services/api_service.dart';
 import 'package:mobile/services/avatars.dart';
 import 'package:mobile/services/user_prefs.dart';
 import 'package:mobile/screens/follow_list_screen.dart';
+import 'package:mobile/screens/achievement_detail_screen.dart';
 import 'package:mobile/widgets/achievement_badge.dart';
 import 'package:mobile/widgets/weekly_activity_chart.dart';
 
@@ -486,30 +487,40 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   Widget _achievementBadge(Map<String, dynamic> item) {
     final unlocked = item['unlocked'] == true;
 
-    return Column(
-      children: [
-        LayoutBuilder(
-          builder: (context, constraints) => AchievementBadge(
-            icon: item['icon'] as String,
-            style: item['style'] as String,
-            unlocked: unlocked,
-            size: constraints.maxWidth,
-            seed: item['code'] as String?,
-          ),
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => AchievementDetailScreen(item: item),
         ),
-        const SizedBox(height: 6),
-        Text(
-          item['title'],
-          textAlign: TextAlign.center,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            fontFamily: 'JetBrains Mono',
-            fontSize: 8.5,
-            color: unlocked ? const Color(0xFF5C6B73) : const Color(0xFF9AAAAA),
+      ),
+      child: Column(
+        children: [
+          LayoutBuilder(
+            builder: (context, constraints) => AchievementBadge(
+              icon: item['icon'] as String,
+              style: item['style'] as String,
+              unlocked: unlocked,
+              size: constraints.maxWidth,
+              seed: item['code'] as String?,
+            ),
           ),
-        ),
-      ],
+          const SizedBox(height: 6),
+          Text(
+            item['title'],
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontFamily: 'JetBrains Mono',
+              fontSize: 8.5,
+              color: unlocked
+                  ? const Color(0xFF5C6B73)
+                  : const Color(0xFF9AAAAA),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

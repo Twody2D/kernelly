@@ -8,6 +8,7 @@ import 'package:mobile/screens/settings_screen.dart';
 import 'package:mobile/screens/register_prompt_screen.dart';
 import 'package:mobile/screens/friend_search_screen.dart';
 import 'package:mobile/screens/follow_list_screen.dart';
+import 'package:mobile/screens/achievement_detail_screen.dart';
 import 'package:mobile/widgets/mascot.dart';
 import 'package:mobile/widgets/achievement_badge.dart';
 import 'package:mobile/widgets/weekly_activity_chart.dart';
@@ -605,7 +606,12 @@ class ProfileScreenState extends State<ProfileScreen> {
     final unlocked = item['unlocked'] == true;
 
     return GestureDetector(
-      onTap: () => _showAchievementDetails(item),
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => AchievementDetailScreen(item: item),
+        ),
+      ),
       child: Column(
         children: [
           LayoutBuilder(
@@ -636,65 +642,6 @@ class ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  void _showAchievementDetails(Map<String, dynamic> item) {
-    final unlocked = item['unlocked'] == true;
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        padding: const EdgeInsets.fromLTRB(28, 28, 28, 40),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            AchievementBadge(
-              icon: item['icon'] as String,
-              style: item['style'] as String,
-              unlocked: unlocked,
-              size: 84,
-              seed: item['code'] as String?,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              item['title'],
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontFamily: 'Fredoka',
-                fontWeight: FontWeight.w600,
-                fontSize: 19,
-                color: const Color(0xFF1B2430),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              item['description'],
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontFamily: 'Inter',
-                fontSize: 14.5,
-                height: 1.4,
-                color: const Color(0xFF5C6B73),
-              ),
-            ),
-            if (!unlocked) ...[
-              const SizedBox(height: 10),
-              Text(
-                'Ещё не открыто',
-                style: TextStyle(
-                  fontFamily: 'JetBrains Mono',
-                  fontSize: 11.5,
-                  color: const Color(0xFF9AAAAA),
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
 }
 
 /// Модалка с QR-кодом профиля — по нему друг может добавить пользователя,
