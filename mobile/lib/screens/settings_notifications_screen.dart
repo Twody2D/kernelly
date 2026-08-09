@@ -14,17 +14,17 @@ class SettingsNotificationsScreen extends StatefulWidget {
       _SettingsNotificationsScreenState();
 }
 
-// Должны совпадать с MAX_STREAK_FREEZES/STREAK_FREEZE_PRICE_XP в backend/app/main.py —
+// Должны совпадать с MAX_STREAK_FREEZES/STREAK_FREEZE_PRICE_CORES в backend/app/main.py —
 // используются только для подписи и отключения кнопки, сама проверка на сервере.
 const _maxStreakFreezes = 3;
-const _streakFreezePriceXp = 200;
+const _streakFreezePriceCores = 40;
 
 class _SettingsNotificationsScreenState
     extends State<SettingsNotificationsScreen> {
   SharedPreferences? prefs;
   bool remind = true;
   bool shield = false;
-  int xp = 0;
+  int cores = 0;
   int streakFreezes = 0;
   bool loadingStats = true;
   bool purchasing = false;
@@ -51,12 +51,12 @@ class _SettingsNotificationsScreenState
       final stats = await fetchUserStats(currentUserId);
       if (!mounted) return;
       setState(() {
-        xp = stats['xp'] as int? ?? 0;
+        cores = stats['cores'] as int? ?? 0;
         streakFreezes = stats['streak_freezes'] as int? ?? 0;
         loadingStats = false;
       });
     } catch (e) {
-      debugPrint('Не удалось загрузить XP/заряды: $e');
+      debugPrint('Не удалось загрузить ядра/заряды: $e');
       if (!mounted) return;
       setState(() => loadingStats = false);
     }
@@ -68,14 +68,14 @@ class _SettingsNotificationsScreenState
       final result = await purchaseStreakFreeze(currentUserId);
       if (!mounted) return;
       setState(() {
-        xp = result['xp'] as int;
+        cores = result['cores'] as int;
         streakFreezes = result['streak_freezes'] as int;
         purchasing = false;
       });
-    } on InsufficientXpException {
+    } on InsufficientCoresException {
       if (!mounted) return;
       setState(() => purchasing = false);
-      _showSnackBar('Не хватает XP — нужно $_streakFreezePriceXp');
+      _showSnackBar('Не хватает ядер — нужно $_streakFreezePriceCores');
     } on StreakFreezesMaxedException {
       if (!mounted) return;
       setState(() => purchasing = false);
@@ -168,6 +168,19 @@ class _SettingsNotificationsScreenState
                         : '$streakFreezes из $_maxStreakFreezes · пополняется раз в неделю',
                     trailing: _freezeAction(),
                   ),
+                  SettingsRow(
+                    title: 'Ядра',
+                    subtitle: 'за золото в уроках, курсы, достижения и вход',
+                    trailing: Text(
+                      loadingStats ? '…' : '📦 $cores',
+                      style: TextStyle(
+                        fontFamily: 'JetBrains Mono',
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                        color: context.colors.accentDark,
+                      ),
+                    ),
+                  ),
                 ]),
               ],
             ),
@@ -194,7 +207,9 @@ class _SettingsNotificationsScreenState
       );
     }
     return SettingsPill(
-      text: xp >= _streakFreezePriceXp ? 'купить за $_streakFreezePriceXp XP' : 'нужно $_streakFreezePriceXp XP',
+      text: cores >= _streakFreezePriceCores
+          ? 'купить за $_streakFreezePriceCores ядер'
+          : 'нужно $_streakFreezePriceCores ядер',
       onTap: _purchaseFreeze,
     );
   }

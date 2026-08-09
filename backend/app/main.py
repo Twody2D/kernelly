@@ -24,11 +24,21 @@ def _today() -> date:
 
 XP_PER_CORRECT = 10
 
-# Заряды защиты streak можно докупить за накопленный XP — раньше это было
-# заявлено как «за игровую валюту из сундучков» (отдельная большая фича, вне
-# скоупа), поэтому пока используем уже существующий XP как цену напрямую.
+# Игровая валюта «ядра» — выдаётся сундуками (см. _award_cores и точки
+# начисления ниже), тратится на покупку заморозок streak.
+CORES_GOLD_LESSON = (5, 15)
+CORES_COURSE_COMPLETE = (40, 80)
+CORES_DAILY_LOGIN = (3, 8)
+CORES_ACHIEVEMENT = (15, 30)
+
 MAX_STREAK_FREEZES = 3
-STREAK_FREEZE_PRICE_XP = 200
+STREAK_FREEZE_PRICE_CORES = 40
+
+
+def _award_cores(user: models.User, low: int, high: int) -> int:
+    amount = random.randint(low, high)
+    user.cores += amount
+    return amount
 
 # Алгоритм Лейтнера: box → через сколько дней повторять. Правильный ответ по
 # тегу навыка поднимает его на box выше (интервал растёт), неправильный
@@ -497,7 +507,7 @@ def purchase_streak_freeze(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ):
-    """Докупить заряд защиты streak за XP, не дожидаясь еженедельного
+    """Докупить заряд защиты streak за ядра, не дожидаясь еженедельного
     пополнения (см. submit_answer) — ограничено ценой и максимумом зарядов."""
     _require_self(current_user, user_id)
     user = db.query(models.User).filter(models.User.id == user_id).first()
@@ -506,13 +516,37 @@ def purchase_streak_freeze(
 
     if user.streak_freezes >= MAX_STREAK_FREEZES:
         raise HTTPException(status_code=409, detail="Уже максимум зарядов")
-    if user.xp < STREAK_FREEZE_PRICE_XP:
-        raise HTTPException(status_code=402, detail="Недостаточно XP")
+    if user.cores < STREAK_FREEZE_PRICE_CORES:
+        raise HTTPException(status_code=402, detail="Недостаточно ядер")
 
-    user.xp -= STREAK_FREEZE_PRICE_XP
+    user.cores -= STREAK_FREEZE_PRICE_CORES
     user.streak_freezes += 1
     db.commit()
-    return {"xp": user.xp, "streak_freezes": user.streak_freezes}
+    return {"cores": user.cores, "streak_freezes": user.streak_freezes}
+
+
+@app.post("/users/{user_id}/daily-login-chest")
+def claim_daily_login_chest(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    """Один сундук в день просто за то, что открыл приложение — не зависит от
+    прохождения уроков, поэтому отдельное поле даты, а не last_activity_date
+    (тот засчитывается только за верный ответ, см. submit_answer)."""
+    _require_self(current_user, user_id)
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    today = _today()
+    if user.last_chest_login_date == today:
+        return {"awarded": False, "amount": 0, "cores": user.cores}
+
+    amount = _award_cores(user, *CORES_DAILY_LOGIN)
+    user.last_chest_login_date = today
+    db.commit()
+    return {"awarded": True, "amount": amount, "cores": user.cores}
 
 
 @app.patch("/users/{user_id}/phone", response_model=schemas.UserOut)
@@ -845,6 +879,9 @@ def complete_lesson(
     current_user: models.User = Depends(get_current_user),
 ):
     _require_self(current_user, user_id)
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
     lesson = db.query(models.Lesson).filter(models.Lesson.id == lesson_id).first()
     if lesson is None:
         raise HTTPException(status_code=404, detail="Lesson not found")
@@ -856,7 +893,8 @@ def complete_lesson(
         .filter(models.UserProgress.user_id == user_id, models.UserProgress.lesson_id == lesson_id)
         .first()
     )
-    if existing is None:
+    is_first_completion = existing is None
+    if is_first_completion:
         progress = models.UserProgress(user_id=user_id, lesson_id=lesson_id)
         db.add(progress)
         db.commit()
@@ -922,15 +960,26 @@ def complete_lesson(
     previous_level = min(mastery.completions, MAX_MASTERY)
     mastery.completions = min(mastery.completions + 1, MAX_MASTERY)
     new_level = mastery.completions
+
+    course_complete = bool(course_sections) and sections_done == len(course_sections)
+
+    chests = []
+    if new_level == MAX_MASTERY and previous_level < MAX_MASTERY:
+        chests.append({"reason": "lesson_gold", "amount": _award_cores(user, *CORES_GOLD_LESSON)})
+    # is_first_completion гарантирует, что это первый раз, когда курс дошёл до
+    # 100% — иначе этот lesson_id уже был бы в completed_lesson_ids раньше
+    if is_first_completion and course_complete:
+        chests.append({"reason": "course_complete", "amount": _award_cores(user, *CORES_COURSE_COMPLETE)})
+
     db.commit()
 
-    user = db.query(models.User).filter(models.User.id == user_id).first()
     new_achievements = _record_achievement_unlocks(db, user)
 
     return {
         "status": "ok",
         "lesson_title": lesson.title,
         "new_achievements": new_achievements,
+        "chests": chests,
         "mastery": {"level": new_level, "leveled_up": new_level > previous_level},
         "section": {
             "id": section.id,
@@ -1302,12 +1351,14 @@ def _record_achievement_unlocks(db: Session, user: models.User) -> list[dict]:
             unlocked = False
         if unlocked:
             db.add(models.AchievementUnlock(user_id=user.id, code=code))
+            cores_awarded = _award_cores(user, *CORES_ACHIEVEMENT)
             newly_unlocked.append({
                 "code": achievement["code"],
                 "title": achievement["title"],
                 "description": achievement["description"],
                 "icon": achievement["icon"],
                 "style": achievement["style"],
+                "cores_awarded": cores_awarded,
             })
     if newly_unlocked:
         db.commit()
@@ -1347,6 +1398,7 @@ def get_user_stats(
         result["auth_provider"] = user.auth_provider
         result["streak_shield_enabled"] = user.streak_shield_enabled
         result["streak_freezes"] = user.streak_freezes
+        result["cores"] = user.cores
     return result
 
 

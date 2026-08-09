@@ -64,11 +64,15 @@ class User(Base):
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     # «Защита streak»: пропущенный день не сбрасывает streak, если включено и
     # есть заряд заморозки. Заряды пополняются раз в неделю автоматически;
-    # покупка доп. зарядов за игровую валюту — запланированная фича, вне
-    # текущего скоупа (см. streak-shield PATCH ниже и логику в main.py).
+    # заряды сверх этого можно докупить за «ядра» (см. cores ниже).
     streak_shield_enabled = Column(Boolean, nullable=False, default=False)
     streak_freezes = Column(Integer, nullable=False, default=1)
     streak_freeze_refreshed_at = Column(Date, nullable=True)
+    # Игровая валюта — «ядра». Выдаются сундуками за золото на уроке,
+    # завершение курса, ежедневный вход и достижения (см. _award_cores и
+    # точки начисления в main.py); тратятся на покупку заморозок streak.
+    cores = Column(Integer, nullable=False, default=0)
+    last_chest_login_date = Column(Date, nullable=True)
 
 
 class Answer(Base):

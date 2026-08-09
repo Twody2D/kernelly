@@ -267,8 +267,8 @@ Future<void> updateStreakShield(int userId, bool enabled) async {
   }
 }
 
-/// Бросается, когда XP не хватает на покупку (402 от сервера).
-class InsufficientXpException implements Exception {}
+/// Бросается, когда ядер не хватает на покупку (402 от сервера).
+class InsufficientCoresException implements Exception {}
 
 /// Бросается, когда заряды защиты streak уже на максимуме (409 от сервера).
 class StreakFreezesMaxedException implements Exception {}
@@ -281,12 +281,25 @@ Future<Map<String, dynamic>> purchaseStreakFreeze(int userId) async {
   if (response.statusCode == 200) {
     return jsonDecode(utf8.decode(response.bodyBytes));
   } else if (response.statusCode == 402) {
-    throw InsufficientXpException();
+    throw InsufficientCoresException();
   } else if (response.statusCode == 409) {
     throw StreakFreezesMaxedException();
   } else {
     throw Exception('Failed to purchase streak freeze');
   }
+}
+
+/// Один сундук в день просто за то, что открыл приложение — {'awarded': false}
+/// если сегодняшний уже забирали.
+Future<Map<String, dynamic>> claimDailyLoginChest(int userId) async {
+  final response = await http.post(
+    Uri.parse('$apiBaseUrl/users/$userId/daily-login-chest'),
+    headers: _authHeaders(),
+  );
+  if (response.statusCode != 200) {
+    throw Exception('Failed to claim daily chest');
+  }
+  return jsonDecode(utf8.decode(response.bodyBytes));
 }
 
 /// Бросается, когда номер телефона уже привязан к другому аккаунту (409 от сервера).

@@ -77,9 +77,15 @@ CI/CD: push в `backend/**` автоматически передеплоива�
 (`/contacts-match`); контакты из телефонной книги пользователя **не сохраняются**, сверка
 происходит только «на лету» в рамках одного запроса.
 
+Игровая валюта — «ядра» (`User.cores`). Выдаются сундуками, которые открываются сразу
+(без инвентаря) за: золото на уроке, завершение курса, ежедневный вход
+(`POST /users/{id}/daily-login-chest`) и получение достижения — суммы см. `CORES_*` в `main.py`.
+UI сундука — `chest_reward_screen.dart` (`showChestRewards`), переиспользует паттерн
+`achievement_unlock_screen.dart`.
+
 Заряды защиты streak (`streak_freezes`) пополняются автоматически раз в неделю и их можно
-докупить за XP (`POST /users/{id}/streak-freezes/purchase`, `MAX_STREAK_FREEZES`/
-`STREAK_FREEZE_PRICE_XP` в `main.py`) — до максимума. Отдельной игровой валюты нет, используется XP.
+докупить за ядра (`POST /users/{id}/streak-freezes/purchase`, `MAX_STREAK_FREEZES`/
+`STREAK_FREEZE_PRICE_CORES` в `main.py`) — до максимума.
 
 Локальные настройки (`SharedPreferences`) — ключи и цели в `lib/services/user_prefs.dart`.
 

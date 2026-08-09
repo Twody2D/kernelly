@@ -2,8 +2,10 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:mobile/screens/chest_reward_screen.dart';
 import 'package:mobile/screens/main_shell.dart';
 import 'package:mobile/screens/onboarding_screen.dart';
+import 'package:mobile/services/api_service.dart';
 import 'package:mobile/services/notifications_service.dart';
 import 'package:mobile/services/user_prefs.dart';
 import 'package:mobile/theme/app_theme.dart';
@@ -97,6 +99,27 @@ class _StartupState extends State<_Startup> {
     final prefs = await SharedPreferences.getInstance();
     if (prefs.getBool(PrefKeys.remind) ?? true) {
       unawaited(NotificationsService.instance.scheduleDaily());
+    }
+
+    // Только для уже прошедших онбординг — не мешаем сундуком первому
+    // знакомству с приложением, за сегодняшний вход это просто не сгорит.
+    if (widget.onboardingDone) {
+      unawaited(_claimDailyChest());
+    }
+  }
+
+  Future<void> _claimDailyChest() async {
+    try {
+      final result = await claimDailyLoginChest(currentUserId);
+      if (result['awarded'] != true || !mounted) return;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        showChestRewards(context, [
+          {'reason': 'daily_login', 'amount': result['amount']},
+        ]);
+      });
+    } catch (e) {
+      debugPrint('Не удалось получить ежедневный сундук: $e');
     }
   }
 

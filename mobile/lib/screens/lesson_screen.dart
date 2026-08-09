@@ -10,6 +10,7 @@ import 'package:mobile/widgets/option_card.dart';
 import 'package:mobile/widgets/primary_button.dart';
 import 'package:mobile/screens/section_complete_screen.dart';
 import 'package:mobile/screens/achievement_unlock_screen.dart';
+import 'package:mobile/screens/chest_reward_screen.dart';
 import 'package:mobile/theme/app_theme.dart';
 
 class LessonScreen extends StatefulWidget {
@@ -63,6 +64,10 @@ class _LessonScreenState extends State<LessonScreen>
   /// Достижения, разблокированные за время этого урока — показываем очередью
   /// поздравлений перед выходом с экрана завершения раздела
   List<Map<String, dynamic>> newAchievements = [];
+
+  /// Сундуки (золото за урок, завершение курса), выпавшие за этот урок —
+  /// показываются перед достижениями по той же очереди
+  List<Map<String, dynamic>> newChests = [];
 
   /// Дневная цель на момент завершения урока
   int dailyCompleted = 0;
@@ -214,6 +219,9 @@ class _LessonScreenState extends State<LessonScreen>
       newAchievements.addAll(
         List<Map<String, dynamic>>.from(data['new_achievements'] ?? []),
       );
+      newChests.addAll(
+        List<Map<String, dynamic>>.from(data['chests'] ?? []),
+      );
       final daily = await fetchDailyProgress(currentUserId);
       final prefs = await SharedPreferences.getInstance();
       if (!mounted) return;
@@ -260,8 +268,6 @@ class _LessonScreenState extends State<LessonScreen>
                   const Text('🔥', style: TextStyle(fontSize: 16)),
                   const SizedBox(width: 4),
                   Text('${user!['streak']}'),
-                  const SizedBox(width: 12),
-                  Text('${user!['xp']} XP'),
                 ],
               ),
             ),
@@ -502,6 +508,12 @@ class _LessonScreenState extends State<LessonScreen>
             : DateTime.now().difference(startTime!),
         streak: user?['streak'] ?? 0,
         onContinue: () async {
+          if (newChests.isNotEmpty) {
+            final queuedChests = newChests;
+            newChests = [];
+            await showChestRewards(context, queuedChests);
+          }
+          if (!context.mounted) return;
           if (newAchievements.isNotEmpty) {
             final queued = newAchievements;
             newAchievements = [];

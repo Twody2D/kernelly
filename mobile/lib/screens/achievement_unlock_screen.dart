@@ -175,6 +175,19 @@ class _AchievementUnlockScreenState extends State<AchievementUnlockScreen>
                                 color: const Color(0xFF5C6B73),
                               ),
                             ),
+                            if (achievement['cores_awarded'] != null) ...[
+                              const SizedBox(height: 10),
+                              Text(
+                                '📦 +${achievement['cores_awarded']} ядер',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontFamily: 'JetBrains Mono',
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 14,
+                                  color: const Color(0xFF00A896),
+                                ),
+                              ),
+                            ],
                           ],
                         ),
                       ),
