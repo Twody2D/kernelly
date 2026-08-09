@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:mobile/services/api_service.dart';
 import 'package:mobile/services/user_prefs.dart';
 import 'package:mobile/screens/friend_search_screen.dart';
+import 'package:mobile/screens/notifications_screen.dart';
+import 'package:mobile/screens/post_detail_screen.dart';
 import 'package:mobile/widgets/achievement_badge.dart';
 
 /// Вкладка «Новости»: лента активности друзей — достижения, серии и посты
@@ -18,10 +20,40 @@ class FeedTabState extends State<FeedTab> {
   List<Map<String, dynamic>> events = [];
   bool loading = true;
   bool posting = false;
+  bool hasUnreadNotifications = false;
 
   @override
   void initState() {
     super.initState();
+    load();
+    _loadUnreadState();
+  }
+
+  Future<void> _loadUnreadState() async {
+    try {
+      final notifications = await fetchNotifications(currentUserId);
+      if (!mounted) return;
+      setState(() {
+        hasUnreadNotifications = notifications.any((n) => n['read'] != true);
+      });
+    } catch (e) {
+      debugPrint('Ошибка загрузки уведомлений: $e');
+    }
+  }
+
+  Future<void> _openNotifications() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+    );
+    if (mounted) setState(() => hasUnreadNotifications = false);
+  }
+
+  Future<void> _openPost(int postId) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => PostDetailScreen(postId: postId)),
+    );
     load();
   }
 
@@ -89,8 +121,35 @@ class FeedTabState extends State<FeedTab> {
         ),
         actions: [
           IconButton(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+            constraints: const BoxConstraints(),
+            icon: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                const Icon(
+                  Icons.notifications_none_rounded,
+                  color: Color(0xFF5C6B73),
+                ),
+                if (hasUnreadNotifications)
+                  Positioned(
+                    top: -1,
+                    right: -1,
+                    child: Container(
+                      width: 8,
+                      height: 8,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFFF4B4B),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            onPressed: _openNotifications,
+          ),
+          IconButton(
             padding: const EdgeInsets.only(
-              left: 8,
+              left: 4,
               right: 20,
               top: 8,
               bottom: 8,
@@ -295,7 +354,11 @@ class FeedTabState extends State<FeedTab> {
       );
     }
 
-    return Container(
+    final likedByMe = event['liked_by_me'] == true;
+
+    return GestureDetector(
+      onTap: () => _openPost(event['post_id'] as int),
+      child: Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -358,9 +421,76 @@ class FeedTabState extends State<FeedTab> {
               color: const Color(0xFF1B2430),
             ),
           ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              GestureDetector(
+                onTap: () => _toggleLike(event),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      likedByMe
+                          ? Icons.favorite_rounded
+                          : Icons.favorite_border_rounded,
+                      size: 16,
+                      color: likedByMe
+                          ? const Color(0xFFFF4B4B)
+                          : const Color(0xFF9AAAAA),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '${event['like_count'] ?? 0}',
+                      style: TextStyle(
+                        fontFamily: 'JetBrains Mono',
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: likedByMe
+                            ? const Color(0xFFFF4B4B)
+                            : const Color(0xFF9AAAAA),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 16),
+              Icon(
+                Icons.chat_bubble_outline_rounded,
+                size: 15,
+                color: const Color(0xFF9AAAAA),
+              ),
+              const SizedBox(width: 4),
+              Text(
+                '${event['comment_count'] ?? 0}',
+                style: TextStyle(
+                  fontFamily: 'JetBrains Mono',
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF9AAAAA),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
+      ),
     );
+  }
+
+  Future<void> _toggleLike(Map<String, dynamic> event) async {
+    try {
+      final result = await togglePostLike(
+        event['post_id'] as int,
+        currentUserId,
+      );
+      if (!mounted) return;
+      setState(() {
+        event['liked_by_me'] = result['liked'];
+        event['like_count'] = result['like_count'];
+      });
+    } catch (e) {
+      debugPrint('Ошибка лайка: $e');
+    }
   }
 
   String _relativeTime(DateTime time) {

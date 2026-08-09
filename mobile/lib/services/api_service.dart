@@ -550,3 +550,77 @@ Future<List<Map<String, dynamic>>> fetchFeed(int userId) async {
     throw Exception('Failed to load feed');
   }
 }
+
+Future<Map<String, dynamic>> togglePostLike(int postId, int userId) async {
+  final response = await http.post(
+    Uri.parse('$apiBaseUrl/posts/$postId/like?user_id=$userId'),
+    headers: _authHeaders(),
+  );
+  if (response.statusCode == 200) {
+    return jsonDecode(utf8.decode(response.bodyBytes));
+  } else {
+    throw Exception('Failed to toggle like');
+  }
+}
+
+Future<Map<String, dynamic>> fetchPost(int postId, int userId) async {
+  final response = await http.get(
+    Uri.parse('$apiBaseUrl/posts/$postId?user_id=$userId'),
+    headers: _authHeaders(),
+  );
+  if (response.statusCode == 200) {
+    return jsonDecode(utf8.decode(response.bodyBytes));
+  } else {
+    throw Exception('Failed to load post');
+  }
+}
+
+Future<List<Map<String, dynamic>>> fetchPostComments(
+  int postId,
+  int userId,
+) async {
+  final response = await http.get(
+    Uri.parse('$apiBaseUrl/posts/$postId/comments?user_id=$userId'),
+    headers: _authHeaders(),
+  );
+  if (response.statusCode == 200) {
+    final List<dynamic> data = jsonDecode(utf8.decode(response.bodyBytes));
+    return data.cast<Map<String, dynamic>>();
+  } else {
+    throw Exception('Failed to load comments');
+  }
+}
+
+Future<void> addPostComment(int postId, int userId, String text) async {
+  final response = await http.post(
+    Uri.parse('$apiBaseUrl/posts/$postId/comments?user_id=$userId'),
+    headers: _authHeaders(_jsonHeaders),
+    body: jsonEncode({'text': text}),
+  );
+  if (response.statusCode != 200) {
+    throw Exception('Failed to add comment');
+  }
+}
+
+Future<List<Map<String, dynamic>>> fetchNotifications(int userId) async {
+  final response = await http.get(
+    Uri.parse('$apiBaseUrl/users/$userId/notifications'),
+    headers: _authHeaders(),
+  );
+  if (response.statusCode == 200) {
+    final List<dynamic> data = jsonDecode(utf8.decode(response.bodyBytes));
+    return data.cast<Map<String, dynamic>>();
+  } else {
+    throw Exception('Failed to load notifications');
+  }
+}
+
+Future<void> markNotificationsRead(int userId) async {
+  final response = await http.post(
+    Uri.parse('$apiBaseUrl/users/$userId/notifications/read'),
+    headers: _authHeaders(),
+  );
+  if (response.statusCode != 200) {
+    throw Exception('Failed to mark notifications read');
+  }
+}
