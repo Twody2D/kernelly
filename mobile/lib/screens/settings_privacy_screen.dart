@@ -173,18 +173,18 @@ class _SettingsPrivacyScreenState extends State<SettingsPrivacyScreen> {
     }
   }
 
-  Future<void> _rotateToken() async {
+  Future<void> _signOutOtherDevices() async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Сбросить ключ доступа?'),
+        title: const Text('Выйти со всех устройств?'),
         content: const Text(
-          'Приложение выйдет из аккаунта на всех остальных устройствах — там понадобится войти заново. '
+          'Аккаунт останется тут, но на всех остальных устройствах понадобится войти заново. '
           'Используй, если подозреваешь, что доступ к аккаунту мог получить кто-то ещё.',
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Отмена')),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Сбросить')),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Выйти')),
         ],
       ),
     );
@@ -194,12 +194,12 @@ class _SettingsPrivacyScreenState extends State<SettingsPrivacyScreen> {
       await rotateDeviceToken();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Готово, ключ доступа обновлён')),
+        const SnackBar(content: Text('Готово, остальные устройства вышли из аккаунта')),
       );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Не удалось сбросить ключ, попробуй ещё раз')),
+        const SnackBar(content: Text('Не удалось выполнить, попробуй ещё раз')),
       );
     }
   }
@@ -253,15 +253,17 @@ class _SettingsPrivacyScreenState extends State<SettingsPrivacyScreen> {
               onTap: _editPhone,
             ),
           ]),
-          const SizedBox(height: 18),
-          SettingsCard([
-            SettingsRow(
-              title: 'Сбросить ключ доступа',
-              subtitle: 'если подозреваешь, что доступ к аккаунту мог получить кто-то ещё',
-              trailing: Icon(Icons.chevron_right, color: colors.textSecondary, size: 20),
-              onTap: _rotateToken,
-            ),
-          ]),
+          if (!widget.isGuest) ...[
+            const SizedBox(height: 18),
+            SettingsCard([
+              SettingsRow(
+                title: 'Выйти со всех устройств',
+                subtitle: 'если подозреваешь, что доступ к аккаунту мог получить кто-то ещё',
+                trailing: Icon(Icons.chevron_right, color: colors.textSecondary, size: 20),
+                onTap: _signOutOtherDevices,
+              ),
+            ]),
+          ],
           const SizedBox(height: 18),
           Text(
             'Прогресс хранится на сервере и привязан к аккаунту (или к устройству, пока ты гость). Удаление аккаунта сотрёт весь прогресс без возможности восстановить.',
