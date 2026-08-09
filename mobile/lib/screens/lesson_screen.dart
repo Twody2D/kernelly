@@ -10,6 +10,7 @@ import 'package:mobile/widgets/option_card.dart';
 import 'package:mobile/widgets/primary_button.dart';
 import 'package:mobile/screens/section_complete_screen.dart';
 import 'package:mobile/screens/achievement_unlock_screen.dart';
+import 'package:mobile/theme/app_theme.dart';
 
 class LessonScreen extends StatefulWidget {
   final int lessonId;
@@ -231,9 +232,10 @@ class _LessonScreenState extends State<LessonScreen>
   }
 
   PreferredSizeWidget _buildAppBar({double? progress}) {
+    final colors = context.colors;
     return AppBar(
       leading: IconButton(
-        icon: const Icon(Icons.close, color: Color(0xFF5C6B73)),
+        icon: Icon(Icons.close, color: colors.textSecondary),
         onPressed: () => Navigator.pop(context),
       ),
       title: progress != null
@@ -242,8 +244,8 @@ class _LessonScreenState extends State<LessonScreen>
               child: LinearProgressIndicator(
                 value: progress,
                 minHeight: 14,
-                backgroundColor: const Color(0xFFE7EEEE),
-                valueColor: const AlwaysStoppedAnimation(Color(0xFF00C9B7)),
+                backgroundColor: colors.lockedBg,
+                valueColor: AlwaysStoppedAnimation(colors.accent),
               ),
             )
           : null,
@@ -269,11 +271,12 @@ class _LessonScreenState extends State<LessonScreen>
   }
 
   Widget _theoryScreen(Map<String, dynamic> exercise) {
+    final colors = context.colors;
     final progress = currentIndex / exercises.length;
     final example = exercise['content']?['example'] as String?;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F9F9),
+      backgroundColor: colors.background,
       appBar: _buildAppBar(progress: progress),
       body: SafeArea(
         child: Column(
@@ -292,7 +295,7 @@ class _LessonScreenState extends State<LessonScreen>
                         fontFamily: 'JetBrains Mono',
                         fontWeight: FontWeight.w600,
                         fontSize: 12,
-                        color: const Color(0xFF00A896),
+                        color: colors.accentDark,
                         letterSpacing: 0.5,
                       ),
                     ),
@@ -303,16 +306,16 @@ class _LessonScreenState extends State<LessonScreen>
                         vertical: 5,
                       ),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFE0F7F4),
+                        color: colors.accentBg,
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(
+                          Icon(
                             Icons.lightbulb_outline_rounded,
                             size: 14,
-                            color: Color(0xFF00A896),
+                            color: colors.accentDark,
                           ),
                           const SizedBox(width: 5),
                           Text(
@@ -321,7 +324,7 @@ class _LessonScreenState extends State<LessonScreen>
                               fontFamily: 'JetBrains Mono',
                               fontWeight: FontWeight.w600,
                               fontSize: 10.5,
-                              color: const Color(0xFF00A896),
+                              color: colors.accentDark,
                               letterSpacing: 0.5,
                             ),
                           ),
@@ -339,7 +342,7 @@ class _LessonScreenState extends State<LessonScreen>
                             fontWeight: FontWeight.w500,
                             fontSize: 18,
                             height: 1.4,
-                            color: const Color(0xFF1B2430),
+                            color: colors.textPrimary,
                           ),
                         ),
                       ),
@@ -350,7 +353,7 @@ class _LessonScreenState extends State<LessonScreen>
                         width: double.infinity,
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF1B2430),
+                          color: colors.terminalBg,
                           borderRadius: BorderRadius.circular(14),
                         ),
                         child: Column(
@@ -385,6 +388,7 @@ class _LessonScreenState extends State<LessonScreen>
     String text, {
     required TextStyle baseStyle,
   }) {
+    final colors = context.colors;
     final spans = <InlineSpan>[];
     final parts = text.split('`');
     for (int i = 0; i < parts.length; i++) {
@@ -398,8 +402,8 @@ class _LessonScreenState extends State<LessonScreen>
                   fontFamily: 'JetBrains Mono',
                   fontWeight: FontWeight.w600,
                   fontSize: baseStyle.fontSize! - 2,
-                  color: const Color(0xFF00A896),
-                  backgroundColor: const Color(0xFFE0F7F4),
+                  color: colors.accentDark,
+                  backgroundColor: colors.accentBg,
                 )
               : baseStyle,
         ),
@@ -511,9 +515,9 @@ class _LessonScreenState extends State<LessonScreen>
     }
 
     if (finishing) {
-      return const Scaffold(
-        backgroundColor: Color(0xFFF6F9F9),
-        body: Center(child: CircularProgressIndicator()),
+      return Scaffold(
+        backgroundColor: context.colors.background,
+        body: const Center(child: CircularProgressIndicator()),
       );
     }
 
@@ -523,6 +527,7 @@ class _LessonScreenState extends State<LessonScreen>
       return _theoryScreen(currentExercise);
     }
 
+    final colors = context.colors;
     final question = currentExercise['question'];
     final isTerminal = currentExercise['type'] == 'terminal';
     final options = isTerminal
@@ -544,7 +549,7 @@ class _LessonScreenState extends State<LessonScreen>
                 fontFamily: 'JetBrains Mono',
                 fontWeight: FontWeight.w600,
                 fontSize: 12,
-                color: const Color(0xFF00A896),
+                color: colors.accentDark,
                 letterSpacing: 0.5,
               ),
             ),
@@ -557,7 +562,7 @@ class _LessonScreenState extends State<LessonScreen>
                     fontFamily: 'Fredoka',
                     fontWeight: FontWeight.w600,
                     fontSize: 21,
-                    color: const Color(0xFF1B2430),
+                    color: colors.textPrimary,
                   ),
                 ),
               ),
@@ -808,13 +813,14 @@ class _StoryIntroState extends State<_StoryIntro>
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F9F9),
+      backgroundColor: colors.background,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF6F9F9),
+        backgroundColor: colors.background,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.close, color: Color(0xFF5C6B73)),
+          icon: Icon(Icons.close, color: colors.textSecondary),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -842,7 +848,7 @@ class _StoryIntroState extends State<_StoryIntro>
                             fontFamily: 'JetBrains Mono',
                             fontWeight: FontWeight.w600,
                             fontSize: 12,
-                            color: const Color(0xFF00A896),
+                            color: colors.accentDark,
                             letterSpacing: 0.5,
                           ),
                         ),
@@ -855,7 +861,7 @@ class _StoryIntroState extends State<_StoryIntro>
                             fontWeight: FontWeight.w600,
                             fontSize: 24,
                             height: 1.2,
-                            color: const Color(0xFF1B2430),
+                            color: colors.textPrimary,
                           ),
                         ),
                         const SizedBox(height: 12),
@@ -866,7 +872,7 @@ class _StoryIntroState extends State<_StoryIntro>
                             fontFamily: 'Inter',
                             fontSize: 15,
                             height: 1.5,
-                            color: const Color(0xFF5C6B73),
+                            color: colors.textSecondary,
                           ),
                         ),
                       ],
@@ -979,9 +985,10 @@ class _TierIntroState extends State<_TierIntro> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     final style = _tiers[widget.tier] ?? _tiers[2]!;
+    final colors = context.colors;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F9F9),
+      backgroundColor: colors.background,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -1129,7 +1136,7 @@ class _TierIntroState extends State<_TierIntro> with TickerProviderStateMixin {
                             fontFamily: 'Fredoka',
                             fontWeight: FontWeight.w600,
                             fontSize: 24,
-                            color: const Color(0xFF1B2430),
+                            color: colors.textPrimary,
                           ),
                         ),
                         const SizedBox(height: 12),
@@ -1140,7 +1147,7 @@ class _TierIntroState extends State<_TierIntro> with TickerProviderStateMixin {
                             fontFamily: 'Inter',
                             fontSize: 15,
                             height: 1.5,
-                            color: const Color(0xFF5C6B73),
+                            color: colors.textSecondary,
                           ),
                         ),
                       ],
