@@ -307,6 +307,33 @@ Future<List<Map<String, dynamic>>> fetchFollowing(int userId) async {
   }
 }
 
+Future<List<Map<String, dynamic>>> fetchFollowers(int userId) async {
+  final response = await http.get(
+    Uri.parse('$apiBaseUrl/users/$userId/followers'),
+  );
+
+  if (response.statusCode == 200) {
+    final List<dynamic> data = jsonDecode(utf8.decode(response.bodyBytes));
+    return data.cast<Map<String, dynamic>>();
+  } else {
+    throw Exception('Failed to load followers list');
+  }
+}
+
+/// «Вы можете их знать» — те, на кого подписаны твои подписки.
+Future<List<Map<String, dynamic>>> fetchSuggestions(int userId) async {
+  final response = await http.get(
+    Uri.parse('$apiBaseUrl/users/$userId/suggestions'),
+  );
+
+  if (response.statusCode == 200) {
+    final List<dynamic> data = jsonDecode(utf8.decode(response.bodyBytes));
+    return data.cast<Map<String, dynamic>>();
+  } else {
+    throw Exception('Failed to load suggestions');
+  }
+}
+
 Future<List<Map<String, dynamic>>> searchUsers(int userId, String query) async {
   final response = await http.get(
     Uri.parse(

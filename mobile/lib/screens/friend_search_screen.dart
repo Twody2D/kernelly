@@ -1,10 +1,14 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:mobile/services/api_service.dart';
 import 'package:mobile/services/user_prefs.dart';
+import 'package:mobile/widgets/follow_user_row.dart';
 
 /// Поиск людей по нику и подписка на них — подписка одностороняя, как в
-/// Instagram: подписался — видишь в ленте, согласие не требуется.
+/// Instagram: подписался — видишь в ленте, согласие не требуется. Когда
+/// поле поиска пустое, вместо результатов показываем ссылку на свой профиль,
+/// импорт контактов (заглушка) и «вы можете их знать».
 class FriendSearchScreen extends StatefulWidget {
   const FriendSearchScreen({super.key});
 
@@ -18,6 +22,36 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
   List<Map<String, dynamic>> results = [];
   bool searching = false;
   final Set<int> _pending = {};
+
+  String? _myUsername;
+  List<Map<String, dynamic>> _suggestions = [];
+  bool _loadingSuggestions = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDefaults();
+  }
+
+  Future<void> _loadDefaults() async {
+    try {
+      final results = await Future.wait([
+        fetchUser(currentUserId),
+        fetchSuggestions(currentUserId),
+      ]);
+      if (!mounted) return;
+      setState(() {
+        _myUsername =
+            (results[0] as Map<String, dynamic>)['username'] as String?;
+        _suggestions = results[1] as List<Map<String, dynamic>>;
+        _loadingSuggestions = false;
+      });
+    } catch (e) {
+      debugPrint('Ошибка загрузки данных для поиска друзей: $e');
+      if (!mounted) return;
+      setState(() => _loadingSuggestions = false);
+    }
+  }
 
   @override
   void dispose() {
@@ -51,7 +85,10 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
     }
   }
 
-  Future<void> _toggleFollow(Map<String, dynamic> user) async {
+  Future<void> _toggleFollow(
+    Map<String, dynamic> user, {
+    required bool fromSuggestions,
+  }) async {
     final id = user['id'] as int;
     setState(() => _pending.add(id));
     try {
@@ -63,7 +100,11 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
       }
       if (!mounted) return;
       setState(() {
-        user['is_following'] = !isFollowing;
+        if (fromSuggestions && !isFollowing) {
+          _suggestions.removeWhere((u) => u['id'] == id);
+        } else {
+          user['is_following'] = !isFollowing;
+        }
         _pending.remove(id);
       });
     } catch (e) {
@@ -73,15 +114,63 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
     }
   }
 
+  void _copyProfileLink() {
+    final handle = _myUsername ?? 'гость';
+    Clipboard.setData(ClipboardData(text: 'Найди меня в Kernelly: @$handle'));
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            'Ссылка скопирована',
+            style: TextStyle(
+              fontFamily: 'Fredoka',
+              fontWeight: FontWeight.w500,
+              fontSize: 14,
+            ),
+          ),
+          backgroundColor: const Color(0xFF1B2430),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+        ),
+      );
+  }
+
+  void _soon(String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            message,
+            style: TextStyle(
+              fontFamily: 'Fredoka',
+              fontWeight: FontWeight.w500,
+              fontSize: 14,
+            ),
+          ),
+          backgroundColor: const Color(0xFF1B2430),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+        ),
+      );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final query = _controller.text.trim();
+
     return Scaffold(
       backgroundColor: const Color(0xFFF6F9F9),
       appBar: AppBar(
         backgroundColor: const Color(0xFFF6F9F9),
         elevation: 0,
         title: Text(
-          'Найти игроков',
+          'Найти друзей',
           style: TextStyle(
             fontFamily: 'Fredoka',
             fontWeight: FontWeight.w600,
@@ -101,7 +190,10 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
                   child: TextField(
                     controller: _controller,
                     autofocus: true,
-                    onChanged: _onChanged,
+                    onChanged: (value) {
+                      setState(() {});
+                      _onChanged(value);
+                    },
                     style: TextStyle(
                       fontFamily: 'Inter',
                       fontSize: 15,
@@ -128,33 +220,9 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
                   ),
                 ),
                 Expanded(
-                  child: searching
-                      ? const Center(child: CircularProgressIndicator())
-                      : results.isEmpty
-                      ? Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 40),
-                          child: Center(
-                            child: Text(
-                              _controller.text.trim().length < 2
-                                  ? 'Введи хотя бы 2 буквы никнейма'
-                                  : 'Никого не нашли',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontFamily: 'Fredoka',
-                                fontWeight: FontWeight.w500,
-                                fontSize: 15,
-                                color: const Color(0xFF5C6B73),
-                              ),
-                            ),
-                          ),
-                        )
-                      : ListView.separated(
-                          padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                          itemCount: results.length,
-                          separatorBuilder: (context, index) =>
-                              const SizedBox(height: 8),
-                          itemBuilder: (context, index) => _row(results[index]),
-                        ),
+                  child: query.length < 2
+                      ? _defaultContent()
+                      : _searchResults(),
                 ),
               ],
             ),
@@ -164,12 +232,98 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
     );
   }
 
-  Widget _row(Map<String, dynamic> user) {
-    final isFollowing = user['is_following'] == true;
-    final isPending = _pending.contains(user['id']);
+  Widget _searchResults() {
+    if (searching) return const Center(child: CircularProgressIndicator());
+    if (results.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 40),
+        child: Center(
+          child: Text(
+            'Никого не нашли',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontFamily: 'Fredoka',
+              fontWeight: FontWeight.w500,
+              fontSize: 15,
+              color: const Color(0xFF5C6B73),
+            ),
+          ),
+        ),
+      );
+    }
+    return ListView.separated(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+      itemCount: results.length,
+      separatorBuilder: (context, index) => const SizedBox(height: 8),
+      itemBuilder: (context, index) =>
+          _userRow(results[index], fromSuggestions: false),
+    );
+  }
 
+  Widget _defaultContent() {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+      children: [
+        GestureDetector(
+          onTap: _copyProfileLink,
+          child: _actionRow(
+            icon: Icons.link_rounded,
+            title: 'Ссылка на профиль',
+            subtitle: 'скопировать и отправить другу',
+          ),
+        ),
+        const SizedBox(height: 8),
+        GestureDetector(
+          onTap: () => _soon('Импорт контактов появится позже'),
+          child: _actionRow(
+            icon: Icons.contacts_rounded,
+            title: 'Из контактов телефона',
+            subtitle: 'скоро',
+          ),
+        ),
+        const SizedBox(height: 20),
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 8),
+          child: Text(
+            'ВЫ МОЖЕТЕ ИХ ЗНАТЬ',
+            style: TextStyle(
+              fontFamily: 'JetBrains Mono',
+              fontSize: 10.5,
+              color: const Color(0xFF00A896),
+            ),
+          ),
+        ),
+        if (_loadingSuggestions)
+          const Padding(
+            padding: EdgeInsets.only(top: 20),
+            child: Center(child: CircularProgressIndicator()),
+          )
+        else if (_suggestions.isEmpty)
+          Text(
+            'Пока нечего предложить — подпишись на кого-нибудь через поиск',
+            style: TextStyle(
+              fontFamily: 'Fredoka',
+              fontWeight: FontWeight.w500,
+              fontSize: 13.5,
+              color: const Color(0xFF9AAAAA),
+            ),
+          )
+        else
+          for (int i = 0; i < _suggestions.length; i++) ...[
+            if (i > 0) const SizedBox(height: 8),
+            _userRow(_suggestions[i], fromSuggestions: true),
+          ],
+      ],
+    );
+  }
+
+  Widget _actionRow({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+  }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -191,56 +345,52 @@ class _FriendSearchScreenState extends State<FriendSearchScreen> {
               shape: BoxShape.circle,
             ),
             alignment: Alignment.center,
-            child: const Icon(
-              Icons.person_rounded,
-              color: Color(0xFF00A896),
-              size: 20,
-            ),
+            child: Icon(icon, color: const Color(0xFF00A896), size: 19),
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: Text(
-              user['username'] as String? ?? 'Игрок',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontFamily: 'Fredoka',
-                fontWeight: FontWeight.w600,
-                fontSize: 14.5,
-                color: const Color(0xFF1B2430),
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontFamily: 'Fredoka',
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14.5,
+                    color: const Color(0xFF1B2430),
+                  ),
+                ),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    fontFamily: 'JetBrains Mono',
+                    fontSize: 10.5,
+                    color: const Color(0xFF9AAAAA),
+                  ),
+                ),
+              ],
             ),
           ),
-          SizedBox(
-            height: 34,
-            child: OutlinedButton(
-              onPressed: isPending ? null : () => _toggleFollow(user),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: isFollowing
-                    ? const Color(0xFF5C6B73)
-                    : const Color(0xFF00A896),
-                side: BorderSide(
-                  color: isFollowing
-                      ? const Color(0xFFC2CDCD)
-                      : const Color(0xFF00C9B7),
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              child: Text(
-                isFollowing ? 'Отписаться' : 'Подписаться',
-                style: const TextStyle(
-                  fontFamily: 'Fredoka',
-                  fontWeight: FontWeight.w600,
-                  fontSize: 12.5,
-                ),
-              ),
-            ),
+          const Icon(
+            Icons.chevron_right_rounded,
+            size: 20,
+            color: Color(0xFFC2CDCD),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _userRow(Map<String, dynamic> user, {required bool fromSuggestions}) {
+    final mutual = user['mutual'] as int?;
+    return FollowUserRow(
+      username: user['username'] as String? ?? 'Игрок',
+      isFollowing: user['is_following'] == true,
+      isPending: _pending.contains(user['id']),
+      onToggleFollow: () =>
+          _toggleFollow(user, fromSuggestions: fromSuggestions),
+      subtitle: mutual == null ? null : '$mutual общих подписок',
     );
   }
 }

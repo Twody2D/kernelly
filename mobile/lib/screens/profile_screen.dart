@@ -3,6 +3,8 @@ import 'package:mobile/services/api_service.dart';
 import 'package:mobile/services/user_prefs.dart';
 import 'package:mobile/screens/settings_screen.dart';
 import 'package:mobile/screens/register_prompt_screen.dart';
+import 'package:mobile/screens/friend_search_screen.dart';
+import 'package:mobile/screens/follow_list_screen.dart';
 import 'package:mobile/widgets/mascot.dart';
 import 'package:mobile/widgets/achievement_badge.dart';
 
@@ -129,7 +131,19 @@ class ProfileScreenState extends State<ProfileScreen> {
         padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
         children: [
           _banner(),
-          const SizedBox(height: 18),
+          const SizedBox(height: 14),
+          _socialRow(),
+          const SizedBox(height: 20),
+          Text(
+            'Обзор',
+            style: TextStyle(
+              fontFamily: 'Fredoka',
+              fontWeight: FontWeight.w600,
+              fontSize: 14,
+              color: const Color(0xFF1B2430),
+            ),
+          ),
+          const SizedBox(height: 10),
           Row(
             children: [
               Expanded(
@@ -302,6 +316,91 @@ class ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _socialRow() {
+    final followers = stats!['followers_count'] ?? 0;
+    final following = stats!['following_count'] ?? 0;
+
+    return Row(
+      children: [
+        Expanded(
+          child: _socialCount(
+            'Подписчики',
+            followers,
+            FollowListMode.followers,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _socialCount('Подписки', following, FollowListMode.following),
+        ),
+        const SizedBox(width: 10),
+        _addFriendsButton(),
+      ],
+    );
+  }
+
+  Widget _socialCount(String label, int count, FollowListMode mode) {
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => FollowListScreen(mode: mode)),
+      ).then((_) => load()),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFFDCE8E7), width: 1.5),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '$count',
+              style: TextStyle(
+                fontFamily: 'Fredoka',
+                fontWeight: FontWeight.w600,
+                fontSize: 17,
+                color: const Color(0xFF1B2430),
+              ),
+            ),
+            Text(
+              label,
+              style: TextStyle(
+                fontFamily: 'JetBrains Mono',
+                fontSize: 9.5,
+                color: const Color(0xFF9AAAAA),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _addFriendsButton() {
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const FriendSearchScreen()),
+      ).then((_) => load()),
+      child: Container(
+        width: 48,
+        height: 48,
+        decoration: BoxDecoration(
+          color: const Color(0xFFE0F7F4),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        alignment: Alignment.center,
+        child: const Icon(
+          Icons.person_add_alt_1_rounded,
+          color: Color(0xFF00A896),
+          size: 22,
+        ),
       ),
     );
   }
