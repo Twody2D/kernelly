@@ -14,6 +14,7 @@ import 'package:mobile/widgets/settings_widgets.dart';
 class SettingsScreen extends StatefulWidget {
   final bool isGuest;
   final String? email;
+  final String? phone;
   final String? username;
   final String? avatar;
   final VoidCallback? onProfileChanged;
@@ -22,6 +23,7 @@ class SettingsScreen extends StatefulWidget {
     super.key,
     required this.isGuest,
     this.email,
+    this.phone,
     this.username,
     this.avatar,
     this.onProfileChanged,
@@ -211,6 +213,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   builder: (_) => SettingsPrivacyScreen(
                     isGuest: widget.isGuest,
                     email: widget.email,
+                    phone: widget.phone,
                     onSignIn: () => _soon('Вход в аккаунт появится позже'),
                     onDeleteAccount: () =>
                         _soon('Удаление аккаунта появится позже'),

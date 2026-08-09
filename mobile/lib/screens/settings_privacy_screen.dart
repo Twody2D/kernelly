@@ -11,6 +11,7 @@ import 'package:mobile/widgets/settings_widgets.dart';
 class SettingsPrivacyScreen extends StatefulWidget {
   final bool isGuest;
   final String? email;
+  final String? phone;
   final VoidCallback onSignIn;
   final VoidCallback onDeleteAccount;
 
@@ -18,6 +19,7 @@ class SettingsPrivacyScreen extends StatefulWidget {
     super.key,
     required this.isGuest,
     required this.email,
+    required this.phone,
     required this.onSignIn,
     required this.onDeleteAccount,
   });
@@ -27,29 +29,10 @@ class SettingsPrivacyScreen extends StatefulWidget {
 }
 
 class _SettingsPrivacyScreenState extends State<SettingsPrivacyScreen> {
-  String? _phone;
-  bool _loadingPhone = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadPhone();
-  }
-
-  Future<void> _loadPhone() async {
-    try {
-      final user = await fetchUser(currentUserId);
-      if (!mounted) return;
-      setState(() {
-        _phone = user['phone'] as String?;
-        _loadingPhone = false;
-      });
-    } catch (e) {
-      debugPrint('Ошибка загрузки телефона: $e');
-      if (!mounted) return;
-      setState(() => _loadingPhone = false);
-    }
-  }
+  // Приходит от родителя вместе с остальным профилем (см. profile_screen.dart) —
+  // отдельный запрос при каждом открытии экрана давал заметное мигание
+  // "…" → значение, как когда-то было с названием курса.
+  late String? _phone = widget.phone;
 
   Future<void> _editPhone() async {
     // Если номер ещё не привязан, пробуем сразу подтянуть его у системы —
@@ -260,14 +243,14 @@ class _SettingsPrivacyScreenState extends State<SettingsPrivacyScreen> {
               title: 'Телефон',
               subtitle: 'необязательно, нужен только для поиска друзей по контактам',
               trailing: Text(
-                _loadingPhone ? '…' : (_phone ?? 'не привязан'),
+                _phone ?? 'не привязан',
                 style: TextStyle(
                   fontFamily: 'JetBrains Mono',
                   fontSize: 11,
                   color: const Color(0xFF5C6B73),
                 ),
               ),
-              onTap: _loadingPhone ? null : _editPhone,
+              onTap: _editPhone,
             ),
           ]),
           const SizedBox(height: 18),

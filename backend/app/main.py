@@ -1485,6 +1485,7 @@ def get_user_stats(
     }
     if current_user.id == user_id:
         result["email"] = user.email
+        result["phone"] = user.phone
         result["auth_provider"] = user.auth_provider
         result["streak_shield_enabled"] = user.streak_shield_enabled
         result["streak_freezes"] = user.streak_freezes
