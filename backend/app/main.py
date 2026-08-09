@@ -933,6 +933,12 @@ def complete_lesson(
         progress = models.UserProgress(user_id=user_id, lesson_id=lesson_id)
         db.add(progress)
         db.commit()
+    else:
+        # Обновляем дату прохождения и при повторном прохождении — иначе
+        # повтор урока не засчитывается в дневную цель (/daily-progress
+        # считает по completed_at) и не поддерживает серию.
+        existing.completed_at = datetime.utcnow()
+        db.commit()
 
     completed_lesson_ids = {
         row.lesson_id
