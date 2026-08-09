@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mobile/screens/main_shell.dart';
 import 'package:mobile/screens/onboarding_screen.dart';
+import 'package:mobile/services/notifications_service.dart';
 import 'package:mobile/services/user_prefs.dart';
 
 /// На Android 12+ Flutter по умолчанию растягивает контент при овер-скролле
@@ -29,6 +30,13 @@ Future<void> main() async {
   final onboardingDone = prefs.getBool(PrefKeys.onboardingDone) ?? false;
 
   await ensureUserId();
+
+  // если пропущенный тумблер уже был включён (переустановка приложения —
+  // локальные запланированные уведомления Android не переживают её), нужно
+  // заново поставить напоминание в систему
+  if (prefs.getBool(PrefKeys.remind) ?? true) {
+    await NotificationsService.instance.scheduleDaily();
+  }
 
   runApp(KernellyApp(onboardingDone: onboardingDone));
 }
