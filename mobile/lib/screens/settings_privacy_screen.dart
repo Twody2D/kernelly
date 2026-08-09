@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mobile/theme/app_theme.dart';
 import 'package:mobile/services/api_service.dart';
+import 'package:mobile/services/device_phone.dart';
 import 'package:mobile/services/user_prefs.dart';
 import 'package:mobile/widgets/settings_widgets.dart';
 
@@ -51,7 +52,16 @@ class _SettingsPrivacyScreenState extends State<SettingsPrivacyScreen> {
   }
 
   Future<void> _editPhone() async {
-    final controller = TextEditingController(text: _phone ?? '');
+    // Если номер ещё не привязан, пробуем сразу подтянуть его у системы —
+    // работает только на Android и не всегда (см. device_phone.dart), поэтому
+    // это лишь предзаполнение поля, а не замена ручного ввода: пользователь
+    // всё равно видит и может поправить значение перед сохранением.
+    var initial = _phone;
+    if (initial == null || initial.isEmpty) {
+      initial = await tryGetDevicePhoneNumber();
+    }
+    if (!mounted) return;
+    final controller = TextEditingController(text: initial ?? '');
     String? error;
 
     final saved = await showModalBottomSheet<bool>(
