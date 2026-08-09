@@ -2,7 +2,11 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:mobile/screens/chest_reward_screen.dart';
+import 'package:mobile/services/api_service.dart';
+import 'package:mobile/services/user_prefs.dart';
 import 'package:mobile/widgets/achievement_badge.dart';
+import 'package:mobile/widgets/primary_button.dart';
 
 const _months = [
   'янв.',
@@ -52,6 +56,28 @@ class _AchievementDetailScreenState extends State<AchievementDetailScreen>
   String get _title => widget.item['title'] as String? ?? '';
 
   String get _description => widget.item['description'] as String? ?? '';
+
+  /// Отсутствует вовсе при просмотре чужого профиля (сервер не отдаёт это
+  /// поле не для себя) — тогда по умолчанию считаем «уже забран», кнопки не будет.
+  late bool _chestClaimed = widget.item['chest_claimed'] != false;
+
+  bool get _hasUnclaimedChest => _unlocked && !_chestClaimed;
+
+  Future<void> _openChest() async {
+    final code = widget.item['code'] as String;
+    final amount = await showClaimableChestReward(
+      context,
+      reason: 'achievement',
+      onOpen: () => claimAchievementChest(currentUserId, code),
+    );
+    if (amount != null) {
+      // Map передаётся по ссылке — правим прямо тот объект, что держит
+      // список в родительском экране, чтобы пометка «новое» пропала там
+      // сразу после возврата, без отдельной перезагрузки всего списка.
+      widget.item['chest_claimed'] = true;
+      if (mounted) setState(() => _chestClaimed = true);
+    }
+  }
 
   String? get _formattedDate {
     final iso = widget.item['unlocked_at'] as String?;
@@ -301,6 +327,16 @@ class _AchievementDetailScreenState extends State<AchievementDetailScreen>
                             ),
                           ),
                         ),
+                        if (_hasUnclaimedChest) ...[
+                          const SizedBox(height: 22),
+                          SizedBox(
+                            width: double.infinity,
+                            child: PrimaryButton(
+                              text: '📦 Открыть сундук',
+                              onPressed: _openChest,
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),

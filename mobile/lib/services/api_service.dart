@@ -302,6 +302,20 @@ Future<Map<String, dynamic>> claimDailyLoginChest(int userId) async {
   return jsonDecode(utf8.decode(response.bodyBytes));
 }
 
+/// Открывает сундук за достижение — ядра начисляются именно этим вызовом,
+/// не при самой разблокировке достижения (см. AchievementDetailScreen).
+Future<int> claimAchievementChest(int userId, String code) async {
+  final response = await http.post(
+    Uri.parse('$apiBaseUrl/users/$userId/achievements/$code/claim-chest'),
+    headers: _authHeaders(),
+  );
+  if (response.statusCode != 200) {
+    throw Exception('Failed to claim achievement chest');
+  }
+  final data = jsonDecode(utf8.decode(response.bodyBytes));
+  return data['amount'] as int;
+}
+
 /// Бросается, когда номер телефона уже привязан к другому аккаунту (409 от сервера).
 class PhoneTakenException implements Exception {}
 

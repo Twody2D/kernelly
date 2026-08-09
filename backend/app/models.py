@@ -148,3 +148,7 @@ class AchievementUnlock(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     code = Column(String, nullable=False)
     unlocked_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    # Сундук с ядрами за достижение открывается вручную в профиле, не сразу
+    # при разблокировке — default=True, чтобы существующие (уже «зачтённые»
+    # по старой логике) записи не стали внезапно выглядеть как новые.
+    chest_claimed = Column(Boolean, nullable=False, default=True)

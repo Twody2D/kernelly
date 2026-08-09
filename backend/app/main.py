@@ -549,6 +549,34 @@ def claim_daily_login_chest(
     return {"awarded": True, "amount": amount, "cores": user.cores}
 
 
+@app.post("/users/{user_id}/achievements/{code}/claim-chest")
+def claim_achievement_chest(
+    user_id: int,
+    code: str,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    """Сундук за достижение открывается вручную в профиле (см. chest_claimed
+    в get_user_achievements), а не сразу при разблокировке — чтобы был повод
+    зайти и приятное действие, а не тихое начисление в фоне."""
+    _require_self(current_user, user_id)
+    unlock = (
+        db.query(models.AchievementUnlock)
+        .filter(models.AchievementUnlock.user_id == user_id, models.AchievementUnlock.code == code)
+        .first()
+    )
+    if unlock is None:
+        raise HTTPException(status_code=404, detail="Achievement not unlocked")
+    if unlock.chest_claimed:
+        raise HTTPException(status_code=409, detail="Chest already claimed")
+
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    amount = _award_cores(user, *CORES_ACHIEVEMENT)
+    unlock.chest_claimed = True
+    db.commit()
+    return {"amount": amount, "cores": user.cores}
+
+
 @app.patch("/users/{user_id}/phone", response_model=schemas.UserOut)
 def update_phone(
     user_id: int,
@@ -1350,15 +1378,15 @@ def _record_achievement_unlocks(db: Session, user: models.User) -> list[dict]:
         if metric == "accuracy" and not enough_answers:
             unlocked = False
         if unlocked:
-            db.add(models.AchievementUnlock(user_id=user.id, code=code))
-            cores_awarded = _award_cores(user, *CORES_ACHIEVEMENT)
+            # chest_claimed=False — сундук с ядрами открывается вручную в
+            # профиле (см. claim_achievement_chest), не начисляется тут же.
+            db.add(models.AchievementUnlock(user_id=user.id, code=code, chest_claimed=False))
             newly_unlocked.append({
                 "code": achievement["code"],
                 "title": achievement["title"],
                 "description": achievement["description"],
                 "icon": achievement["icon"],
                 "style": achievement["style"],
-                "cores_awarded": cores_awarded,
             })
     if newly_unlocked:
         db.commit()
@@ -1489,10 +1517,11 @@ def get_user_achievements(
 
     enough_answers = stats["total_answers"] >= MIN_ANSWERS_FOR_ACCURACY
 
-    unlocked_at_by_code = {
-        row.code: row.unlocked_at
+    unlocks_by_code = {
+        row.code: row
         for row in db.query(models.AchievementUnlock).filter(models.AchievementUnlock.user_id == user.id).all()
     }
+    is_self = current_user.id == user_id
 
     items = []
     for achievement in ACHIEVEMENTS:
@@ -1502,17 +1531,22 @@ def get_user_achievements(
         if metric == "accuracy" and not enough_answers:
             unlocked = False
 
-        unlocked_at = unlocked_at_by_code.get(achievement["code"])
+        unlock = unlocks_by_code.get(achievement["code"])
 
-        items.append({
+        item = {
             "code": achievement["code"],
             "title": achievement["title"],
             "description": achievement["description"],
             "icon": achievement["icon"],
             "style": achievement["style"],
             "unlocked": unlocked,
-            "unlocked_at": unlocked_at.isoformat() if unlocked_at else None,
-        })
+            "unlocked_at": unlock.unlocked_at.isoformat() if unlock else None,
+        }
+        # «Новое» на карточке имеет смысл только в своём профиле — не
+        # раскрываем это состояние про чужой сундук на просмотре чужого профиля.
+        if is_self:
+            item["chest_claimed"] = unlock.chest_claimed if unlock else True
+        items.append(item)
 
     return {
         "unlocked": sum(1 for i in items if i["unlocked"]),

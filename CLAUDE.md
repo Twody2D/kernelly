@@ -77,11 +77,15 @@ CI/CD: push в `backend/**` автоматически передеплоива�
 (`/contacts-match`); контакты из телефонной книги пользователя **не сохраняются**, сверка
 происходит только «на лету» в рамках одного запроса.
 
-Игровая валюта — «ядра» (`User.cores`). Выдаются сундуками, которые открываются сразу
-(без инвентаря) за: золото на уроке, завершение курса, ежедневный вход
-(`POST /users/{id}/daily-login-chest`) и получение достижения — суммы см. `CORES_*` в `main.py`.
-UI сундука — `chest_reward_screen.dart` (`showChestRewards`), переиспользует паттерн
-`achievement_unlock_screen.dart`.
+Игровая валюта — «ядра» (`User.cores`). Сундуки за золото на уроке, завершение курса и
+ежедневный вход (`POST /users/{id}/daily-login-chest`) начисляются сразу на сервере — сумма уже
+известна, `chest_reward_screen.dart` (`showChestRewards`) только показывает анимацию открытия
+по тапу. Сундук за достижение — иначе: сумма НЕ начисляется при разблокировке (`chest_claimed`
+у `AchievementUnlock` = False), а только когда пользователь сам открывает его в профиле
+(`POST /users/{id}/achievements/{code}/claim-chest`, `showClaimableChestReward` — тап на сундук
+сам вызывает claim). Неоткрытые сундуки помечены «NEW» на бейдже (`profile_screen.dart`,
+`achievements_catalog_screen.dart`) — поле `chest_claimed` в ответе `/achievements` есть только
+при просмотре своего профиля.
 
 Заряды защиты streak (`streak_freezes`) пополняются автоматически раз в неделю и их можно
 докупить за ядра (`POST /users/{id}/streak-freezes/purchase`, `MAX_STREAK_FREEZES`/
