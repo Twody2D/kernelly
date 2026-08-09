@@ -410,6 +410,7 @@ class ProfileScreenState extends State<ProfileScreen> {
         decoration: BoxDecoration(
           color: const Color(0xFFE0F7F4),
           borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFFAEE5DE), width: 1.5),
         ),
         alignment: Alignment.center,
         child: Row(
@@ -445,6 +446,7 @@ class ProfileScreenState extends State<ProfileScreen> {
         decoration: BoxDecoration(
           color: const Color(0xFFE0F7F4),
           borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFFAEE5DE), width: 1.5),
         ),
         alignment: Alignment.center,
         child: const Icon(
