@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mobile/theme/app_theme.dart';
 
 enum OptionState { none, selected, correct, incorrect }
 
@@ -18,26 +19,27 @@ class OptionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Color borderColor = const Color(0xFFE1EAEA);
-    Color backgroundColor = Colors.white;
-    Color promptColor = const Color(0xFF00A896);
-    Color textColor = const Color(0xFF1B2430);
+    final colors = context.colors;
+    Color borderColor = colors.border;
+    Color backgroundColor = colors.card;
+    Color promptColor = colors.accentDark;
+    Color textColor = colors.textPrimary;
 
     if (state == OptionState.selected) {
-      borderColor = const Color(0xFF00C9B7);
-      backgroundColor = const Color(0xFFE3F8F6);
+      borderColor = colors.accent;
+      backgroundColor = colors.accentBg;
     } else if (state == OptionState.correct) {
-      borderColor = const Color(0xFF58CC02);
-      backgroundColor = const Color(0xFFEAF9DC);
-      promptColor = const Color(0xFF58CC02);
+      borderColor = colors.success;
+      backgroundColor = colors.successBg;
+      promptColor = colors.success;
     } else if (state == OptionState.incorrect) {
-      borderColor = const Color(0xFFFF4B4B);
-      backgroundColor = const Color(0xFFFFEAEA);
-      promptColor = const Color(0xFFFF4B4B);
+      borderColor = colors.error;
+      backgroundColor = colors.errorBg;
+      promptColor = colors.error;
     } else if (locked) {
-      borderColor = const Color(0xFFEDF2F2);
-      promptColor = const Color(0xFFC2CDCD);
-      textColor = const Color(0xFFC2CDCD);
+      borderColor = colors.divider;
+      promptColor = colors.locked;
+      textColor = colors.locked;
     }
 
     return Padding(

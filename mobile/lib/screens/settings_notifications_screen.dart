@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mobile/services/api_service.dart';
 import 'package:mobile/services/notifications_service.dart';
 import 'package:mobile/services/user_prefs.dart';
+import 'package:mobile/theme/app_theme.dart';
 import 'package:mobile/widgets/settings_widgets.dart';
 
 class SettingsNotificationsScreen extends StatefulWidget {
@@ -64,19 +65,20 @@ class _SettingsNotificationsScreenState
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F9F9),
+      backgroundColor: colors.background,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF6F9F9),
+        backgroundColor: colors.background,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Color(0xFF5C6B73)),
+        iconTheme: IconThemeData(color: colors.textSecondary),
         title: Text(
           'Уведомления',
           style: TextStyle(
             fontFamily: 'Fredoka',
             fontWeight: FontWeight.w600,
             fontSize: 17,
-            color: const Color(0xFF1B2430),
+            color: colors.textPrimary,
           ),
         ),
       ),

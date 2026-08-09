@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mobile/theme/app_theme.dart';
 
 /// Общие строительные блоки для экранов настроек (хаб + Профиль, Уведомления,
 /// Курсы, Конфиденциальность) — раньше жили как приватные методы в одном
@@ -18,7 +19,7 @@ class SettingsSectionLabel extends StatelessWidget {
         style: TextStyle(
           fontFamily: 'JetBrains Mono',
           fontSize: 10.5,
-          color: const Color(0xFF00A896),
+          color: context.colors.accentDark,
         ),
       ),
     );
@@ -32,21 +33,20 @@ class SettingsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final children = <Widget>[];
     for (int i = 0; i < rows.length; i++) {
       children.add(rows[i]);
       if (i != rows.length - 1) {
-        children.add(
-          const Divider(height: 1.5, thickness: 1.5, color: Color(0xFFEEF4F3)),
-        );
+        children.add(Divider(height: 1.5, thickness: 1.5, color: colors.divider));
       }
     }
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.card,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFDCE8E7), width: 1.5),
+        border: Border.all(color: colors.border, width: 1.5),
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(children: children),
@@ -72,6 +72,7 @@ class SettingsRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return InkWell(
       onTap: onTap,
       child: Padding(
@@ -88,7 +89,7 @@ class SettingsRow extends StatelessWidget {
                       fontFamily: 'Fredoka',
                       fontWeight: FontWeight.w600,
                       fontSize: 14,
-                      color: titleColor ?? const Color(0xFF1B2430),
+                      color: titleColor ?? colors.textPrimary,
                     ),
                   ),
                   if (subtitle != null) ...[
@@ -98,7 +99,7 @@ class SettingsRow extends StatelessWidget {
                       style: TextStyle(
                         fontFamily: 'Inter',
                         fontSize: 11.5,
-                        color: const Color(0xFF5C6B73),
+                        color: colors.textSecondary,
                       ),
                     ),
                   ],
@@ -122,12 +123,13 @@ class SettingsPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: const Color(0xFFE6F8F6),
+          color: colors.accentBg,
           borderRadius: BorderRadius.circular(11),
         ),
         child: Text(
@@ -136,7 +138,7 @@ class SettingsPill extends StatelessWidget {
             fontFamily: 'JetBrains Mono',
             fontSize: 11,
             fontWeight: FontWeight.w600,
-            color: const Color(0xFF00A896),
+            color: colors.accentDark,
           ),
         ),
       ),
@@ -156,6 +158,7 @@ class SettingsToggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return GestureDetector(
       onTap: () => onChanged(!value),
       child: AnimatedContainer(
@@ -164,7 +167,7 @@ class SettingsToggle extends StatelessWidget {
         height: 28,
         padding: const EdgeInsets.all(3),
         decoration: BoxDecoration(
-          color: value ? const Color(0xFF00C9B7) : const Color(0xFFC2CDCD),
+          color: value ? colors.accent : colors.locked,
           borderRadius: BorderRadius.circular(14),
         ),
         child: AnimatedAlign(

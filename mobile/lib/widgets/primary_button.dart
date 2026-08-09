@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mobile/theme/app_theme.dart';
 
 class PrimaryButton extends StatelessWidget {
   final String text;
@@ -9,9 +10,10 @@ class PrimaryButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color bgColor = enabled ? const Color(0xFF00C9B7) : const Color(0xFFE7EEEE);
-    final Color textColor = enabled ? Colors.white : const Color(0xFFB6C2C2);
-    final Color shadowColor = enabled ? const Color(0xFF00A896) : const Color(0xFFD3DEDE);
+    final colors = context.colors;
+    final Color bgColor = enabled ? colors.accent : colors.lockedBg;
+    final Color textColor = enabled ? Colors.white : colors.locked;
+    final Color shadowColor = enabled ? colors.accentDark : colors.border;
 
     return Material(
       color: Colors.transparent,

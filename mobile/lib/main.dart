@@ -4,6 +4,8 @@ import 'package:mobile/screens/main_shell.dart';
 import 'package:mobile/screens/onboarding_screen.dart';
 import 'package:mobile/services/notifications_service.dart';
 import 'package:mobile/services/user_prefs.dart';
+import 'package:mobile/theme/app_theme.dart';
+import 'package:mobile/theme/theme_controller.dart';
 
 /// На Android 12+ Flutter по умолчанию растягивает контент при овер-скролле
 /// (StretchingOverscrollIndicator) — визуально ломает жёстко заданные по
@@ -30,6 +32,7 @@ Future<void> main() async {
   final onboardingDone = prefs.getBool(PrefKeys.onboardingDone) ?? false;
 
   await ensureUserId();
+  await themeController.loadFromPrefs();
 
   // если пропущенный тумблер уже был включён (переустановка приложения —
   // локальные запланированные уведомления Android не переживают её), нужно
@@ -48,32 +51,18 @@ class KernellyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Kernelly',
-      scrollBehavior: _AppScrollBehavior(),
-      theme: ThemeData(
-        scaffoldBackgroundColor: const Color(0xFFF6F9F9),
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF00C9B7), primary: const Color(0xFF00C9B7)),
-        textTheme: TextTheme(
-          headlineSmall: TextStyle(
-            fontFamily: 'Fredoka',
-            fontWeight: FontWeight.w600,
-            fontSize: 21,
-            color: const Color(0xFF1B2430),
-          ),
-          bodyMedium: TextStyle(fontFamily: 'Inter', fontSize: 14),
-        ),
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF00C9B7),
-            foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            textStyle: TextStyle(fontFamily: 'Fredoka', fontWeight: FontWeight.w600, fontSize: 16),
-          ),
-        ),
-      ),
-      home: onboardingDone ? const MainShell() : const OnboardingScreen(),
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: themeController,
+      builder: (context, mode, _) {
+        return MaterialApp(
+          title: 'Kernelly',
+          scrollBehavior: _AppScrollBehavior(),
+          theme: AppTheme.light,
+          darkTheme: AppTheme.dark,
+          themeMode: mode,
+          home: onboardingDone ? const MainShell() : const OnboardingScreen(),
+        );
+      },
     );
   }
 }
