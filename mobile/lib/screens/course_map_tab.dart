@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mobile/services/api_service.dart';
 import 'package:mobile/services/user_prefs.dart';
 import 'package:mobile/screens/course_intro_screen.dart';
+import 'package:mobile/theme/app_theme.dart';
 import 'package:mobile/widgets/course_map_body.dart';
 
 /// Вкладка «Путь»: шапка приложения (лого, streak), цель дня и карта текущего
@@ -98,15 +99,16 @@ class CourseMapTabState extends State<CourseMapTab> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     if (loading) {
-      return const Scaffold(
-        backgroundColor: Color(0xFFF6F9F9),
-        body: Center(child: CircularProgressIndicator()),
+      return Scaffold(
+        backgroundColor: colors.background,
+        body: const Center(child: CircularProgressIndicator()),
       );
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F9F9),
+      backgroundColor: colors.background,
       body: SafeArea(
         child: Column(
           children: [
@@ -122,11 +124,11 @@ class CourseMapTabState extends State<CourseMapTab> {
                         width: 8,
                         height: 8,
                         decoration: BoxDecoration(
-                          color: const Color(0xFF58CC02),
+                          color: colors.success,
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(0xFF58CC02).withOpacity(0.2),
+                              color: colors.success.withOpacity(0.2),
                               spreadRadius: 3,
                               blurRadius: 0,
                             ),
@@ -140,7 +142,7 @@ class CourseMapTabState extends State<CourseMapTab> {
                           fontFamily: 'Fredoka',
                           fontWeight: FontWeight.w700,
                           fontSize: 18,
-                          color: const Color(0xFF1B2430),
+                          color: colors.textPrimary,
                         ),
                       ),
                     ],
@@ -152,7 +154,7 @@ class CourseMapTabState extends State<CourseMapTab> {
                         vertical: 6,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: colors.card,
                         borderRadius: BorderRadius.circular(14),
                         boxShadow: [
                           BoxShadow(
@@ -173,7 +175,7 @@ class CourseMapTabState extends State<CourseMapTab> {
                               fontFamily: 'Fredoka',
                               fontWeight: FontWeight.w600,
                               fontSize: 14,
-                              color: const Color(0xFFFF9500),
+                              color: colors.streak,
                             ),
                           ),
                         ],
@@ -184,9 +186,9 @@ class CourseMapTabState extends State<CourseMapTab> {
             ),
             Expanded(
               child: courseId == null
-                  ? const Center(
+                  ? Center(
                       child: Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 40),
+                        padding: const EdgeInsets.symmetric(horizontal: 40),
                         child: Text(
                           'Пока нечего проходить',
                           textAlign: TextAlign.center,
@@ -195,7 +197,7 @@ class CourseMapTabState extends State<CourseMapTab> {
                             fontWeight: FontWeight.w500,
                             fontSize: 15,
                             height: 1.4,
-                            color: Color(0xFF5C6B73),
+                            color: colors.textSecondary,
                           ),
                         ),
                       ),

@@ -109,6 +109,10 @@ class ProfileUpdate(BaseModel):
     avatar: str
 
 
+class StreakShieldUpdate(BaseModel):
+    enabled: bool
+
+
 class LessonComplete(BaseModel):
     correct_count: int
 

@@ -222,6 +222,19 @@ Future<Map<String, dynamic>> updateProfile(
   }
 }
 
+/// Синхронизирует тумблер «Защита streak» с бэкендом — сама логика заморозки
+/// применяется на сервере при обработке следующего пропущенного дня.
+Future<void> updateStreakShield(int userId, bool enabled) async {
+  final response = await http.patch(
+    Uri.parse('$apiBaseUrl/users/$userId/streak-shield'),
+    headers: {'Content-Type': 'application/json'},
+    body: jsonEncode({'enabled': enabled}),
+  );
+  if (response.statusCode != 200) {
+    throw Exception('Failed to update streak shield');
+  }
+}
+
 /// Сколько навыков сейчас просрочено для повторения — бейдж на карточке ревью.
 Future<int> fetchReviewDue(int userId) async {
   final response = await http.get(

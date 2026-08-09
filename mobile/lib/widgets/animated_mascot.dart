@@ -3,6 +3,18 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:mobile/widgets/mascot.dart';
 
+/// Тумблер «Анимации Kernel» во время урока: включён — обычный [AnimatedMascot],
+/// выключен — статичный [Mascot] с теми же параметрами.
+Widget lessonMascot({
+  required bool animated,
+  MascotEmotion emotion = MascotEmotion.happy,
+  double size = 140,
+}) {
+  return animated
+      ? AnimatedMascot(emotion: emotion, size: size)
+      : Mascot(emotion: emotion, size: size);
+}
+
 class AnimatedMascot extends StatefulWidget {
   final MascotEmotion emotion;
   final double size;

@@ -5,6 +5,7 @@ import 'package:mobile/screens/settings_notifications_screen.dart';
 import 'package:mobile/screens/settings_courses_screen.dart';
 import 'package:mobile/screens/settings_privacy_screen.dart';
 import 'package:mobile/services/auth_service.dart';
+import 'package:mobile/theme/app_theme.dart';
 import 'package:mobile/widgets/settings_widgets.dart';
 
 /// Хаб настроек «Параметры» — раньше был одним длинным экраном со всеми
@@ -71,10 +72,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _confirmSignOut() async {
+    final colors = context.colors;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        backgroundColor: Colors.white,
+        backgroundColor: colors.card,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(
           'Выйти из аккаунта?',
@@ -82,7 +84,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             fontFamily: 'Fredoka',
             fontWeight: FontWeight.w600,
             fontSize: 17,
-            color: const Color(0xFF1B2430),
+            color: colors.textPrimary,
           ),
         ),
         content: Text(
@@ -91,7 +93,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             fontFamily: 'Inter',
             fontSize: 13.5,
             height: 1.4,
-            color: const Color(0xFF5C6B73),
+            color: colors.textSecondary,
           ),
         ),
         actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
@@ -104,7 +106,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 fontFamily: 'Fredoka',
                 fontWeight: FontWeight.w600,
                 fontSize: 14,
-                color: const Color(0xFF5C6B73),
+                color: colors.textSecondary,
               ),
             ),
           ),
@@ -146,14 +148,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F9F9),
+      backgroundColor: colors.background,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF6F9F9),
+        backgroundColor: colors.background,
         elevation: 0,
         titleSpacing: 0,
         leading: IconButton(
-          icon: const Icon(Icons.close, color: Color(0xFF5C6B73)),
+          icon: Icon(Icons.close, color: colors.textSecondary),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
@@ -162,7 +165,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             fontFamily: 'Fredoka',
             fontWeight: FontWeight.w600,
             fontSize: 17,
-            color: const Color(0xFF1B2430),
+            color: colors.textPrimary,
           ),
         ),
       ),
@@ -173,21 +176,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
             SettingsRow(
               title: 'Профиль',
               subtitle: 'никнейм и аватарка',
-              trailing: const Icon(
-                Icons.chevron_right,
-                size: 20,
-                color: Color(0xFFC2CDCD),
-              ),
+              trailing: Icon(Icons.chevron_right, size: 20, color: colors.locked),
               onTap: _openProfile,
             ),
             SettingsRow(
               title: 'Уведомления',
               subtitle: 'напоминание и защита streak',
-              trailing: const Icon(
-                Icons.chevron_right,
-                size: 20,
-                color: Color(0xFFC2CDCD),
-              ),
+              trailing: Icon(Icons.chevron_right, size: 20, color: colors.locked),
               onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -198,11 +193,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             SettingsRow(
               title: 'Курсы',
               subtitle: 'цель на день, звук, тема',
-              trailing: const Icon(
-                Icons.chevron_right,
-                size: 20,
-                color: Color(0xFFC2CDCD),
-              ),
+              trailing: Icon(Icons.chevron_right, size: 20, color: colors.locked),
               onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -213,11 +204,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             SettingsRow(
               title: 'Конфиденциальность',
               subtitle: 'почта, удаление аккаунта',
-              trailing: const Icon(
-                Icons.chevron_right,
-                size: 20,
-                color: Color(0xFFC2CDCD),
-              ),
+              trailing: Icon(Icons.chevron_right, size: 20, color: colors.locked),
               onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -237,21 +224,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
             SettingsCard([
               SettingsRow(
                 title: 'Выйти',
-                titleColor: const Color(0xFFFF4B4B),
+                titleColor: colors.error,
                 trailing: signingOut
-                    ? const SizedBox(
+                    ? SizedBox(
                         width: 16,
                         height: 16,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          color: Color(0xFFC2CDCD),
+                          color: colors.locked,
                         ),
                       )
-                    : const Icon(
-                        Icons.logout_rounded,
-                        size: 18,
-                        color: Color(0xFFFF4B4B),
-                      ),
+                    : Icon(Icons.logout_rounded, size: 18, color: colors.error),
                 onTap: signingOut ? null : _confirmSignOut,
               ),
             ]),
@@ -263,7 +246,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             style: TextStyle(
               fontFamily: 'JetBrains Mono',
               fontSize: 10,
-              color: const Color(0xFF9AAAAA),
+              color: colors.textSecondary,
             ),
           ),
         ],

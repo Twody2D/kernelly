@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:mobile/services/api_service.dart';
+import 'package:mobile/services/notifications_service.dart';
 import 'package:mobile/services/user_prefs.dart';
+import 'package:mobile/theme/app_theme.dart';
 import 'package:mobile/widgets/settings_widgets.dart';
 
 class SettingsNotificationsScreen extends StatefulWidget {
@@ -42,21 +45,40 @@ class _SettingsNotificationsScreenState
     await prefs?.setBool(key, value);
   }
 
+  Future<void> _onRemindChanged(bool value) async {
+    await _saveBool(PrefKeys.remind, value, (x) => remind = x);
+    if (value) {
+      await NotificationsService.instance.scheduleDaily();
+    } else {
+      await NotificationsService.instance.cancelDaily();
+    }
+  }
+
+  Future<void> _onShieldChanged(bool value) async {
+    await _saveBool(PrefKeys.streakShield, value, (x) => shield = x);
+    try {
+      await updateStreakShield(currentUserId, value);
+    } catch (e) {
+      debugPrint('Не удалось синхронизировать защиту streak: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F9F9),
+      backgroundColor: colors.background,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF6F9F9),
+        backgroundColor: colors.background,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Color(0xFF5C6B73)),
+        iconTheme: IconThemeData(color: colors.textSecondary),
         title: Text(
           'Уведомления',
           style: TextStyle(
             fontFamily: 'Fredoka',
             fontWeight: FontWeight.w600,
             fontSize: 17,
-            color: const Color(0xFF1B2430),
+            color: colors.textPrimary,
           ),
         ),
       ),
@@ -71,8 +93,7 @@ class _SettingsNotificationsScreenState
                     subtitle: 'каждый день в 20:00',
                     trailing: SettingsToggle(
                       value: remind,
-                      onChanged: (v) =>
-                          _saveBool(PrefKeys.remind, v, (x) => remind = x),
+                      onChanged: _onRemindChanged,
                     ),
                   ),
                   SettingsRow(
@@ -80,11 +101,7 @@ class _SettingsNotificationsScreenState
                     subtitle: 'пропущенный день не сбросит 🔥',
                     trailing: SettingsToggle(
                       value: shield,
-                      onChanged: (v) => _saveBool(
-                        PrefKeys.streakShield,
-                        v,
-                        (x) => shield = x,
-                      ),
+                      onChanged: _onShieldChanged,
                     ),
                   ),
                 ]),

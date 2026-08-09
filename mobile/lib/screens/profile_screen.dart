@@ -12,6 +12,7 @@ import 'package:mobile/screens/achievement_detail_screen.dart';
 import 'package:mobile/widgets/mascot.dart';
 import 'package:mobile/widgets/achievement_badge.dart';
 import 'package:mobile/widgets/weekly_activity_chart.dart';
+import 'package:mobile/theme/app_theme.dart';
 
 const _months = [
   'января',
@@ -85,25 +86,26 @@ class ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     if (loading) {
-      return const Scaffold(
-        backgroundColor: Color(0xFFF6F9F9),
-        body: Center(child: CircularProgressIndicator()),
+      return Scaffold(
+        backgroundColor: colors.background,
+        body: const Center(child: CircularProgressIndicator()),
       );
     }
 
     if (stats == null) {
       return Scaffold(
-        backgroundColor: const Color(0xFFF6F9F9),
-        appBar: _appBar(),
+        backgroundColor: colors.background,
+        appBar: _appBar(context),
         body: Center(
           child: Text(
             'Не удалось загрузить профиль',
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'Fredoka',
               fontWeight: FontWeight.w500,
               fontSize: 15,
-              color: Color(0xFF5C6B73),
+              color: colors.textSecondary,
             ),
           ),
         ),
@@ -112,8 +114,8 @@ class ProfileScreenState extends State<ProfileScreen> {
 
     if (stats!['auth_provider'] == 'guest') {
       return Scaffold(
-        backgroundColor: const Color(0xFFF6F9F9),
-        appBar: _appBar(),
+        backgroundColor: colors.background,
+        appBar: _appBar(context),
         body: Center(
           child: RegisterPromptContent(
             title: 'Сохрани свой прогресс',
@@ -128,8 +130,8 @@ class ProfileScreenState extends State<ProfileScreen> {
     final accuracy = stats!['accuracy'];
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F9F9),
-      appBar: _appBar(),
+      backgroundColor: colors.background,
+      appBar: _appBar(context),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
         children: [
@@ -189,9 +191,10 @@ class ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  PreferredSizeWidget _appBar() {
+  PreferredSizeWidget _appBar(BuildContext context) {
+    final colors = context.colors;
     return AppBar(
-      backgroundColor: const Color(0xFFF6F9F9),
+      backgroundColor: colors.background,
       elevation: 0,
       title: Text(
         'Профиль',
@@ -199,14 +202,14 @@ class ProfileScreenState extends State<ProfileScreen> {
           fontFamily: 'Fredoka',
           fontWeight: FontWeight.w600,
           fontSize: 17,
-          color: const Color(0xFF1B2430),
+          color: colors.textPrimary,
         ),
       ),
       actions: [
         IconButton(
           padding: const EdgeInsets.only(left: 8, right: 20, top: 8, bottom: 8),
           constraints: const BoxConstraints(),
-          icon: const Icon(Icons.settings_outlined, color: Color(0xFF5C6B73)),
+          icon: Icon(Icons.settings_outlined, color: colors.textSecondary),
           onPressed: () => Navigator.push(
             context,
             MaterialPageRoute(

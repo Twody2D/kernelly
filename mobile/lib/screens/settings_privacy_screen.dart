@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mobile/theme/app_theme.dart';
 import 'package:mobile/widgets/settings_widgets.dart';
 
 /// Всё, что касается данных аккаунта: почта и удаление аккаунта. Сам вход и
@@ -20,19 +21,20 @@ class SettingsPrivacyScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F9F9),
+      backgroundColor: colors.background,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF6F9F9),
+        backgroundColor: colors.background,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Color(0xFF5C6B73)),
+        iconTheme: IconThemeData(color: colors.textSecondary),
         title: Text(
           'Конфиденциальность',
           style: TextStyle(
             fontFamily: 'Fredoka',
             fontWeight: FontWeight.w600,
             fontSize: 17,
-            color: const Color(0xFF1B2430),
+            color: colors.textPrimary,
           ),
         ),
       ),
@@ -47,7 +49,7 @@ class SettingsPrivacyScreen extends StatelessWidget {
                 style: TextStyle(
                   fontFamily: 'JetBrains Mono',
                   fontSize: 11,
-                  color: const Color(0xFF5C6B73),
+                  color: colors.textSecondary,
                 ),
               ),
               onTap: isGuest ? onSignIn : null,
@@ -60,7 +62,7 @@ class SettingsPrivacyScreen extends StatelessWidget {
               fontFamily: 'Inter',
               fontSize: 12.5,
               height: 1.5,
-              color: const Color(0xFF5C6B73),
+              color: colors.textSecondary,
             ),
           ),
           const SizedBox(height: 18),
@@ -70,7 +72,7 @@ class SettingsPrivacyScreen extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: 13),
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: const Color(0xFFFFEAEA),
+                color: colors.errorBg,
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Text(
@@ -79,7 +81,7 @@ class SettingsPrivacyScreen extends StatelessWidget {
                   fontFamily: 'Fredoka',
                   fontWeight: FontWeight.w600,
                   fontSize: 13.5,
-                  color: const Color(0xFFFF4B4B),
+                  color: colors.error,
                 ),
               ),
             ),

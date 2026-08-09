@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mobile/services/api_service.dart';
 import 'package:mobile/services/user_prefs.dart';
 import 'package:mobile/widgets/animated_mascot.dart';
@@ -32,6 +33,7 @@ class _ReviewScreenState extends State<ReviewScreen>
   bool finished = false;
   int? xpEarned;
   List<Map<String, dynamic>> newAchievements = [];
+  bool mascotAnimations = true;
   final _terminalController = TextEditingController();
   late final AnimationController _lottieController;
 
@@ -51,10 +53,12 @@ class _ReviewScreenState extends State<ReviewScreen>
 
   Future<void> _load() async {
     final data = await fetchReviewSession(currentUserId);
+    final prefs = await SharedPreferences.getInstance();
     if (!mounted) return;
     setState(() {
       exercises = data;
       loading = false;
+      mascotAnimations = prefs.getBool(PrefKeys.mascotAnimations) ?? true;
     });
   }
 
@@ -158,7 +162,7 @@ class _ReviewScreenState extends State<ReviewScreen>
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const AnimatedMascot(size: 96),
+                lessonMascot(animated: mascotAnimations, size: 96),
                 const SizedBox(height: 16),
                 Text(
                   'Пока нечего повторять — возвращайся позже',
@@ -187,7 +191,7 @@ class _ReviewScreenState extends State<ReviewScreen>
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const AnimatedMascot(size: 120),
+                  lessonMascot(animated: mascotAnimations, size: 120),
                   const SizedBox(height: 20),
                   Text(
                     'Повторение пройдено',

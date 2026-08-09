@@ -3,6 +3,7 @@ import 'package:mobile/screens/profile_screen.dart';
 import 'package:mobile/screens/course_map_tab.dart';
 import 'package:mobile/screens/leaderboard_tab.dart';
 import 'package:mobile/screens/feed_tab.dart';
+import 'package:mobile/theme/app_theme.dart';
 
 /// Курсы отдельной вкладкой убраны — пока в приложении один курс, карта на
 /// вкладке «Путь» и есть весь каталог.
@@ -49,17 +50,19 @@ class _MainShellState extends State<MainShell> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Scaffold(
       body: IndexedStack(index: currentIndex, children: _tabs),
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
+        backgroundColor: colors.card,
         currentIndex: currentIndex,
         onTap: (index) {
           setState(() => currentIndex = index);
           _reloadTab(index);
         },
-        selectedItemColor: const Color(0xFF00A896),
-        unselectedItemColor: const Color(0xFF5C6B73),
+        selectedItemColor: colors.accentDark,
+        unselectedItemColor: colors.textSecondary,
         selectedLabelStyle: TextStyle(
           fontFamily: 'JetBrains Mono',
           fontSize: 11,

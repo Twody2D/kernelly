@@ -344,6 +344,19 @@ def update_profile(user_id: int, payload: schemas.ProfileUpdate, db: Session = D
     return user
 
 
+@app.patch("/users/{user_id}/streak-shield")
+def update_streak_shield(user_id: int, payload: schemas.StreakShieldUpdate, db: Session = Depends(get_db)):
+    """Синхронизирует локальный тумблер «Защита streak» с бэкендом — сама
+    логика заморозки применяется в submit_answer."""
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    user.streak_shield_enabled = payload.enabled
+    db.commit()
+    return {"streak_shield_enabled": user.streak_shield_enabled, "streak_freezes": user.streak_freezes}
+
+
 def _course_id_for_lesson(db: Session, lesson_id: int) -> int | None:
     row = (
         db.query(models.Section.course_id)
@@ -440,7 +453,19 @@ def submit_answer(exercise_id: int, submission: schemas.AnswerSubmit, db: Sessio
     if is_correct:
         today = _today()
         if user.last_activity_date != today:
+            # заряды заморозки пополняются раз в неделю, независимо от того,
+            # включена ли защита — чтобы «неделя без пропуска» не сгорала впустую
+            if user.streak_freeze_refreshed_at is None or (today - user.streak_freeze_refreshed_at).days >= 7:
+                user.streak_freezes = 1
+                user.streak_freeze_refreshed_at = today
+
             if user.last_activity_date == today - timedelta(days=1):
+                user.streak += 1
+            elif user.streak_shield_enabled and user.streak_freezes > 0:
+                # пропущенный день, но есть активная защита и заряд — тратим
+                # заряд и продолжаем streak как обычный день (без сброса).
+                # Покупка доп. зарядов за игровую валюту — вне скоупа сейчас.
+                user.streak_freezes -= 1
                 user.streak += 1
             else:
                 user.streak = 1
@@ -1023,6 +1048,8 @@ def get_user_stats(user_id: int, db: Session = Depends(get_db)):
         "auth_provider": user.auth_provider,
         "followers_count": followers_count,
         "following_count": following_count,
+        "streak_shield_enabled": user.streak_shield_enabled,
+        "streak_freezes": user.streak_freezes,
     }
 
 

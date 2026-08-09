@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mobile/services/user_prefs.dart';
 import 'package:mobile/screens/onboarding_screen.dart';
+import 'package:mobile/theme/app_theme.dart';
+import 'package:mobile/theme/theme_controller.dart';
 import 'package:mobile/widgets/settings_widgets.dart';
 
 /// Настройки, связанные с прохождением курсов: цель на день, звук и анимации
@@ -50,6 +52,7 @@ class _SettingsCoursesScreenState extends State<SettingsCoursesScreen> {
   Future<void> _saveTheme(String value) async {
     setState(() => theme = value);
     await prefs?.setString(PrefKeys.theme, value);
+    themeController.setTheme(value);
   }
 
   Future<void> _saveGoal(int lessons) async {
@@ -58,13 +61,14 @@ class _SettingsCoursesScreenState extends State<SettingsCoursesScreen> {
   }
 
   Future<void> _pickGoal() async {
+    final colors = context.colors;
     final selected = await showModalBottomSheet<int>(
       context: context,
       backgroundColor: Colors.transparent,
       builder: (sheetContext) => Container(
-        decoration: const BoxDecoration(
-          color: Color(0xFFF6F9F9),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        decoration: BoxDecoration(
+          color: colors.background,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         ),
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
         child: Column(
@@ -74,7 +78,7 @@ class _SettingsCoursesScreenState extends State<SettingsCoursesScreen> {
               width: 38,
               height: 4,
               decoration: BoxDecoration(
-                color: const Color(0xFFDCE8E7),
+                color: colors.border,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -85,12 +89,12 @@ class _SettingsCoursesScreenState extends State<SettingsCoursesScreen> {
                 fontFamily: 'Fredoka',
                 fontWeight: FontWeight.w600,
                 fontSize: 17,
-                color: const Color(0xFF1B2430),
+                color: colors.textPrimary,
               ),
             ),
             const SizedBox(height: 14),
             for (final item in dailyGoals) ...[
-              _goalOption(sheetContext, item),
+              _goalOption(sheetContext, item, colors),
               const SizedBox(height: 10),
             ],
           ],
@@ -101,7 +105,7 @@ class _SettingsCoursesScreenState extends State<SettingsCoursesScreen> {
     if (selected != null) await _saveGoal(selected);
   }
 
-  Widget _goalOption(BuildContext sheetContext, Map<String, Object> item) {
+  Widget _goalOption(BuildContext sheetContext, Map<String, Object> item, AppColors colors) {
     final lessons = item['lessons'] as int;
     final selected = goal == lessons;
 
@@ -110,10 +114,10 @@ class _SettingsCoursesScreenState extends State<SettingsCoursesScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
         decoration: BoxDecoration(
-          color: selected ? const Color(0xFFE3F8F6) : Colors.white,
+          color: selected ? colors.accentBg : colors.card,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: selected ? const Color(0xFF00C9B7) : const Color(0xFFDCE8E7),
+            color: selected ? colors.accent : colors.border,
             width: selected ? 2 : 1.5,
           ),
         ),
@@ -129,7 +133,7 @@ class _SettingsCoursesScreenState extends State<SettingsCoursesScreen> {
                       fontFamily: 'Fredoka',
                       fontWeight: FontWeight.w600,
                       fontSize: 15,
-                      color: const Color(0xFF1B2430),
+                      color: colors.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 3),
@@ -138,7 +142,7 @@ class _SettingsCoursesScreenState extends State<SettingsCoursesScreen> {
                     style: TextStyle(
                       fontFamily: 'JetBrains Mono',
                       fontSize: 11.5,
-                      color: const Color(0xFF5C6B73),
+                      color: colors.textSecondary,
                     ),
                   ),
                 ],
@@ -147,9 +151,7 @@ class _SettingsCoursesScreenState extends State<SettingsCoursesScreen> {
             Icon(
               selected ? Icons.check_circle : Icons.circle_outlined,
               size: 22,
-              color: selected
-                  ? const Color(0xFF00C9B7)
-                  : const Color(0xFFC2CDCD),
+              color: selected ? colors.accent : colors.locked,
             ),
           ],
         ),
@@ -169,19 +171,20 @@ class _SettingsCoursesScreenState extends State<SettingsCoursesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F9F9),
+      backgroundColor: colors.background,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF6F9F9),
+        backgroundColor: colors.background,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Color(0xFF5C6B73)),
+        iconTheme: IconThemeData(color: colors.textSecondary),
         title: Text(
           'Курсы',
           style: TextStyle(
             fontFamily: 'Fredoka',
             fontWeight: FontWeight.w600,
             fontSize: 17,
-            color: const Color(0xFF1B2430),
+            color: colors.textPrimary,
           ),
         ),
       ),
@@ -199,10 +202,10 @@ class _SettingsCoursesScreenState extends State<SettingsCoursesScreen> {
                   SettingsRow(
                     title: 'Пройти онбординг заново',
                     subtitle: 'знакомство с Kernel, темы и цель',
-                    trailing: const Icon(
+                    trailing: Icon(
                       Icons.chevron_right,
                       size: 20,
-                      color: Color(0xFFC2CDCD),
+                      color: colors.locked,
                     ),
                     onTap: _restartOnboarding,
                   ),
@@ -240,6 +243,7 @@ class _SettingsCoursesScreenState extends State<SettingsCoursesScreen> {
   }
 
   Widget _themeRow() {
+    final colors = context.colors;
     return Padding(
       padding: const EdgeInsets.all(14),
       child: Column(
@@ -251,17 +255,17 @@ class _SettingsCoursesScreenState extends State<SettingsCoursesScreen> {
               fontFamily: 'Fredoka',
               fontWeight: FontWeight.w600,
               fontSize: 14,
-              color: const Color(0xFF1B2430),
+              color: colors.textPrimary,
             ),
           ),
           const SizedBox(height: 10),
           Row(
             children: [
-              Expanded(child: _themeOption('светлая', 'light')),
+              Expanded(child: _themeOption('светлая', 'light', colors)),
               const SizedBox(width: 8),
-              Expanded(child: _themeOption('тёмная', 'dark')),
+              Expanded(child: _themeOption('тёмная', 'dark', colors)),
               const SizedBox(width: 8),
-              Expanded(child: _themeOption('авто', 'auto')),
+              Expanded(child: _themeOption('авто', 'auto', colors)),
             ],
           ),
         ],
@@ -269,7 +273,7 @@ class _SettingsCoursesScreenState extends State<SettingsCoursesScreen> {
     );
   }
 
-  Widget _themeOption(String label, String value) {
+  Widget _themeOption(String label, String value, AppColors colors) {
     final selected = theme == value;
 
     return GestureDetector(
@@ -278,7 +282,7 @@ class _SettingsCoursesScreenState extends State<SettingsCoursesScreen> {
         padding: const EdgeInsets.symmetric(vertical: 9),
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: selected ? const Color(0xFFE6F8F6) : const Color(0xFFF2F7F7),
+          color: selected ? colors.accentBg : colors.divider,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Text(
@@ -287,7 +291,7 @@ class _SettingsCoursesScreenState extends State<SettingsCoursesScreen> {
             fontFamily: 'JetBrains Mono',
             fontSize: 11,
             fontWeight: FontWeight.w600,
-            color: selected ? const Color(0xFF00A896) : const Color(0xFF8D9C9C),
+            color: selected ? colors.accentDark : colors.textSecondary,
           ),
         ),
       ),
