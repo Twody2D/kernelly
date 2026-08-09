@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:mobile/services/api_service.dart';
+import 'package:mobile/services/avatars.dart';
 import 'package:mobile/services/user_prefs.dart';
 import 'package:mobile/screens/friend_search_screen.dart';
 import 'package:mobile/screens/notifications_screen.dart';
-import 'package:mobile/screens/post_detail_screen.dart';
+import 'package:mobile/screens/feed_item_detail_screen.dart';
+import 'package:mobile/screens/user_profile_screen.dart';
 import 'package:mobile/widgets/achievement_badge.dart';
 
-/// Вкладка «Новости»: лента активности друзей — достижения, серии и посты
-/// от тех, на кого подписан пользователь, плюс его собственные.
+/// Вкладка «Лента»: активность друзей — достижения и посты от тех, на кого
+/// подписан пользователь, плюс его собственные.
 class FeedTab extends StatefulWidget {
   const FeedTab({super.key});
 
@@ -49,12 +51,32 @@ class FeedTabState extends State<FeedTab> {
     if (mounted) setState(() => hasUnreadNotifications = false);
   }
 
-  Future<void> _openPost(int postId) async {
+  Future<void> _openItem(Map<String, dynamic> event) async {
     await Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => PostDetailScreen(postId: postId)),
+      MaterialPageRoute(
+        builder: (_) => FeedItemDetailScreen(
+          targetType: event['target_type'] as String,
+          targetId: event['target_id'] as int,
+        ),
+      ),
     );
     load();
+  }
+
+  void _openProfile(Map<String, dynamic> user) {
+    final id = user['id'] as int;
+    if (id == currentUserId) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => UserProfileScreen(
+          userId: id,
+          username: user['username'] as String? ?? 'Игрок',
+          initialIsFollowing: user['is_following'] == true,
+        ),
+      ),
+    );
   }
 
   @override
@@ -287,10 +309,15 @@ class FeedTabState extends State<FeedTab> {
     // бэкенд отдаёт naive UTC-время без суффикса — достраиваем 'Z', иначе Dart
     // примет его за локальное и сдвинет разницу на локальный часовой пояс
     final timeLabel = _relativeTime(DateTime.parse('${event['created_at']}Z'));
+    final likedByMe = event['liked_by_me'] == true;
+    final isAchievement = event['type'] == 'achievement';
+    final (_, avatarIcon, avatarFg, avatarBg) = avatarByCode(
+      user['avatar'] as String?,
+    );
 
-    if (event['type'] == 'achievement') {
-      final achievement = event['achievement'] as Map<String, dynamic>;
-      return Container(
+    return GestureDetector(
+      onTap: () => _openItem(event),
+      child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
           color: Colors.white,
@@ -303,184 +330,169 @@ class FeedTabState extends State<FeedTab> {
             ),
           ],
         ),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            AchievementBadge(
-              icon: achievement['icon'] as String,
-              style: achievement['style'] as String,
-              unlocked: true,
-              size: 40,
-              seed: achievement['code'] as String?,
+            Row(
+              children: [
+                GestureDetector(
+                  onTap: () => _openProfile(user),
+                  child: Container(
+                    width: 30,
+                    height: 30,
+                    decoration: BoxDecoration(color: avatarBg, shape: BoxShape.circle),
+                    alignment: Alignment.center,
+                    child: Icon(avatarIcon, color: avatarFg, size: 17),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                GestureDetector(
+                  onTap: () => _openProfile(user),
+                  child: Text(
+                    username,
+                    style: TextStyle(
+                      fontFamily: 'Fredoka',
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13.5,
+                      color: const Color(0xFF1B2430),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  timeLabel,
+                  style: TextStyle(
+                    fontFamily: 'JetBrains Mono',
+                    fontSize: 10.5,
+                    color: const Color(0xFF9AAAAA),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text.rich(
-                    TextSpan(
-                      style: TextStyle(
-                        fontFamily: 'Fredoka',
-                        fontSize: 13.5,
-                        color: const Color(0xFF1B2430),
+            const SizedBox(height: 8),
+            if (isAchievement)
+              Builder(
+                builder: (context) {
+                  final achievement = event['achievement'] as Map<String, dynamic>;
+                  return Row(
+                    children: [
+                      AchievementBadge(
+                        icon: achievement['icon'] as String,
+                        style: achievement['style'] as String,
+                        unlocked: true,
+                        size: 36,
+                        seed: achievement['code'] as String?,
                       ),
-                      children: [
-                        TextSpan(
-                          text: username,
-                          style: const TextStyle(fontWeight: FontWeight.w600),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text.rich(
+                          TextSpan(
+                            style: TextStyle(
+                              fontFamily: 'Fredoka',
+                              fontSize: 13.5,
+                              color: const Color(0xFF1B2430),
+                            ),
+                            children: [
+                              const TextSpan(text: 'Получил(а) достижение '),
+                              TextSpan(
+                                text: achievement['title'] as String,
+                                style: const TextStyle(fontWeight: FontWeight.w600),
+                              ),
+                            ],
+                          ),
                         ),
-                        const TextSpan(text: ' получил(а) достижение '),
-                        TextSpan(
-                          text: achievement['title'] as String,
-                          style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  );
+                },
+              )
+            else
+              Text(
+                event['text'] as String,
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 14,
+                  height: 1.4,
+                  color: const Color(0xFF1B2430),
+                ),
+              ),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => _toggleLike(event),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          likedByMe
+                              ? Icons.favorite_rounded
+                              : Icons.favorite_border_rounded,
+                          size: 19,
+                          color: likedByMe
+                              ? const Color(0xFFFF4B4B)
+                              : const Color(0xFF9AAAAA),
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          '${event['like_count'] ?? 0}',
+                          style: TextStyle(
+                            fontFamily: 'JetBrains Mono',
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w600,
+                            color: likedByMe
+                                ? const Color(0xFFFF4B4B)
+                                : const Color(0xFF9AAAAA),
+                          ),
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 3),
-                  Text(
-                    timeLabel,
-                    style: TextStyle(
-                      fontFamily: 'JetBrains Mono',
-                      fontSize: 10.5,
-                      color: const Color(0xFF9AAAAA),
+                ),
+                const SizedBox(width: 10),
+                GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => _openItem(event),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.chat_bubble_outline_rounded,
+                          size: 18,
+                          color: const Color(0xFF9AAAAA),
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          '${event['comment_count'] ?? 0}',
+                          style: TextStyle(
+                            fontFamily: 'JetBrains Mono',
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFF9AAAAA),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ],
         ),
-      );
-    }
-
-    final likedByMe = event['liked_by_me'] == true;
-
-    return GestureDetector(
-      onTap: () => _openPost(event['post_id'] as int),
-      child: Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 30,
-                height: 30,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFE0F7F4),
-                  shape: BoxShape.circle,
-                ),
-                alignment: Alignment.center,
-                child: const Icon(
-                  Icons.person_rounded,
-                  color: Color(0xFF00A896),
-                  size: 17,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Text(
-                username,
-                style: TextStyle(
-                  fontFamily: 'Fredoka',
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13.5,
-                  color: const Color(0xFF1B2430),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                timeLabel,
-                style: TextStyle(
-                  fontFamily: 'JetBrains Mono',
-                  fontSize: 10.5,
-                  color: const Color(0xFF9AAAAA),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            event['text'] as String,
-            style: TextStyle(
-              fontFamily: 'Inter',
-              fontSize: 14,
-              height: 1.4,
-              color: const Color(0xFF1B2430),
-            ),
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              GestureDetector(
-                onTap: () => _toggleLike(event),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      likedByMe
-                          ? Icons.favorite_rounded
-                          : Icons.favorite_border_rounded,
-                      size: 16,
-                      color: likedByMe
-                          ? const Color(0xFFFF4B4B)
-                          : const Color(0xFF9AAAAA),
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      '${event['like_count'] ?? 0}',
-                      style: TextStyle(
-                        fontFamily: 'JetBrains Mono',
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: likedByMe
-                            ? const Color(0xFFFF4B4B)
-                            : const Color(0xFF9AAAAA),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 16),
-              Icon(
-                Icons.chat_bubble_outline_rounded,
-                size: 15,
-                color: const Color(0xFF9AAAAA),
-              ),
-              const SizedBox(width: 4),
-              Text(
-                '${event['comment_count'] ?? 0}',
-                style: TextStyle(
-                  fontFamily: 'JetBrains Mono',
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFF9AAAAA),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
       ),
     );
   }
 
   Future<void> _toggleLike(Map<String, dynamic> event) async {
     try {
-      final result = await togglePostLike(
-        event['post_id'] as int,
+      final result = await toggleFeedLike(
+        event['target_type'] as String,
+        event['target_id'] as int,
         currentUserId,
       );
       if (!mounted) return;

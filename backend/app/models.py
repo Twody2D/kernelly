@@ -144,10 +144,17 @@ class Post(Base):
 
 
 class PostLike(Base):
+    """Лайк элемента ленты — не только поста, но и разблокировки достижения
+    (target_type='achievement', target_id — id строки AchievementUnlock,
+    у неё нет своего пользовательского экрана вне ленты, но id стабилен)."""
+
     __tablename__ = "post_likes"
-    __table_args__ = (UniqueConstraint("post_id", "user_id", name="uq_post_like"),)
+    __table_args__ = (
+        UniqueConstraint("target_type", "target_id", "user_id", name="uq_feed_like"),
+    )
     id = Column(Integer, primary_key=True)
-    post_id = Column(Integer, ForeignKey("posts.id"), nullable=False)
+    target_type = Column(String, nullable=False, default="post")
+    target_id = Column(Integer, nullable=False)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
@@ -155,23 +162,26 @@ class PostLike(Base):
 class PostComment(Base):
     __tablename__ = "post_comments"
     id = Column(Integer, primary_key=True)
-    post_id = Column(Integer, ForeignKey("posts.id"), nullable=False)
+    target_type = Column(String, nullable=False, default="post")
+    target_id = Column(Integer, nullable=False)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     text = Column(String, nullable=False)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
 
 class Notification(Base):
-    """Уведомление владельцу поста. Лайки одного поста агрегируются в одну
-    строку (count растёт, read сбрасывается в False при каждом новом лайке,
-    actor_id — последний лайкнувший) — иначе десять лайков дали бы десять
-    отдельных уведомлений. У комментариев — отдельная строка на каждый."""
+    """Уведомление владельцу элемента ленты (поста или разблокировки
+    достижения). Лайки одного элемента агрегируются в одну строку (count
+    растёт, read сбрасывается в False при каждом новом лайке, actor_id —
+    последний лайкнувший) — иначе десять лайков дали бы десять отдельных
+    уведомлений. У комментариев — отдельная строка на каждый."""
 
     __tablename__ = "notifications"
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     actor_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    post_id = Column(Integer, ForeignKey("posts.id"), nullable=False)
+    target_type = Column(String, nullable=False, default="post")
+    target_id = Column(Integer, nullable=False)
     type = Column(String, nullable=False)  # 'like' | 'comment'
     count = Column(Integer, nullable=False, default=1)
     comment_text = Column(String, nullable=True)

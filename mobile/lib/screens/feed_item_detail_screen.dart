@@ -1,22 +1,30 @@
 import 'package:flutter/material.dart';
 import 'package:mobile/services/api_service.dart';
+import 'package:mobile/services/avatars.dart';
 import 'package:mobile/services/user_prefs.dart';
+import 'package:mobile/screens/user_profile_screen.dart';
+import 'package:mobile/widgets/achievement_badge.dart';
 
-/// Отдельная новость из ленты с комментариями — открывается по тапу на
-/// карточку поста. Лайк и добавление комментария работают прямо здесь и
-/// сразу отражаются в счётчиках карточки.
-class PostDetailScreen extends StatefulWidget {
-  final int postId;
+/// Отдельный элемент ленты с комментариями — пост или разблокировка
+/// достижения, открывается по тапу на карточку в ленте. Лайк и добавление
+/// комментария работают прямо здесь и сразу отражаются в счётчиках карточки.
+class FeedItemDetailScreen extends StatefulWidget {
+  final String targetType;
+  final int targetId;
 
-  const PostDetailScreen({super.key, required this.postId});
+  const FeedItemDetailScreen({
+    super.key,
+    required this.targetType,
+    required this.targetId,
+  });
 
   @override
-  State<PostDetailScreen> createState() => _PostDetailScreenState();
+  State<FeedItemDetailScreen> createState() => _FeedItemDetailScreenState();
 }
 
-class _PostDetailScreenState extends State<PostDetailScreen> {
+class _FeedItemDetailScreenState extends State<FeedItemDetailScreen> {
   final _commentController = TextEditingController();
-  Map<String, dynamic>? post;
+  Map<String, dynamic>? item;
   List<Map<String, dynamic>> comments = [];
   bool loading = true;
   bool liking = false;
@@ -37,31 +45,35 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
   Future<void> _load() async {
     try {
       final results = await Future.wait([
-        fetchPost(widget.postId, currentUserId),
-        fetchPostComments(widget.postId, currentUserId),
+        fetchFeedItem(widget.targetType, widget.targetId, currentUserId),
+        fetchFeedComments(widget.targetType, widget.targetId, currentUserId),
       ]);
       if (!mounted) return;
       setState(() {
-        post = results[0] as Map<String, dynamic>;
+        item = results[0] as Map<String, dynamic>;
         comments = results[1] as List<Map<String, dynamic>>;
         loading = false;
       });
     } catch (e) {
-      debugPrint('Ошибка загрузки поста: $e');
+      debugPrint('Ошибка загрузки новости: $e');
       if (!mounted) return;
       setState(() => loading = false);
     }
   }
 
   Future<void> _toggleLike() async {
-    if (liking || post == null) return;
+    if (liking || item == null) return;
     setState(() => liking = true);
     try {
-      final result = await togglePostLike(widget.postId, currentUserId);
+      final result = await toggleFeedLike(
+        widget.targetType,
+        widget.targetId,
+        currentUserId,
+      );
       if (!mounted) return;
       setState(() {
-        post!['liked_by_me'] = result['liked'];
-        post!['like_count'] = result['like_count'];
+        item!['liked_by_me'] = result['liked'];
+        item!['like_count'] = result['like_count'];
         liking = false;
       });
     } catch (e) {
@@ -75,7 +87,12 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     if (text.isEmpty || sending) return;
     setState(() => sending = true);
     try {
-      await addPostComment(widget.postId, currentUserId, text);
+      await addFeedComment(
+        widget.targetType,
+        widget.targetId,
+        currentUserId,
+        text,
+      );
       _commentController.clear();
       if (!mounted) return;
       FocusScope.of(context).unfocus();
@@ -85,6 +102,21 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     } finally {
       if (mounted) setState(() => sending = false);
     }
+  }
+
+  void _openProfile(Map<String, dynamic> user) {
+    final id = user['id'] as int;
+    if (id == currentUserId) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => UserProfileScreen(
+          userId: id,
+          username: user['username'] as String? ?? 'Игрок',
+          initialIsFollowing: user['is_following'] == true,
+        ),
+      ),
+    );
   }
 
   String _relativeTime(DateTime time) {
@@ -115,7 +147,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
       ),
       body: loading
           ? const Center(child: CircularProgressIndicator())
-          : post == null
+          : item == null
               ? Center(
                   child: Text(
                     'Не удалось загрузить новость',
@@ -137,7 +169,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                             child: ListView(
                               padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
                               children: [
-                                _postCard(),
+                                _itemCard(),
                                 const SizedBox(height: 16),
                                 Text(
                                   comments.isEmpty
@@ -168,17 +200,29 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     );
   }
 
-  Widget _postCard() {
-    final user = post!['user'] as Map<String, dynamic>;
+  Widget _avatar(Map<String, dynamic> user, {double size = 36}) {
+    final (_, icon, fg, bg) = avatarByCode(user['avatar'] as String?);
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(color: bg, shape: BoxShape.circle),
+      alignment: Alignment.center,
+      child: Icon(icon, color: fg, size: size * 0.55),
+    );
+  }
+
+  Widget _itemCard() {
+    final user = item!['user'] as Map<String, dynamic>;
     final username = user['username'] as String? ?? 'Игрок';
-    final timeLabel = _relativeTime(DateTime.parse('${post!['created_at']}Z'));
-    final likedByMe = post!['liked_by_me'] == true;
+    final timeLabel = _relativeTime(DateTime.parse('${item!['created_at']}Z'));
+    final likedByMe = item!['liked_by_me'] == true;
+    final isAchievement = item!['type'] == 'achievement';
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.05),
@@ -192,31 +236,25 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
         children: [
           Row(
             children: [
-              Container(
-                width: 30,
-                height: 30,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFE0F7F4),
-                  shape: BoxShape.circle,
-                ),
-                alignment: Alignment.center,
-                child: const Icon(
-                  Icons.person_rounded,
-                  color: Color(0xFF00A896),
-                  size: 17,
-                ),
+              GestureDetector(
+                onTap: () => _openProfile(user),
+                child: _avatar(user),
               ),
               const SizedBox(width: 10),
-              Text(
-                username,
-                style: TextStyle(
-                  fontFamily: 'Fredoka',
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13.5,
-                  color: const Color(0xFF1B2430),
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => _openProfile(user),
+                  child: Text(
+                    username,
+                    style: TextStyle(
+                      fontFamily: 'Fredoka',
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14.5,
+                      color: const Color(0xFF1B2430),
+                    ),
+                  ),
                 ),
               ),
-              const SizedBox(width: 8),
               Text(
                 timeLabel,
                 style: TextStyle(
@@ -227,38 +265,79 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          Text(
-            post!['text'] as String,
-            style: TextStyle(
-              fontFamily: 'Inter',
-              fontSize: 14,
-              height: 1.4,
-              color: const Color(0xFF1B2430),
+          const SizedBox(height: 12),
+          if (isAchievement) ...[
+            Builder(
+              builder: (context) {
+                final achievement = item!['achievement'] as Map<String, dynamic>;
+                return Row(
+                  children: [
+                    AchievementBadge(
+                      icon: achievement['icon'] as String,
+                      style: achievement['style'] as String,
+                      unlocked: true,
+                      size: 48,
+                      seed: achievement['code'] as String?,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text.rich(
+                        TextSpan(
+                          style: TextStyle(
+                            fontFamily: 'Fredoka',
+                            fontSize: 14,
+                            color: const Color(0xFF1B2430),
+                          ),
+                          children: [
+                            const TextSpan(text: 'Получил(а) достижение '),
+                            TextSpan(
+                              text: achievement['title'] as String,
+                              style: const TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              },
             ),
-          ),
-          const SizedBox(height: 10),
+          ] else
+            Text(
+              item!['text'] as String,
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 14.5,
+                height: 1.4,
+                color: const Color(0xFF1B2430),
+              ),
+            ),
+          const SizedBox(height: 12),
           GestureDetector(
+            behavior: HitTestBehavior.opaque,
             onTap: _toggleLike,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  likedByMe ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                  size: 18,
-                  color: likedByMe ? const Color(0xFFFF4B4B) : const Color(0xFF9AAAAA),
-                ),
-                const SizedBox(width: 5),
-                Text(
-                  '${post!['like_count']}',
-                  style: TextStyle(
-                    fontFamily: 'JetBrains Mono',
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w600,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    likedByMe ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                    size: 22,
                     color: likedByMe ? const Color(0xFFFF4B4B) : const Color(0xFF9AAAAA),
                   ),
-                ),
-              ],
+                  const SizedBox(width: 6),
+                  Text(
+                    '${item!['like_count']}',
+                    style: TextStyle(
+                      fontFamily: 'JetBrains Mono',
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w600,
+                      color: likedByMe ? const Color(0xFFFF4B4B) : const Color(0xFF9AAAAA),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ],
@@ -277,39 +356,54 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
       ),
-      child: Column(
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Text(
-                username,
-                style: TextStyle(
-                  fontFamily: 'Fredoka',
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
-                  color: const Color(0xFF1B2430),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                timeLabel,
-                style: TextStyle(
-                  fontFamily: 'JetBrains Mono',
-                  fontSize: 10,
-                  color: const Color(0xFF9AAAAA),
-                ),
-              ),
-            ],
+          GestureDetector(
+            onTap: () => _openProfile(user),
+            child: _avatar(user, size: 28),
           ),
-          const SizedBox(height: 4),
-          Text(
-            comment['text'] as String,
-            style: TextStyle(
-              fontFamily: 'Inter',
-              fontSize: 13.5,
-              height: 1.35,
-              color: const Color(0xFF1B2430),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    GestureDetector(
+                      onTap: () => _openProfile(user),
+                      child: Text(
+                        username,
+                        style: TextStyle(
+                          fontFamily: 'Fredoka',
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                          color: const Color(0xFF1B2430),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      timeLabel,
+                      style: TextStyle(
+                        fontFamily: 'JetBrains Mono',
+                        fontSize: 10,
+                        color: const Color(0xFF9AAAAA),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  comment['text'] as String,
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 13.5,
+                    height: 1.35,
+                    color: const Color(0xFF1B2430),
+                  ),
+                ),
+              ],
             ),
           ),
         ],

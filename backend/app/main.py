@@ -1910,28 +1910,43 @@ def create_post(
     return {"status": "ok"}
 
 
-def _post_or_404(db: Session, post_id: int) -> models.Post:
-    post = db.query(models.Post).filter(models.Post.id == post_id).first()
-    if post is None:
-        raise HTTPException(status_code=404, detail="Post not found")
-    return post
+def _feed_target_owner(db: Session, target_type: str, target_id: int) -> int:
+    """Возвращает user_id владельца элемента ленты — автора поста или того,
+    кто разблокировал достижение. Лайки/комментарии/уведомления общие для
+    обоих типов элементов ленты, отличаются только тем, где искать владельца."""
+    if target_type == "post":
+        post = db.query(models.Post).filter(models.Post.id == target_id).first()
+        if post is None:
+            raise HTTPException(status_code=404, detail="Post not found")
+        return post.user_id
+    if target_type == "achievement":
+        unlock = db.query(models.AchievementUnlock).filter(models.AchievementUnlock.id == target_id).first()
+        if unlock is None:
+            raise HTTPException(status_code=404, detail="Achievement unlock not found")
+        return unlock.user_id
+    raise HTTPException(status_code=400, detail="Invalid target type")
 
 
-@app.post("/posts/{post_id}/like")
-def toggle_post_like(
-    post_id: int,
+@app.post("/feed/{target_type}/{target_id}/like")
+def toggle_feed_like(
+    target_type: str,
+    target_id: int,
     user_id: int,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ):
     """Переключает лайк. При проставлении — обновляет/создаёт агрегированное
-    уведомление автору поста (не уведомляем самого себя о своих лайках)."""
+    уведомление владельцу элемента (не уведомляем самого себя о своих лайках)."""
     _require_self(current_user, user_id)
-    post = _post_or_404(db, post_id)
+    owner_id = _feed_target_owner(db, target_type, target_id)
 
     existing = (
         db.query(models.PostLike)
-        .filter(models.PostLike.post_id == post_id, models.PostLike.user_id == user_id)
+        .filter(
+            models.PostLike.target_type == target_type,
+            models.PostLike.target_id == target_id,
+            models.PostLike.user_id == user_id,
+        )
         .first()
     )
     if existing is not None:
@@ -1939,22 +1954,23 @@ def toggle_post_like(
         db.commit()
         liked = False
     else:
-        db.add(models.PostLike(post_id=post_id, user_id=user_id))
+        db.add(models.PostLike(target_type=target_type, target_id=target_id, user_id=user_id))
         db.commit()
         liked = True
 
-        if post.user_id != user_id:
+        if owner_id != user_id:
             notif = (
                 db.query(models.Notification)
                 .filter(
-                    models.Notification.post_id == post_id,
+                    models.Notification.target_type == target_type,
+                    models.Notification.target_id == target_id,
                     models.Notification.type == "like",
                 )
                 .first()
             )
             if notif is None:
                 db.add(models.Notification(
-                    user_id=post.user_id, actor_id=user_id, post_id=post_id,
+                    user_id=owner_id, actor_id=user_id, target_type=target_type, target_id=target_id,
                     type="like", count=1, read=False,
                 ))
             else:
@@ -1964,57 +1980,116 @@ def toggle_post_like(
                 notif.updated_at = datetime.utcnow()
             db.commit()
 
-    like_count = db.query(models.PostLike).filter(models.PostLike.post_id == post_id).count()
+    like_count = (
+        db.query(models.PostLike)
+        .filter(models.PostLike.target_type == target_type, models.PostLike.target_id == target_id)
+        .count()
+    )
     return {"liked": liked, "like_count": like_count}
 
 
-@app.get("/posts/{post_id}")
-def get_post(
-    post_id: int,
+@app.get("/feed/{target_type}/{target_id}")
+def get_feed_item(
+    target_type: str,
+    target_id: int,
     user_id: int,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ):
     _require_self(current_user, user_id)
-    post = _post_or_404(db, post_id)
-    author = db.query(models.User).filter(models.User.id == post.user_id).first()
-    like_count = db.query(models.PostLike).filter(models.PostLike.post_id == post_id).count()
-    comment_count = db.query(models.PostComment).filter(models.PostComment.post_id == post_id).count()
+    like_count = (
+        db.query(models.PostLike)
+        .filter(models.PostLike.target_type == target_type, models.PostLike.target_id == target_id)
+        .count()
+    )
+    comment_count = (
+        db.query(models.PostComment)
+        .filter(models.PostComment.target_type == target_type, models.PostComment.target_id == target_id)
+        .count()
+    )
     liked_by_me = (
         db.query(models.PostLike)
-        .filter(models.PostLike.post_id == post_id, models.PostLike.user_id == user_id)
+        .filter(
+            models.PostLike.target_type == target_type,
+            models.PostLike.target_id == target_id,
+            models.PostLike.user_id == user_id,
+        )
         .first()
         is not None
     )
-    return {
-        "id": post.id,
-        "user": {"id": author.id, "username": author.username, "avatar": author.avatar},
-        "text": post.text,
-        "created_at": post.created_at,
+    common = {
+        "target_type": target_type,
+        "target_id": target_id,
         "like_count": like_count,
         "comment_count": comment_count,
         "liked_by_me": liked_by_me,
     }
 
+    def _user_out(author: models.User) -> dict:
+        is_following = (
+            author.id != user_id
+            and db.query(models.Follow)
+            .filter(models.Follow.follower_id == user_id, models.Follow.followee_id == author.id)
+            .first()
+            is not None
+        )
+        return {
+            "id": author.id,
+            "username": author.username,
+            "avatar": author.avatar,
+            "is_following": is_following,
+        }
 
-@app.get("/posts/{post_id}/comments")
-def get_post_comments(
-    post_id: int,
+    if target_type == "post":
+        post = db.query(models.Post).filter(models.Post.id == target_id).first()
+        if post is None:
+            raise HTTPException(status_code=404, detail="Post not found")
+        author = db.query(models.User).filter(models.User.id == post.user_id).first()
+        return {
+            **common,
+            "type": "post",
+            "user": _user_out(author),
+            "text": post.text,
+            "created_at": post.created_at,
+        }
+    if target_type == "achievement":
+        unlock = db.query(models.AchievementUnlock).filter(models.AchievementUnlock.id == target_id).first()
+        if unlock is None:
+            raise HTTPException(status_code=404, detail="Achievement unlock not found")
+        author = db.query(models.User).filter(models.User.id == unlock.user_id).first()
+        achievement = _achievement_feed_info(unlock.code)
+        return {
+            **common,
+            "type": "achievement",
+            "user": _user_out(author),
+            "achievement": achievement,
+            "created_at": unlock.unlocked_at,
+        }
+    raise HTTPException(status_code=400, detail="Invalid target type")
+
+
+@app.get("/feed/{target_type}/{target_id}/comments")
+def get_feed_comments(
+    target_type: str,
+    target_id: int,
     user_id: int,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ):
     _require_self(current_user, user_id)
-    _post_or_404(db, post_id)
+    _feed_target_owner(db, target_type, target_id)
 
     comments = (
         db.query(models.PostComment)
-        .filter(models.PostComment.post_id == post_id)
+        .filter(models.PostComment.target_type == target_type, models.PostComment.target_id == target_id)
         .order_by(models.PostComment.created_at.asc())
         .all()
     )
     author_ids = {c.user_id for c in comments}
     users_by_id = {u.id: u for u in db.query(models.User).filter(models.User.id.in_(author_ids)).all()}
+    following_ids = {
+        row.followee_id for row in db.query(models.Follow).filter(models.Follow.follower_id == user_id).all()
+    }
     return [
         {
             "id": c.id,
@@ -2022,6 +2097,7 @@ def get_post_comments(
                 "id": c.user_id,
                 "username": users_by_id[c.user_id].username if c.user_id in users_by_id else "Игрок",
                 "avatar": users_by_id[c.user_id].avatar if c.user_id in users_by_id else None,
+                "is_following": c.user_id != user_id and c.user_id in following_ids,
             },
             "text": c.text,
             "created_at": c.created_at,
@@ -2030,28 +2106,28 @@ def get_post_comments(
     ]
 
 
-@app.post("/posts/{post_id}/comments")
-def add_post_comment(
-    post_id: int,
+@app.post("/feed/{target_type}/{target_id}/comments")
+def add_feed_comment(
+    target_type: str,
+    target_id: int,
     user_id: int,
     payload: schemas.CommentCreate,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ):
     _require_self(current_user, user_id)
-    post = _post_or_404(db, post_id)
+    owner_id = _feed_target_owner(db, target_type, target_id)
 
     text = payload.text.strip()
     if not text:
         raise HTTPException(status_code=400, detail="Comment text is empty")
     text = text[:300]
 
-    comment = models.PostComment(post_id=post_id, user_id=user_id, text=text)
-    db.add(comment)
+    db.add(models.PostComment(target_type=target_type, target_id=target_id, user_id=user_id, text=text))
 
-    if post.user_id != user_id:
+    if owner_id != user_id:
         db.add(models.Notification(
-            user_id=post.user_id, actor_id=user_id, post_id=post_id,
+            user_id=owner_id, actor_id=user_id, target_type=target_type, target_id=target_id,
             type="comment", count=1, comment_text=text, read=False,
         ))
 
@@ -2079,7 +2155,8 @@ def get_notifications(
         {
             "id": n.id,
             "type": n.type,
-            "post_id": n.post_id,
+            "target_type": n.target_type,
+            "target_id": n.target_id,
             "count": n.count,
             "comment_text": n.comment_text,
             "read": n.read,
@@ -2155,40 +2232,6 @@ def get_feed(
         .limit(FEED_PAGE_SIZE)
         .all()
     )
-    post_ids = [post.id for post in posts]
-    like_counts = dict(
-        db.query(models.PostLike.post_id, func.count(models.PostLike.id))
-        .filter(models.PostLike.post_id.in_(post_ids))
-        .group_by(models.PostLike.post_id)
-        .all()
-    )
-    comment_counts = dict(
-        db.query(models.PostComment.post_id, func.count(models.PostComment.id))
-        .filter(models.PostComment.post_id.in_(post_ids))
-        .group_by(models.PostComment.post_id)
-        .all()
-    )
-    liked_post_ids = {
-        row.post_id
-        for row in db.query(models.PostLike.post_id)
-        .filter(models.PostLike.post_id.in_(post_ids), models.PostLike.user_id == user_id)
-        .all()
-    }
-    for post in posts:
-        author = users_by_id.get(post.user_id)
-        if author is None:
-            continue
-        events.append({
-            "type": "post",
-            "post_id": post.id,
-            "user": {"id": author.id, "username": author.username, "avatar": author.avatar},
-            "text": post.text,
-            "created_at": post.created_at,
-            "like_count": like_counts.get(post.id, 0),
-            "comment_count": comment_counts.get(post.id, 0),
-            "liked_by_me": post.id in liked_post_ids,
-        })
-
     unlocks = (
         db.query(models.AchievementUnlock)
         .filter(models.AchievementUnlock.user_id.in_(scope_ids))
@@ -2196,6 +2239,68 @@ def get_feed(
         .limit(FEED_PAGE_SIZE)
         .all()
     )
+
+    # лайки/комментарии считаем одним запросом сразу для постов и
+    # достижений этой страницы ленты — targets хранит (type, id) → запись
+    post_ids = [post.id for post in posts]
+    unlock_ids = [unlock.id for unlock in unlocks]
+
+    like_counts: dict[tuple[str, int], int] = {}
+    for target_type, target_id, count in (
+        db.query(models.PostLike.target_type, models.PostLike.target_id, func.count(models.PostLike.id))
+        .filter(
+            ((models.PostLike.target_type == "post") & (models.PostLike.target_id.in_(post_ids)))
+            | ((models.PostLike.target_type == "achievement") & (models.PostLike.target_id.in_(unlock_ids)))
+        )
+        .group_by(models.PostLike.target_type, models.PostLike.target_id)
+        .all()
+    ):
+        like_counts[(target_type, target_id)] = count
+
+    comment_counts: dict[tuple[str, int], int] = {}
+    for target_type, target_id, count in (
+        db.query(models.PostComment.target_type, models.PostComment.target_id, func.count(models.PostComment.id))
+        .filter(
+            ((models.PostComment.target_type == "post") & (models.PostComment.target_id.in_(post_ids)))
+            | ((models.PostComment.target_type == "achievement") & (models.PostComment.target_id.in_(unlock_ids)))
+        )
+        .group_by(models.PostComment.target_type, models.PostComment.target_id)
+        .all()
+    ):
+        comment_counts[(target_type, target_id)] = count
+
+    liked_targets = {
+        (row.target_type, row.target_id)
+        for row in db.query(models.PostLike.target_type, models.PostLike.target_id)
+        .filter(
+            models.PostLike.user_id == user_id,
+            (
+                ((models.PostLike.target_type == "post") & (models.PostLike.target_id.in_(post_ids)))
+                | ((models.PostLike.target_type == "achievement") & (models.PostLike.target_id.in_(unlock_ids)))
+            ),
+        )
+        .all()
+    }
+
+    for post in posts:
+        author = users_by_id.get(post.user_id)
+        if author is None:
+            continue
+        events.append({
+            "type": "post",
+            "target_type": "post",
+            "target_id": post.id,
+            "user": {
+                "id": author.id, "username": author.username, "avatar": author.avatar,
+                "is_following": author.id in following_ids,
+            },
+            "text": post.text,
+            "created_at": post.created_at,
+            "like_count": like_counts.get(("post", post.id), 0),
+            "comment_count": comment_counts.get(("post", post.id), 0),
+            "liked_by_me": ("post", post.id) in liked_targets,
+        })
+
     for unlock in unlocks:
         author = users_by_id.get(unlock.user_id)
         achievement = _achievement_feed_info(unlock.code)
@@ -2203,7 +2308,12 @@ def get_feed(
             continue
         events.append({
             "type": "achievement",
-            "user": {"id": author.id, "username": author.username, "avatar": author.avatar},
+            "target_type": "achievement",
+            "target_id": unlock.id,
+            "user": {
+                "id": author.id, "username": author.username, "avatar": author.avatar,
+                "is_following": author.id in following_ids,
+            },
             "achievement": {
                 "code": achievement["code"],
                 "title": achievement["title"],
@@ -2211,6 +2321,9 @@ def get_feed(
                 "style": achievement["style"],
             },
             "created_at": unlock.unlocked_at,
+            "like_count": like_counts.get(("achievement", unlock.id), 0),
+            "comment_count": comment_counts.get(("achievement", unlock.id), 0),
+            "liked_by_me": ("achievement", unlock.id) in liked_targets,
         })
 
     events.sort(key=lambda e: e["created_at"], reverse=True)

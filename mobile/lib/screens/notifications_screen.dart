@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:mobile/services/api_service.dart';
 import 'package:mobile/services/user_prefs.dart';
-import 'package:mobile/screens/post_detail_screen.dart';
+import 'package:mobile/screens/feed_item_detail_screen.dart';
 
-/// Уведомления о лайках и комментариях под своими постами — открывается по
-/// колокольчику в ленте. Лайки одного поста агрегируются в одну строку с
-/// растущим счётчиком, комментарии — отдельная строка на каждый.
+/// Уведомления о лайках и комментариях под своими постами и достижениями —
+/// открывается по колокольчику в ленте. Лайки одного элемента агрегируются
+/// в одну строку с растущим счётчиком, комментарии — отдельная строка на
+/// каждый.
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
 
@@ -52,21 +53,25 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   String _textFor(Map<String, dynamic> n) {
     final actor = (n['actor'] as Map<String, dynamic>)['username'] as String? ?? 'Игрок';
+    final target = n['target_type'] == 'achievement' ? 'вашим достижением' : 'вашим постом';
     if (n['type'] == 'comment') {
-      return '$actor оставил(а) комментарий под вашим постом';
+      return '$actor оставил(а) комментарий под $target';
     }
     final count = n['count'] as int? ?? 1;
     if (count <= 1) {
-      return '$actor поставил(а) лайк под вашим постом';
+      return '$actor поставил(а) лайк под $target';
     }
-    return '$count пользователей поставили лайк под вашим постом';
+    return '$count пользователей поставили лайк под $target';
   }
 
-  Future<void> _openPost(Map<String, dynamic> n) async {
+  Future<void> _openItem(Map<String, dynamic> n) async {
     await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => PostDetailScreen(postId: n['post_id'] as int),
+        builder: (_) => FeedItemDetailScreen(
+          targetType: n['target_type'] as String,
+          targetId: n['target_id'] as int,
+        ),
       ),
     );
   }
@@ -124,7 +129,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                               DateTime.parse('${n['updated_at']}Z'),
                             );
                             return GestureDetector(
-                              onTap: () => _openPost(n),
+                              onTap: () => _openItem(n),
                               child: Container(
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 14,

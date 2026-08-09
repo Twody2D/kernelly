@@ -551,9 +551,15 @@ Future<List<Map<String, dynamic>>> fetchFeed(int userId) async {
   }
 }
 
-Future<Map<String, dynamic>> togglePostLike(int postId, int userId) async {
+/// targetType — 'post' или 'achievement': лайки и комментарии общие для
+/// обоих типов элементов ленты, отличаются только тем, на что они повешены.
+Future<Map<String, dynamic>> toggleFeedLike(
+  String targetType,
+  int targetId,
+  int userId,
+) async {
   final response = await http.post(
-    Uri.parse('$apiBaseUrl/posts/$postId/like?user_id=$userId'),
+    Uri.parse('$apiBaseUrl/feed/$targetType/$targetId/like?user_id=$userId'),
     headers: _authHeaders(),
   );
   if (response.statusCode == 200) {
@@ -563,24 +569,29 @@ Future<Map<String, dynamic>> togglePostLike(int postId, int userId) async {
   }
 }
 
-Future<Map<String, dynamic>> fetchPost(int postId, int userId) async {
+Future<Map<String, dynamic>> fetchFeedItem(
+  String targetType,
+  int targetId,
+  int userId,
+) async {
   final response = await http.get(
-    Uri.parse('$apiBaseUrl/posts/$postId?user_id=$userId'),
+    Uri.parse('$apiBaseUrl/feed/$targetType/$targetId?user_id=$userId'),
     headers: _authHeaders(),
   );
   if (response.statusCode == 200) {
     return jsonDecode(utf8.decode(response.bodyBytes));
   } else {
-    throw Exception('Failed to load post');
+    throw Exception('Failed to load feed item');
   }
 }
 
-Future<List<Map<String, dynamic>>> fetchPostComments(
-  int postId,
+Future<List<Map<String, dynamic>>> fetchFeedComments(
+  String targetType,
+  int targetId,
   int userId,
 ) async {
   final response = await http.get(
-    Uri.parse('$apiBaseUrl/posts/$postId/comments?user_id=$userId'),
+    Uri.parse('$apiBaseUrl/feed/$targetType/$targetId/comments?user_id=$userId'),
     headers: _authHeaders(),
   );
   if (response.statusCode == 200) {
@@ -591,9 +602,14 @@ Future<List<Map<String, dynamic>>> fetchPostComments(
   }
 }
 
-Future<void> addPostComment(int postId, int userId, String text) async {
+Future<void> addFeedComment(
+  String targetType,
+  int targetId,
+  int userId,
+  String text,
+) async {
   final response = await http.post(
-    Uri.parse('$apiBaseUrl/posts/$postId/comments?user_id=$userId'),
+    Uri.parse('$apiBaseUrl/feed/$targetType/$targetId/comments?user_id=$userId'),
     headers: _authHeaders(_jsonHeaders),
     body: jsonEncode({'text': text}),
   );
