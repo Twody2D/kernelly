@@ -137,6 +137,8 @@ class ProfileScreenState extends State<ProfileScreen> {
           const SizedBox(height: 14),
           _socialRow(),
           const SizedBox(height: 20),
+          _activityCard(),
+          const SizedBox(height: 20),
           Text(
             'Обзор',
             style: TextStyle(
@@ -180,8 +182,6 @@ class ProfileScreenState extends State<ProfileScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 14),
-          _activityCard(),
           const SizedBox(height: 14),
           _achievementsSection(),
         ],
