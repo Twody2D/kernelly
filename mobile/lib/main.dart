@@ -98,7 +98,11 @@ class _StartupState extends State<_Startup> {
     // заново поставить напоминание в систему; делаем это фоном, не блокируя UI
     final prefs = await SharedPreferences.getInstance();
     if (prefs.getBool(PrefKeys.remind) ?? true) {
-      unawaited(NotificationsService.instance.scheduleDaily());
+      final hour = prefs.getInt(PrefKeys.remindHour) ?? 20;
+      final minute = prefs.getInt(PrefKeys.remindMinute) ?? 0;
+      unawaited(NotificationsService.instance.scheduleDaily(
+        time: TimeOfDay(hour: hour, minute: minute),
+      ));
     }
 
     // Только для уже прошедших онбординг — не мешаем сундуком первому

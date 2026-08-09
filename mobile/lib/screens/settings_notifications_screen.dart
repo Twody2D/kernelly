@@ -23,6 +23,7 @@ class _SettingsNotificationsScreenState
     extends State<SettingsNotificationsScreen> {
   SharedPreferences? prefs;
   bool remind = true;
+  TimeOfDay remindTime = const TimeOfDay(hour: 20, minute: 0);
   bool shield = false;
   int cores = 0;
   int streakFreezes = 0;
@@ -42,6 +43,10 @@ class _SettingsNotificationsScreenState
     setState(() {
       prefs = stored;
       remind = stored.getBool(PrefKeys.remind) ?? true;
+      remindTime = TimeOfDay(
+        hour: stored.getInt(PrefKeys.remindHour) ?? 20,
+        minute: stored.getInt(PrefKeys.remindMinute) ?? 0,
+      );
       shield = stored.getBool(PrefKeys.streakShield) ?? false;
     });
   }
@@ -105,10 +110,30 @@ class _SettingsNotificationsScreenState
   Future<void> _onRemindChanged(bool value) async {
     await _saveBool(PrefKeys.remind, value, (x) => remind = x);
     if (value) {
-      await NotificationsService.instance.scheduleDaily();
+      await NotificationsService.instance.scheduleDaily(time: remindTime);
     } else {
       await NotificationsService.instance.cancelDaily();
     }
+  }
+
+  Future<void> _pickRemindTime() async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: remindTime,
+    );
+    if (picked == null) return;
+    setState(() => remindTime = picked);
+    await prefs?.setInt(PrefKeys.remindHour, picked.hour);
+    await prefs?.setInt(PrefKeys.remindMinute, picked.minute);
+    if (remind) {
+      await NotificationsService.instance.scheduleDaily(time: picked);
+    }
+  }
+
+  String get _remindTimeLabel {
+    final h = remindTime.hour.toString().padLeft(2, '0');
+    final m = remindTime.minute.toString().padLeft(2, '0');
+    return '$h:$m';
   }
 
   Future<void> _onShieldChanged(bool value) async {
@@ -147,12 +172,20 @@ class _SettingsNotificationsScreenState
                 SettingsCard([
                   SettingsRow(
                     title: 'Напоминание',
-                    subtitle: 'каждый день в 20:00',
+                    subtitle: 'каждый день, если не позанимался',
                     trailing: SettingsToggle(
                       value: remind,
                       onChanged: _onRemindChanged,
                     ),
                   ),
+                  if (remind)
+                    SettingsRow(
+                      title: 'Время напоминания',
+                      trailing: SettingsPill(
+                        text: _remindTimeLabel,
+                        onTap: _pickRemindTime,
+                      ),
+                    ),
                   SettingsRow(
                     title: 'Защита streak',
                     subtitle: 'пропущенный день не сбросит 🔥',

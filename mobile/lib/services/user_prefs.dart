@@ -10,6 +10,8 @@ class PrefKeys {
   static const selectedCourseTitle = 'selected_course_title';
   static const dailyGoal = 'daily_goal';
   static const remind = 'settings_remind';
+  static const remindHour = 'settings_remind_hour';
+  static const remindMinute = 'settings_remind_minute';
   static const streakShield = 'settings_streak_shield';
   static const sound = 'settings_sound';
   static const mascotAnimations = 'settings_mascot_animations';
