@@ -180,6 +180,37 @@ class _SettingsPrivacyScreenState extends State<SettingsPrivacyScreen> {
     }
   }
 
+  Future<void> _rotateToken() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Сбросить ключ доступа?'),
+        content: const Text(
+          'Приложение выйдет из аккаунта на всех остальных устройствах — там понадобится войти заново. '
+          'Используй, если подозреваешь, что доступ к аккаунту мог получить кто-то ещё.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Отмена')),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Сбросить')),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    try {
+      await rotateDeviceToken();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Готово, ключ доступа обновлён')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Не удалось сбросить ключ, попробуй ещё раз')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
@@ -227,6 +258,15 @@ class _SettingsPrivacyScreenState extends State<SettingsPrivacyScreen> {
                 ),
               ),
               onTap: _loadingPhone ? null : _editPhone,
+            ),
+          ]),
+          const SizedBox(height: 18),
+          SettingsCard([
+            SettingsRow(
+              title: 'Сбросить ключ доступа',
+              subtitle: 'если подозреваешь, что доступ к аккаунту мог получить кто-то ещё',
+              trailing: Icon(Icons.chevron_right, color: colors.textSecondary, size: 20),
+              onTap: _rotateToken,
             ),
           ]),
           const SizedBox(height: 18),

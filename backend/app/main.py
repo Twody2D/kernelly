@@ -1,5 +1,6 @@
-from fastapi import FastAPI, Depends, HTTPException, Header
+from fastapi import FastAPI, Depends, HTTPException, Header, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from google.auth.transport import requests as google_requests
 from google.oauth2 import id_token as google_id_token
 from sqlalchemy import func
@@ -7,7 +8,10 @@ from sqlalchemy.orm import Session
 from app.database import Base, engine, get_db
 from app import models, schemas
 from datetime import date, datetime, timedelta
+from collections import defaultdict, deque
 import random
+import secrets
+import time
 
 def _today() -> date:
     """«Сегодня» строго в UTC — все timestamp-колонки (created_at,
@@ -111,6 +115,45 @@ def _require_self(current_user: models.User, user_id: int) -> None:
         raise HTTPException(status_code=403, detail="Forbidden")
 
 
+class _RateLimiter:
+    """Примитивный лимитер на скользящем окне в памяти процесса — этого
+    достаточно, пока бэкенд крутится одним процессом uvicorn (как сейчас),
+    но не переживёт несколько воркеров/инстансов без общего хранилища вроде
+    Redis. До этой правки ни один эндпоинт вообще не был ограничен по частоте —
+    /users/guest можно было дёргать в цикле и штамповать гостевые аккаунты,
+    а /auth/google, поиск и сверку контактов — перебирать без всякого лимита."""
+
+    def __init__(self):
+        self._hits: dict[str, deque] = defaultdict(deque)
+
+    def hit(self, key: str, limit: int, window_seconds: float) -> bool:
+        now = time.monotonic()
+        q = self._hits[key]
+        while q and now - q[0] > window_seconds:
+            q.popleft()
+        if len(q) >= limit:
+            return False
+        q.append(now)
+        return True
+
+
+_rate_limiter = _RateLimiter()
+
+
+def rate_limit(limit: int, window_seconds: float):
+    """Depends-фабрика для точечного лимита поверх общего лимита из middleware —
+    чувствительные к перебору ручки (регистрация гостя, вход, поиск людей,
+    сверка контактов) ограничены сильнее, чем обычное чтение экранов."""
+
+    def dependency(request: Request):
+        client_ip = request.client.host if request.client else "unknown"
+        key = f"{request.url.path}:{client_ip}"
+        if not _rate_limiter.hit(key, limit, window_seconds):
+            raise HTTPException(status_code=429, detail="Слишком много запросов, попробуйте позже")
+
+    return dependency
+
+
 app = FastAPI() #test backend
 
 app.add_middleware(
@@ -119,6 +162,18 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def _global_rate_limit(request: Request, call_next):
+    """Общий предохранитель от скриптового перебора по всему API — щедрый
+    лимит, не мешающий обычному использованию (несколько экранов дёргают
+    бэкенд параллельно), но режущий явный DoS/брутфорс."""
+    client_ip = request.client.host if request.client else "unknown"
+    if not _rate_limiter.hit(f"global:{client_ip}", 240, 60):
+        return JSONResponse(status_code=429, content={"detail": "Слишком много запросов, попробуйте позже"})
+    return await call_next(request)
+
 
 Base.metadata.create_all(bind=engine)
 
@@ -215,7 +270,7 @@ def create_exercise(
     return new_exercise
 
 
-@app.get("/users/search")
+@app.get("/users/search", dependencies=[Depends(rate_limit(30, 60))])
 def search_users(
     q: str,
     user_id: int,
@@ -275,7 +330,7 @@ def create_user(
     return new_user
 
 
-@app.post("/users/guest", response_model=schemas.UserOut)
+@app.post("/users/guest", response_model=schemas.UserOut, dependencies=[Depends(rate_limit(10, 60))])
 def get_or_create_guest(guest: schemas.GuestCreate, db: Session = Depends(get_db)):
     """Находит гостя по device_token или заводит нового — вызывается при каждом
     старте приложения, до того как экраны начнут запрашивать данные пользователя."""
@@ -318,7 +373,7 @@ def _merge_guest_into_account(db: Session, guest_user: models.User, target_user:
     db.flush()  # физически убрать гостя до того, как его device_token достанется target_user
 
 
-@app.post("/auth/google", response_model=schemas.UserOut)
+@app.post("/auth/google", response_model=schemas.UserOut, dependencies=[Depends(rate_limit(10, 60))])
 def google_sign_in(payload: schemas.GoogleSignIn, db: Session = Depends(get_db)):
     try:
         idinfo = google_id_token.verify_oauth2_token(payload.id_token, _google_request)
@@ -459,6 +514,23 @@ def update_phone(
     db.commit()
     db.refresh(user)
     return user
+
+
+@app.post("/users/{user_id}/rotate-token", dependencies=[Depends(rate_limit(5, 60))])
+def rotate_token(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    """device_token бессрочный и сервер не хранит историю сессий для точечного
+    отзыва — если он мог утечь (лог, потерянное/скомпрометированное
+    устройство), единственный способ его обесценить — заменить на новый.
+    Прежний токен после этого сразу перестаёт проходить get_current_user."""
+    _require_self(current_user, user_id)
+    current_user.device_token = secrets.token_hex(16)
+    db.commit()
+    db.refresh(current_user)
+    return {"device_token": current_user.device_token}
 
 
 def _course_id_for_lesson(db: Session, lesson_id: int) -> int | None:
@@ -1572,7 +1644,7 @@ def _normalized_phone_suffix(phone: str) -> str | None:
     return digits[-10:]
 
 
-@app.post("/users/{user_id}/contacts-match")
+@app.post("/users/{user_id}/contacts-match", dependencies=[Depends(rate_limit(5, 60))])
 def match_contacts(
     user_id: int,
     payload: schemas.ContactsMatchRequest,

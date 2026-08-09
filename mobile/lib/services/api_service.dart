@@ -282,6 +282,22 @@ Future<Map<String, dynamic>> updatePhone(int userId, String? phone) async {
   }
 }
 
+/// Меняет device_token на сервере на новый, обесценивая прежний — на случай,
+/// если он мог утечь. Сам локальный токен на устройстве обновляет вызывающий
+/// код (см. rotateDeviceToken в user_prefs.dart), иначе следующий же запрос
+/// с этого устройства пойдёт со старым, уже недействительным токеном.
+Future<String> rotateToken(int userId) async {
+  final response = await http.post(
+    Uri.parse('$apiBaseUrl/users/$userId/rotate-token'),
+    headers: _authHeaders(),
+  );
+  if (response.statusCode != 200) {
+    throw Exception('Failed to rotate token');
+  }
+  final data = jsonDecode(utf8.decode(response.bodyBytes));
+  return data['device_token'] as String;
+}
+
 /// Сопоставляет номера из телефонной книги с пользователями Kernelly,
 /// у которых привязан телефон.
 Future<List<Map<String, dynamic>>> matchContacts(

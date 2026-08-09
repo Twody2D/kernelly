@@ -82,6 +82,16 @@ Future<int> resetGuestIdentity() async {
   return currentUserId;
 }
 
+/// Обесценивает текущий device_token на сервере и запоминает новый локально —
+/// на случай подозрения, что старый токен мог утечь (в отличие от
+/// [resetGuestIdentity], аккаунт остаётся тем же, меняется только ключ доступа).
+Future<void> rotateDeviceToken() async {
+  final newToken = await rotateToken(currentUserId);
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setString(PrefKeys.deviceToken, newToken);
+  currentDeviceToken = newToken;
+}
+
 const defaultDailyGoal = 3;
 
 const dailyGoals = [
