@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:lottie/lottie.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mobile/services/api_service.dart';
@@ -66,6 +67,9 @@ class _LessonScreenState extends State<LessonScreen>
   int dailyCompleted = 0;
   int dailyGoal = defaultDailyGoal;
 
+  /// Тумблер «Анимации Kernel» — читается один раз при загрузке урока
+  bool mascotAnimations = true;
+
   late AnimationController _lottieController;
 
   @override
@@ -92,6 +96,7 @@ class _LessonScreenState extends State<LessonScreen>
     final data = results[1] as List<Map<String, dynamic>>;
     final userData = results[2] as Map<String, dynamic>;
     final tier = ((lessonData['mastery'] as int? ?? 0) + 1).clamp(1, 3);
+    final prefs = await SharedPreferences.getInstance();
     setState(() {
       lesson = lessonData;
       showingStory = (lessonData['story'] as String?)?.isNotEmpty == true;
@@ -100,6 +105,7 @@ class _LessonScreenState extends State<LessonScreen>
       exercises = data;
       user = userData;
       startTime = DateTime.now();
+      mascotAnimations = prefs.getBool(PrefKeys.mascotAnimations) ?? true;
     });
   }
 
@@ -134,6 +140,20 @@ class _LessonScreenState extends State<LessonScreen>
         List<Map<String, dynamic>>.from(result['new_achievements'] ?? []),
       );
     });
+    await _playAnswerFeedback(correct);
+  }
+
+  /// Тумблер «Звуки» — в проекте нет ни аудио-пакета, ни ассетов, поэтому
+  /// как обратная связь используются системный звук клика (верно) и
+  /// вибро-отклик (неверно), а не полноценные sfx.
+  Future<void> _playAnswerFeedback(bool correct) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!(prefs.getBool(PrefKeys.sound) ?? true)) return;
+    if (correct) {
+      SystemSound.play(SystemSoundType.click);
+    } else {
+      HapticFeedback.mediumImpact();
+    }
   }
 
   void _nextExercise() {
@@ -264,7 +284,7 @@ class _LessonScreenState extends State<LessonScreen>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    const AnimatedMascot(size: 96),
+                    lessonMascot(animated: mascotAnimations, size: 96),
                     const SizedBox(height: 12),
                     Text(
                       '\$ ${widget.sectionTitle}',
@@ -451,6 +471,7 @@ class _LessonScreenState extends State<LessonScreen>
         sectionTitle: widget.sectionTitle,
         lessonTitle: lesson?['title'] as String? ?? '',
         story: lesson?['story'] as String? ?? '',
+        animated: mascotAnimations,
         onContinue: () => setState(() => showingStory = false),
       );
     }
@@ -458,6 +479,7 @@ class _LessonScreenState extends State<LessonScreen>
     if (showingTierIntro) {
       return _TierIntro(
         tier: attemptTier,
+        animated: mascotAnimations,
         onContinue: () => setState(() => showingTierIntro = false),
       );
     }
@@ -736,12 +758,14 @@ class _StoryIntro extends StatefulWidget {
   final String sectionTitle;
   final String lessonTitle;
   final String story;
+  final bool animated;
   final VoidCallback onContinue;
 
   const _StoryIntro({
     required this.sectionTitle,
     required this.lessonTitle,
     required this.story,
+    required this.animated,
     required this.onContinue,
   });
 
@@ -803,7 +827,7 @@ class _StoryIntroState extends State<_StoryIntro>
               children: [
                 ScaleTransition(
                   scale: _mascotScale,
-                  child: const AnimatedMascot(size: 140),
+                  child: lessonMascot(animated: widget.animated, size: 140),
                 ),
                 const SizedBox(height: 16),
                 FadeTransition(
@@ -875,9 +899,14 @@ class _StoryIntroState extends State<_StoryIntro>
 /// неё, чтобы момент ощущался как награда, а не служебный экран.
 class _TierIntro extends StatefulWidget {
   final int tier;
+  final bool animated;
   final VoidCallback onContinue;
 
-  const _TierIntro({required this.tier, required this.onContinue});
+  const _TierIntro({
+    required this.tier,
+    required this.animated,
+    required this.onContinue,
+  });
 
   @override
   State<_TierIntro> createState() => _TierIntroState();
@@ -1014,7 +1043,8 @@ class _TierIntroState extends State<_TierIntro> with TickerProviderStateMixin {
                       ),
                       ScaleTransition(
                         scale: _badgeScale,
-                        child: AnimatedMascot(
+                        child: lessonMascot(
+                          animated: widget.animated,
                           size: 150,
                           emotion: style.emotion,
                         ),
