@@ -9,6 +9,7 @@ import 'package:mobile/screens/register_prompt_screen.dart';
 import 'package:mobile/screens/friend_search_screen.dart';
 import 'package:mobile/screens/follow_list_screen.dart';
 import 'package:mobile/screens/achievement_detail_screen.dart';
+import 'package:mobile/screens/achievements_catalog_screen.dart';
 import 'package:mobile/widgets/mascot.dart';
 import 'package:mobile/widgets/achievement_badge.dart';
 import 'package:mobile/widgets/weekly_activity_chart.dart';
@@ -574,12 +575,35 @@ class ProfileScreenState extends State<ProfileScreen> {
                 color: const Color(0xFF1B2430),
               ),
             ),
-            Text(
-              '$unlockedCount / $total',
-              style: TextStyle(
-                fontFamily: 'JetBrains Mono',
-                fontSize: 10,
-                color: const Color(0xFF00A896),
+            GestureDetector(
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => AchievementsCatalogScreen(
+                    items: items,
+                    unlockedCount: unlockedCount,
+                    total: total,
+                  ),
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '$unlockedCount / $total',
+                    style: TextStyle(
+                      fontFamily: 'JetBrains Mono',
+                      fontSize: 10,
+                      color: const Color(0xFF00A896),
+                    ),
+                  ),
+                  const SizedBox(width: 2),
+                  const Icon(
+                    Icons.chevron_right,
+                    size: 14,
+                    color: Color(0xFF00A896),
+                  ),
+                ],
               ),
             ),
           ],
