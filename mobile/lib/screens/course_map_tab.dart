@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mobile/services/api_service.dart';
 import 'package:mobile/services/user_prefs.dart';
 import 'package:mobile/screens/course_intro_screen.dart';
+import 'package:mobile/screens/shop_screen.dart';
 import 'package:mobile/theme/app_theme.dart';
 import 'package:mobile/widgets/course_map_body.dart';
 
@@ -23,6 +24,7 @@ class CourseMapTabState extends State<CourseMapTab> {
   int? courseId;
   String courseTitle = '';
   Map<String, dynamic>? user;
+  int cores = 0;
   int dailyCompleted = 0;
   int dailyGoal = defaultDailyGoal;
   bool loading = true;
@@ -66,10 +68,12 @@ class CourseMapTabState extends State<CourseMapTab> {
         fetchUser(currentUserId),
         fetchDailyProgress(currentUserId),
         SharedPreferences.getInstance(),
+        fetchUserStats(currentUserId),
       ]);
       if (!mounted) return;
       final daily = results[1] as Map<String, dynamic>;
       final prefs = results[2] as SharedPreferences;
+      final stats = results[3] as Map<String, dynamic>;
 
       setState(() {
         courseId = newCourseId;
@@ -77,6 +81,7 @@ class CourseMapTabState extends State<CourseMapTab> {
             ? ''
             : current!['course_title'] as String;
         user = results[0] as Map<String, dynamic>;
+        cores = stats['cores'] as int? ?? 0;
         dailyCompleted = daily['lessons_completed'] ?? 0;
         dailyGoal = prefs.getInt(PrefKeys.dailyGoal) ?? defaultDailyGoal;
         loading = false;
@@ -89,6 +94,14 @@ class CourseMapTabState extends State<CourseMapTab> {
       if (!mounted) return;
       setState(() => loading = false);
     }
+  }
+
+  Future<void> _openShop() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const ShopScreen()),
+    );
+    load();
   }
 
   Future<void> _replayIntro() async {
@@ -153,38 +166,81 @@ class CourseMapTabState extends State<CourseMapTab> {
                     ],
                   ),
                   if (user != null)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: colors.card,
-                        borderRadius: BorderRadius.circular(14),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.06),
-                            blurRadius: 6,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Text('🔥', style: TextStyle(fontSize: 14)),
-                          const SizedBox(width: 5),
-                          Text(
-                            '${user!['streak']}',
-                            style: TextStyle(
-                              fontFamily: 'Fredoka',
-                              fontWeight: FontWeight.w600,
-                              fontSize: 14,
-                              color: colors.streak,
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: _openShop,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: colors.card,
+                              borderRadius: BorderRadius.circular(14),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.06),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Text('📦', style: TextStyle(fontSize: 13)),
+                                const SizedBox(width: 5),
+                                Text(
+                                  '$cores',
+                                  style: TextStyle(
+                                    fontFamily: 'Fredoka',
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 14,
+                                    color: colors.accentDark,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                        ],
-                      ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: colors.card,
+                            borderRadius: BorderRadius.circular(14),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.06),
+                                blurRadius: 6,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Text('🔥', style: TextStyle(fontSize: 14)),
+                              const SizedBox(width: 5),
+                              Text(
+                                '${user!['streak']}',
+                                style: TextStyle(
+                                  fontFamily: 'Fredoka',
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 14,
+                                  color: colors.streak,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                 ],
               ),
