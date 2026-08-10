@@ -182,20 +182,6 @@ Future<Map<String, dynamic>> fetchSectionsProgress(
   }
 }
 
-/// Сколько уроков пройдено сегодня — для дневной цели.
-Future<Map<String, dynamic>> fetchDailyProgress(int userId) async {
-  final response = await http.get(
-    Uri.parse('$apiBaseUrl/users/$userId/daily-progress'),
-    headers: _authHeaders(),
-  );
-
-  if (response.statusCode == 200) {
-    return jsonDecode(utf8.decode(response.bodyBytes));
-  } else {
-    throw Exception('Failed to load daily progress');
-  }
-}
-
 /// 3 квеста дня поверх дневной цели — прогресс и уже начисленные (сервер
 /// начисляет ядра сам, как только прогресс достиг цели) в newly_completed.
 Future<Map<String, dynamic>> fetchDailyQuests(int userId) async {

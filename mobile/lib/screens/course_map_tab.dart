@@ -25,8 +25,6 @@ class CourseMapTabState extends State<CourseMapTab> {
   String courseTitle = '';
   Map<String, dynamic>? user;
   int cores = 0;
-  int dailyCompleted = 0;
-  int dailyGoal = defaultDailyGoal;
   bool loading = true;
 
   @override
@@ -66,24 +64,18 @@ class CourseMapTabState extends State<CourseMapTab> {
 
       final results = await Future.wait([
         fetchUser(currentUserId),
-        fetchDailyProgress(currentUserId),
-        SharedPreferences.getInstance(),
         fetchUserStats(currentUserId),
       ]);
       if (!mounted) return;
-      final daily = results[1] as Map<String, dynamic>;
-      final prefs = results[2] as SharedPreferences;
-      final stats = results[3] as Map<String, dynamic>;
+      final stats = results[1];
 
       setState(() {
         courseId = newCourseId;
         courseTitle = newCourseId == null
             ? ''
             : current!['course_title'] as String;
-        user = results[0] as Map<String, dynamic>;
+        user = results[0];
         cores = stats['cores'] as int? ?? 0;
-        dailyCompleted = daily['lessons_completed'] ?? 0;
-        dailyGoal = prefs.getInt(PrefKeys.dailyGoal) ?? defaultDailyGoal;
         loading = false;
       });
 
@@ -266,8 +258,6 @@ class CourseMapTabState extends State<CourseMapTab> {
                   : CourseMapBody(
                       key: _mapKey,
                       courseId: courseId!,
-                      dailyCompleted: dailyCompleted,
-                      dailyGoal: dailyGoal,
                       onTapBanner: _replayIntro,
                       onProgressChanged: load,
                     ),

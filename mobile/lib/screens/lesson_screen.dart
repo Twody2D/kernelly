@@ -69,9 +69,9 @@ class _LessonScreenState extends State<LessonScreen>
   /// показываются перед достижениями по той же очереди
   List<Map<String, dynamic>> newChests = [];
 
-  /// Дневная цель на момент завершения урока
-  int dailyCompleted = 0;
-  int dailyGoal = defaultDailyGoal;
+  /// Квесты дня на момент завершения урока — заменили собой прежнюю
+  /// «дневную цель N уроков» на экране результата.
+  List<Map<String, dynamic>> quests = [];
 
   /// Тумблер «Анимации Kernel» — читается один раз при загрузке урока
   bool mascotAnimations = true;
@@ -226,13 +226,15 @@ class _LessonScreenState extends State<LessonScreen>
       newChests.addAll(
         List<Map<String, dynamic>>.from(data['chests'] ?? []),
       );
-      final daily = await fetchDailyProgress(currentUserId);
-      final prefs = await SharedPreferences.getInstance();
+      final questsData = await fetchDailyQuests(currentUserId);
       if (!mounted) return;
+      newChests.addAll(
+        List<Map<String, dynamic>>.from(questsData['newly_completed'] ?? [])
+            .map((q) => {'reason': 'quest', 'amount': q['amount']}),
+      );
       setState(() {
         completion = data;
-        dailyCompleted = daily['lessons_completed'] ?? 0;
-        dailyGoal = prefs.getInt(PrefKeys.dailyGoal) ?? defaultDailyGoal;
+        quests = List<Map<String, dynamic>>.from(questsData['quests'] ?? []);
         finishing = false;
       });
     } catch (e) {
@@ -501,8 +503,7 @@ class _LessonScreenState extends State<LessonScreen>
     if (completion != null) {
       return SectionCompleteScreen(
         completion: completion!,
-        dailyCompleted: dailyCompleted,
-        dailyGoal: dailyGoal,
+        quests: quests,
         xpEarned: isRepeat ? 0 : correctCount * 10,
         accuracyPercent: exercises.isEmpty
             ? 0

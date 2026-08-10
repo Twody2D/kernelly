@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:mobile/widgets/daily_goal_card.dart';
+import 'package:mobile/widgets/daily_quests_card.dart';
 import 'package:mobile/widgets/mascot.dart';
 import 'package:mobile/widgets/soft_star.dart';
 
@@ -7,9 +7,8 @@ class SectionCompleteScreen extends StatelessWidget {
   /// Ответ POST /lessons/{id}/complete: прогресс раздела, курса и что дальше
   final Map<String, dynamic> completion;
 
-  /// Дневная цель: сколько уроков пройдено сегодня и сколько запланировано
-  final int dailyCompleted;
-  final int dailyGoal;
+  /// Квесты дня с прогрессом на момент завершения этого урока
+  final List<Map<String, dynamic>> quests;
 
   final int xpEarned;
   final int accuracyPercent;
@@ -21,8 +20,7 @@ class SectionCompleteScreen extends StatelessWidget {
   const SectionCompleteScreen({
     super.key,
     required this.completion,
-    required this.dailyCompleted,
-    required this.dailyGoal,
+    required this.quests,
     required this.xpEarned,
     required this.accuracyPercent,
     required this.elapsed,
@@ -251,8 +249,10 @@ class SectionCompleteScreen extends StatelessWidget {
                                   Expanded(child: _statCard('ВРЕМЯ', _formattedTime)),
                                 ],
                               ),
-                              const SizedBox(height: 14),
-                              DailyGoalCard(completed: dailyCompleted, goal: dailyGoal),
+                              if (quests.isNotEmpty) ...[
+                                const SizedBox(height: 14),
+                                DailyQuestsSummaryTile(quests: quests),
+                              ],
                               if (_next != null) ...[
                                 const SizedBox(height: 14),
                                 Container(

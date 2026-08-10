@@ -5,7 +5,6 @@ import 'package:mobile/screens/chest_reward_screen.dart';
 import 'package:mobile/screens/lesson_screen.dart';
 import 'package:mobile/screens/review_screen.dart';
 import 'package:mobile/widgets/course_path_nodes.dart';
-import 'package:mobile/widgets/daily_goal_card.dart';
 import 'package:mobile/widgets/daily_quests_card.dart';
 import 'package:mobile/widgets/gradient_banner.dart';
 import 'package:mobile/widgets/review_card.dart';
@@ -18,21 +17,17 @@ import 'package:mobile/widgets/review_card.dart';
 /// курс) и экрана разделов курса в «Курсах».
 class CourseMapBody extends StatefulWidget {
   final int courseId;
-  final int? dailyCompleted;
-  final int? dailyGoal;
   final VoidCallback? onTapBanner;
 
-  /// Дёргается после возврата с экрана урока/повторения — dailyCompleted
-  /// передан сюда родителем как снимок на момент открытия карты и сам не
-  /// обновляется, иначе цель дня на вкладке «Путь» отставала бы от реального
-  /// прогресса до следующей полной перезагрузки вкладки.
+  /// Дёргается после возврата с экрана урока/повторения — квесты дня
+  /// (замена прежней цели «пройти N уроков») сами не обновляются, иначе
+  /// отставали бы от реального прогресса до следующей полной перезагрузки
+  /// вкладки.
   final VoidCallback? onProgressChanged;
 
   const CourseMapBody({
     super.key,
     required this.courseId,
-    this.dailyCompleted,
-    this.dailyGoal,
     this.onTapBanner,
     this.onProgressChanged,
   });
@@ -182,16 +177,9 @@ class CourseMapBodyState extends State<CourseMapBody> {
           badge: '$doneLessons / $totalLessons',
           onTap: widget.onTapBanner,
         ),
-        if (widget.dailyGoal != null) ...[
-          const SizedBox(height: 14),
-          DailyGoalCard(
-            completed: widget.dailyCompleted ?? 0,
-            goal: widget.dailyGoal!,
-          ),
-        ],
         if (quests.isNotEmpty) ...[
           const SizedBox(height: 14),
-          DailyQuestsCard(quests: quests),
+          DailyQuestsSummaryTile(quests: quests),
         ],
         if (reviewDue > 0) ...[
           const SizedBox(height: 14),
