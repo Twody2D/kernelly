@@ -12,6 +12,7 @@ class FollowUserRow extends StatelessWidget {
   final VoidCallback onToggleFollow;
   final VoidCallback? onTap;
   final bool isSelf;
+  final bool isOnline;
 
   const FollowUserRow({
     super.key,
@@ -23,6 +24,7 @@ class FollowUserRow extends StatelessWidget {
     this.subtitle,
     this.onTap,
     this.isSelf = false,
+    this.isOnline = false,
   });
 
   @override
@@ -48,12 +50,31 @@ class FollowUserRow extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(color: bg, shape: BoxShape.circle),
-            alignment: Alignment.center,
-            child: Icon(icon, color: fg, size: 20),
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(color: bg, shape: BoxShape.circle),
+                alignment: Alignment.center,
+                child: Icon(icon, color: fg, size: 20),
+              ),
+              if (isOnline)
+                Positioned(
+                  right: -1,
+                  bottom: -1,
+                  child: Container(
+                    width: 11,
+                    height: 11,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF58CC02),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2),
+                    ),
+                  ),
+                ),
+            ],
           ),
           const SizedBox(width: 12),
           Expanded(

@@ -151,6 +151,7 @@ class _FollowListScreenState extends State<FollowListScreen> {
                               isFollowing: isFollowing,
                               isPending: _pending.contains(user['id']),
                               isSelf: isSelf,
+                              isOnline: user['is_online'] == true,
                               onToggleFollow: () => _toggleFollow(user),
                               subtitle: isSelf
                                   ? null

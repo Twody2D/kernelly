@@ -204,15 +204,34 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         padding: const EdgeInsets.all(18),
         child: Row(
           children: [
-            Container(
-              width: 62,
-              height: 62,
-              decoration: BoxDecoration(
-                color: bg,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              alignment: Alignment.center,
-              child: Icon(icon, color: fg, size: 30),
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Container(
+                  width: 62,
+                  height: 62,
+                  decoration: BoxDecoration(
+                    color: bg,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  alignment: Alignment.center,
+                  child: Icon(icon, color: fg, size: 30),
+                ),
+                if (stats!['is_online'] == true)
+                  Positioned(
+                    right: -2,
+                    bottom: -2,
+                    child: Container(
+                      width: 15,
+                      height: 15,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF58CC02),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: const Color(0xFF00A896), width: 2.5),
+                      ),
+                    ),
+                  ),
+              ],
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -232,7 +251,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    _memberSince(stats!['created_at']),
+                    stats!['is_online'] == true
+                        ? 'сейчас в сети'
+                        : _memberSince(stats!['created_at']),
                     style: TextStyle(
                       fontFamily: 'JetBrains Mono',
                       color: const Color(0xE6FFFFFF),

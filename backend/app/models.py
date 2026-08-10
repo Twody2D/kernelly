@@ -78,6 +78,9 @@ class User(Base):
     # каждом идеальном прохождении, не только при первом (в отличие от
     # lessons_completed, который считает уникальные уроки).
     perfect_lessons_count = Column(Integer, nullable=False, default=0)
+    # Обновляется в get_current_user на каждый авторизованный запрос (с
+    # троттлингом) — по нему считается «онлайн ли сейчас» (см. _is_online).
+    last_seen_at = Column(DateTime, nullable=True)
 
 
 class Answer(Base):

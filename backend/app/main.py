@@ -195,7 +195,22 @@ def get_current_user(authorization: str | None = Header(None), db: Session = Dep
     user = db.query(models.User).filter(models.User.device_token == token).first()
     if user is None:
         raise HTTPException(status_code=401, detail="Invalid token")
+
+    # Троттлинг: пишем last_seen_at не чаще раза в минуту на пользователя,
+    # иначе каждый запрос от активного клиента бил бы в БД.
+    now = datetime.utcnow()
+    if user.last_seen_at is None or now - user.last_seen_at > timedelta(minutes=1):
+        user.last_seen_at = now
+        db.commit()
+
     return user
+
+
+ONLINE_WINDOW = timedelta(minutes=5)
+
+
+def _is_online(user: models.User) -> bool:
+    return user.last_seen_at is not None and datetime.utcnow() - user.last_seen_at < ONLINE_WINDOW
 
 
 def _require_self(current_user: models.User, user_id: int) -> None:
@@ -1624,6 +1639,7 @@ def get_user_stats(
         "avatar": user.avatar,
         "xp": user.xp,
         "streak": user.streak,
+        "is_online": _is_online(user),
         "lessons_completed": stats["lessons_completed"],
         "accuracy": stats["accuracy"],
         "created_at": user.created_at,
@@ -1932,6 +1948,7 @@ def get_following(
             "avatar": u.avatar,
             "is_following": u.id in viewer_following,
             "is_friend": u.id in viewer_following and u.id in viewer_followers,
+            "is_online": _is_online(u),
         }
         for u in users
     ]
@@ -1961,6 +1978,7 @@ def get_followers(
             "avatar": u.avatar,
             "is_following": u.id in viewer_following,
             "is_friend": u.id in viewer_following and u.id in viewer_followers,
+            "is_online": _is_online(u),
         }
         for u in users
     ]
