@@ -196,15 +196,22 @@ class _ChestRewardScreenState extends State<ChestRewardScreen>
             position: _slide,
             child: Column(
               children: [
-                Text(
-                  '+$_amount ядер',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontFamily: 'Fredoka',
-                    fontWeight: FontWeight.w600,
-                    fontSize: 26,
-                    color: const Color(0xFF1B2430),
-                  ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('📦', style: TextStyle(fontSize: 24)),
+                    const SizedBox(width: 8),
+                    Text(
+                      '+$_amount ядер',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontFamily: 'Fredoka',
+                        fontWeight: FontWeight.w600,
+                        fontSize: 26,
+                        color: const Color(0xFF1B2430),
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 10),
                 Text(
