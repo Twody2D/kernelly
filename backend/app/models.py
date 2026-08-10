@@ -220,6 +220,22 @@ class LeagueResult(Base):
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
 
+class DailyQuestClaim(Base):
+    """Факт начисления награды за ежедневный квест — квесты сами не хранятся,
+    их пороги считаются на лету по Answer/UserProgress за сегодня (см.
+    DAILY_QUESTS в main.py); строка тут появляется в момент, когда прогресс
+    впервые достиг цели, чтобы не начислить одну и ту же награду дважды."""
+
+    __tablename__ = "daily_quest_claims"
+    __table_args__ = (UniqueConstraint("user_id", "date", "code", name="uq_daily_quest_claim"),)
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    date = Column(Date, nullable=False)
+    code = Column(String, nullable=False)
+    cores = Column(Integer, nullable=False)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+
 class AchievementUnlock(Base):
     """Момент разблокировки достижения — сами достижения считаются на лету
     (см. ACHIEVEMENTS в main.py), но для ленты нужен факт и время события."""

@@ -37,6 +37,37 @@ STREAK_FREEZE_PRICE_CORES = 40
 # Ядра за топ-3 места в еженедельной лиге (см. _finalize_league_week).
 LEAGUE_REWARD_CORES = {1: (80, 120), 2: (50, 80), 3: (25, 45)}
 
+# Ежедневные квесты — сбрасываются сами по себе, т.к. прогресс каждого
+# считается «за сегодня» по Answer/UserProgress (см. _daily_quest_progress),
+# без отдельного крон-сброса. target в answers/xp — количество ВЕРНЫХ
+# ответов за сегодня либо производное от него (XP = ответы * XP_PER_CORRECT).
+DAILY_QUESTS = [
+    {"code": "quest_answers", "title": "Реши 5 упражнений", "metric": "answers", "target": 5, "cores": (5, 8)},
+    {"code": "quest_lesson", "title": "Пройди урок", "metric": "lessons", "target": 1, "cores": (8, 15)},
+    {"code": "quest_xp", "title": "Заработай 100 XP", "metric": "xp", "target": 100, "cores": (10, 18)},
+]
+
+
+def _daily_quest_progress(db: Session, user_id: int, today: date) -> dict[str, int]:
+    correct_today = (
+        db.query(models.Answer)
+        .filter(
+            models.Answer.user_id == user_id,
+            models.Answer.is_correct.is_(True),
+            func.date(models.Answer.created_at) == today,
+        )
+        .count()
+    )
+    lessons_today = (
+        db.query(models.UserProgress)
+        .filter(
+            models.UserProgress.user_id == user_id,
+            func.date(models.UserProgress.completed_at) == today,
+        )
+        .count()
+    )
+    return {"answers": correct_today, "lessons": lessons_today, "xp": correct_today * XP_PER_CORRECT}
+
 
 def _msk_week_start(dt: datetime) -> date:
     """Понедельник 00:00 по МСК (UTC+3), которому принадлежит момент dt
@@ -1687,6 +1718,58 @@ def get_daily_progress(
     )
 
     return {"date": today.isoformat(), "lessons_completed": lessons_completed}
+
+
+@app.get("/users/{user_id}/daily-quests")
+def get_daily_quests(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    """3 квеста дня поверх обычной цели — прогресс считается на лету, а
+    награда начисляется сразу в момент, когда прогресс впервые достиг цели
+    (тот же ленивый паттерн, что у _finalize_league_week: не нужен отдельный
+    крон на сброс, квесты «сбрасываются» сами с наступлением нового дня,
+    т.к. прогресс считается заново по сегодняшним данным)."""
+    _require_self(current_user, user_id)
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    today = _today()
+    progress = _daily_quest_progress(db, user_id, today)
+    claims_by_code = {
+        row.code: row.cores
+        for row in db.query(models.DailyQuestClaim).filter(
+            models.DailyQuestClaim.user_id == user_id,
+            models.DailyQuestClaim.date == today,
+        )
+    }
+
+    quests = []
+    newly_completed = []
+    for quest in DAILY_QUESTS:
+        current = min(progress[quest["metric"]], quest["target"])
+        completed = current >= quest["target"]
+        cores_awarded = claims_by_code.get(quest["code"])
+        if completed and cores_awarded is None:
+            cores_awarded = _award_cores(user, *quest["cores"])
+            db.add(models.DailyQuestClaim(
+                user_id=user_id, date=today, code=quest["code"], cores=cores_awarded,
+            ))
+            newly_completed.append({"code": quest["code"], "title": quest["title"], "amount": cores_awarded})
+        quests.append({
+            "code": quest["code"],
+            "title": quest["title"],
+            "progress": current,
+            "target": quest["target"],
+            "completed": completed,
+            "cores": cores_awarded,
+        })
+    if newly_completed:
+        db.commit()
+
+    return {"quests": quests, "newly_completed": newly_completed}
 
 
 @app.get("/users/{user_id}/activity")

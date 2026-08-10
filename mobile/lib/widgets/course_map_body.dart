@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:mobile/services/api_service.dart';
 import 'package:mobile/services/user_prefs.dart';
+import 'package:mobile/screens/chest_reward_screen.dart';
 import 'package:mobile/screens/lesson_screen.dart';
 import 'package:mobile/screens/review_screen.dart';
 import 'package:mobile/widgets/course_path_nodes.dart';
 import 'package:mobile/widgets/daily_goal_card.dart';
+import 'package:mobile/widgets/daily_quests_card.dart';
 import 'package:mobile/widgets/gradient_banner.dart';
 import 'package:mobile/widgets/review_card.dart';
 
@@ -43,6 +45,7 @@ class CourseMapBodyState extends State<CourseMapBody> {
   String? courseTitle;
   List<Map<String, dynamic>> sections = [];
   List<Map<String, dynamic>> combinedLessons = [];
+  List<Map<String, dynamic>> quests = [];
   int reviewDue = 0;
   bool loading = true;
 
@@ -103,10 +106,32 @@ class CourseMapBodyState extends State<CourseMapBody> {
         reviewDue = results[1] as int;
         loading = false;
       });
+      await _loadQuests();
     } catch (e) {
       debugPrint('Ошибка загрузки карты курса: $e');
       if (!mounted) return;
       setState(() => loading = false);
+    }
+  }
+
+  Future<void> _loadQuests() async {
+    try {
+      final data = await fetchDailyQuests(currentUserId);
+      if (!mounted) return;
+      setState(() => quests = List<Map<String, dynamic>>.from(data['quests'] ?? []));
+
+      final newlyCompleted = List<Map<String, dynamic>>.from(data['newly_completed'] ?? []);
+      if (newlyCompleted.isNotEmpty && mounted) {
+        await showChestRewards(
+          context,
+          newlyCompleted
+              .map((q) => {'reason': 'quest', 'amount': q['amount'] as int})
+              .toList(),
+        );
+        widget.onProgressChanged?.call();
+      }
+    } catch (e) {
+      debugPrint('Ошибка загрузки квестов дня: $e');
     }
   }
 
@@ -163,6 +188,10 @@ class CourseMapBodyState extends State<CourseMapBody> {
             completed: widget.dailyCompleted ?? 0,
             goal: widget.dailyGoal!,
           ),
+        ],
+        if (quests.isNotEmpty) ...[
+          const SizedBox(height: 14),
+          DailyQuestsCard(quests: quests),
         ],
         if (reviewDue > 0) ...[
           const SizedBox(height: 14),
