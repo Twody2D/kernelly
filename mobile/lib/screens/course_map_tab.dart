@@ -269,6 +269,7 @@ class CourseMapTabState extends State<CourseMapTab> {
                       dailyCompleted: dailyCompleted,
                       dailyGoal: dailyGoal,
                       onTapBanner: _replayIntro,
+                      onProgressChanged: load,
                     ),
             ),
           ],

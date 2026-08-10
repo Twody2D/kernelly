@@ -20,12 +20,19 @@ class CourseMapBody extends StatefulWidget {
   final int? dailyGoal;
   final VoidCallback? onTapBanner;
 
+  /// Дёргается после возврата с экрана урока/повторения — dailyCompleted
+  /// передан сюда родителем как снимок на момент открытия карты и сам не
+  /// обновляется, иначе цель дня на вкладке «Путь» отставала бы от реального
+  /// прогресса до следующей полной перезагрузки вкладки.
+  final VoidCallback? onProgressChanged;
+
   const CourseMapBody({
     super.key,
     required this.courseId,
     this.dailyCompleted,
     this.dailyGoal,
     this.onTapBanner,
+    this.onProgressChanged,
   });
 
   @override
@@ -109,6 +116,7 @@ class CourseMapBodyState extends State<CourseMapBody> {
       MaterialPageRoute(builder: (_) => const ReviewScreen()),
     );
     load();
+    widget.onProgressChanged?.call();
   }
 
   Future<void> _openLesson(Map<String, dynamic> lesson) async {
@@ -122,6 +130,7 @@ class CourseMapBodyState extends State<CourseMapBody> {
       ),
     );
     load();
+    widget.onProgressChanged?.call();
   }
 
   @override

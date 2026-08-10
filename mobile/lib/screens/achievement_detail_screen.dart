@@ -118,9 +118,10 @@ class _AchievementDetailScreenState extends State<AchievementDetailScreen>
   void initState() {
     super.initState();
 
-    // Открываем сразу на следующем непройденном уровне — самое интересное
-    // для игрока сейчас; уже пройденные и более поздние доступны свайпом.
-    _descPage = _level.clamp(0, _maxLevel - 1);
+    // Открываем на текущем полученном уровне (последнем пройденном), а не
+    // следующем незаработанном — так по умолчанию видно то, что уже есть.
+    // Если ничего ещё не получено — первый уровень (ближайшая цель).
+    _descPage = (_level - 1).clamp(0, _maxLevel - 1);
 
     _entrance = AnimationController(
       vsync: this,
