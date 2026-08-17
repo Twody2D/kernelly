@@ -4,6 +4,7 @@ import 'package:mobile/services/avatars.dart';
 import 'package:mobile/services/user_prefs.dart';
 import 'package:mobile/screens/follow_list_screen.dart';
 import 'package:mobile/screens/achievement_detail_screen.dart';
+import 'package:mobile/screens/duel_screen.dart';
 import 'package:mobile/widgets/achievement_badge.dart';
 import 'package:mobile/widgets/weekly_activity_chart.dart';
 
@@ -38,6 +39,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   bool loading = true;
   late bool isFollowing = widget.initialIsFollowing;
   bool followPending = false;
+  bool duelPending = false;
 
   @override
   void initState() {
@@ -85,6 +87,29 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       debugPrint('Ошибка подписки: $e');
       if (!mounted) return;
       setState(() => followPending = false);
+    }
+  }
+
+  Future<void> _challengeToDuel() async {
+    if (duelPending) return;
+    setState(() => duelPending = true);
+    try {
+      final duel = await createDuel(currentUserId, widget.userId);
+      if (!mounted) return;
+      setState(() => duelPending = false);
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => DuelScreen(
+            duelId: duel['id'] as int,
+            opponentName: widget.username,
+          ),
+        ),
+      );
+    } catch (e) {
+      debugPrint('Ошибка создания дуэли: $e');
+      if (!mounted) return;
+      setState(() => duelPending = false);
     }
   }
 
@@ -138,6 +163,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                           _socialRow(),
                           const SizedBox(height: 10),
                           _followButton(),
+                          const SizedBox(height: 10),
+                          _duelButton(),
                           const SizedBox(height: 20),
                           _comparisonCard(),
                           const SizedBox(height: 20),
@@ -318,6 +345,44 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                 : const Color(0xFF00A896),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _duelButton() {
+    return GestureDetector(
+      onTap: duelPending ? null : _challengeToDuel,
+      child: Container(
+        width: double.infinity,
+        height: 48,
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFEAEA),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFFFFC2C2), width: 1.5),
+        ),
+        alignment: Alignment.center,
+        child: duelPending
+            ? const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.bolt, size: 16, color: Color(0xFFB33A3A)),
+                  const SizedBox(width: 6),
+                  Text(
+                    'ВЫЗВАТЬ НА ДУЭЛЬ',
+                    style: TextStyle(
+                      fontFamily: 'JetBrains Mono',
+                      fontWeight: FontWeight.w600,
+                      fontSize: 12,
+                      color: const Color(0xFFB33A3A),
+                    ),
+                  ),
+                ],
+              ),
       ),
     );
   }

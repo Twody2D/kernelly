@@ -185,7 +185,7 @@ class Notification(Base):
     actor_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     target_type = Column(String, nullable=False, default="post")
     target_id = Column(Integer, nullable=False)
-    type = Column(String, nullable=False)  # 'like' | 'comment'
+    type = Column(String, nullable=False)  # 'like' | 'comment' | 'duel_invite' | 'duel_result'
     count = Column(Integer, nullable=False, default=1)
     comment_text = Column(String, nullable=True)
     read = Column(Boolean, nullable=False, default=False)
@@ -233,6 +233,32 @@ class DailyQuestClaim(Base):
     date = Column(Date, nullable=False)
     code = Column(String, nullable=False)
     cores = Column(Integer, nullable=False)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+
+class Duel(Base):
+    """Вызов на дуэль 1×1 — оба играют независимо один и тот же набор
+    упражнений (exercise_ids фиксируется при создании, чтобы условия были
+    честными), победитель определяется по числу верных, при равенстве —
+    по времени. Раунды каждого участника не хранятся отдельно — только
+    итог (submit пишет сразу финальные correct/time), это спринт, а не
+    урок с прогрессом по шагам."""
+
+    __tablename__ = "duels"
+    id = Column(Integer, primary_key=True)
+    challenger_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    opponent_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    exercise_ids = Column(JSON, nullable=False)
+    # 'pending' -> (opponent принял) 'active' -> (оба сдали) 'completed'; или 'declined'
+    status = Column(String, nullable=False, default="pending")
+    challenger_correct = Column(Integer, nullable=True)
+    challenger_time_ms = Column(Integer, nullable=True)
+    challenger_finished_at = Column(DateTime, nullable=True)
+    opponent_correct = Column(Integer, nullable=True)
+    opponent_time_ms = Column(Integer, nullable=True)
+    opponent_finished_at = Column(DateTime, nullable=True)
+    winner_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    cores_awarded = Column(Integer, nullable=True)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
 

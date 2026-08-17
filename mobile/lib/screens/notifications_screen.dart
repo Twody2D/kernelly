@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mobile/services/api_service.dart';
 import 'package:mobile/services/user_prefs.dart';
 import 'package:mobile/screens/feed_item_detail_screen.dart';
+import 'package:mobile/screens/duels_screen.dart';
 
 /// Уведомления о лайках и комментариях под своими постами и достижениями —
 /// открывается по колокольчику в ленте. Лайки одного элемента агрегируются
@@ -53,6 +54,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   String _textFor(Map<String, dynamic> n) {
     final actor = (n['actor'] as Map<String, dynamic>)['username'] as String? ?? 'Игрок';
+    if (n['type'] == 'duel_invite') {
+      return '$actor вызывает вас на дуэль';
+    }
+    if (n['type'] == 'duel_result') {
+      return '$actor сыграл(а) свою часть дуэли — загляни на результат';
+    }
     final target = n['target_type'] == 'achievement' ? 'вашим достижением' : 'вашим постом';
     if (n['type'] == 'comment') {
       return '$actor оставил(а) комментарий под $target';
@@ -65,6 +72,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   Future<void> _openItem(Map<String, dynamic> n) async {
+    if (n['type'] == 'duel_invite' || n['type'] == 'duel_result') {
+      await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const DuelsScreen()),
+      );
+      return;
+    }
     await Navigator.push(
       context,
       MaterialPageRoute(
@@ -124,6 +138,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                           itemBuilder: (context, index) {
                             final n = notifications[index];
                             final isComment = n['type'] == 'comment';
+                            final isDuel = n['type'] == 'duel_invite' || n['type'] == 'duel_result';
                             final unread = n['read'] != true;
                             final time = _relativeTime(
                               DateTime.parse('${n['updated_at']}Z'),
@@ -158,9 +173,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                       ),
                                       alignment: Alignment.center,
                                       child: Icon(
-                                        isComment
-                                            ? Icons.chat_bubble_rounded
-                                            : Icons.favorite_rounded,
+                                        isDuel
+                                            ? Icons.bolt
+                                            : isComment
+                                                ? Icons.chat_bubble_rounded
+                                                : Icons.favorite_rounded,
                                         size: 17,
                                         color: isComment
                                             ? const Color(0xFF00A896)

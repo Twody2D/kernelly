@@ -148,6 +148,15 @@ class CommentCreate(BaseModel):
     text: str
 
 
+class DuelCreate(BaseModel):
+    opponent_id: int
+
+
+class DuelSubmit(BaseModel):
+    correct_count: int
+    time_ms: int
+
+
 class ReviewExerciseOut(BaseModel):
     id: int
     type: str

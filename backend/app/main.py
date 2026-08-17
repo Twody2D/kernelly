@@ -37,6 +37,16 @@ STREAK_FREEZE_PRICE_CORES = 40
 # Ядра за топ-3 места в еженедельной лиге (см. _finalize_league_week).
 LEAGUE_REWARD_CORES = {1: (80, 120), 2: (50, 80), 3: (25, 45)}
 
+# Дуэль 1×1 — спринт из фиксированного набора упражнений, победитель
+# определяется по числу верных ответов, при равенстве — по времени.
+DUEL_EXERCISE_COUNT = 5
+CORES_DUEL_WIN = (10, 20)
+
+# Рамки профиля — чисто косметика за ядра, сама рамка (цвет/стиль) рисуется
+# на клиенте (см. frameCatalog в mobile/lib/services/avatars.dart), тут
+# только каталог кодов и цены — как ALLOWED_AVATARS для аватарок.
+FRAME_PRICES = {"gold": 60, "neon": 50, "fire": 80, "ice": 45}
+
 # Ежедневные квесты — сбрасываются сами по себе, т.к. прогресс каждого
 # считается «за сегодня» по Answer/UserProgress (см. _daily_quest_progress),
 # без отдельного крон-сброса. target в answers/xp — количество ВЕРНЫХ
@@ -433,7 +443,13 @@ def search_users(
         row.followee_id for row in db.query(models.Follow).filter(models.Follow.follower_id == user_id).all()
     }
     return [
-        {"id": u.id, "username": u.username, "avatar": u.avatar, "is_following": u.id in following_ids}
+        {
+            "id": u.id,
+            "username": u.username,
+            "avatar": u.avatar,
+            "equipped_frame": u.equipped_frame,
+            "is_following": u.id in following_ids,
+        }
         for u in matches
     ]
 
@@ -643,6 +659,60 @@ def purchase_streak_freeze(
     user.streak_freezes += 1
     db.commit()
     return {"cores": user.cores, "streak_freezes": user.streak_freezes}
+
+
+@app.post("/users/{user_id}/shop/frames/{code}/purchase")
+def purchase_frame(
+    user_id: int,
+    code: str,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    """Разовая покупка рамки профиля — сама рамка чисто косметическая, тратит
+    ядра один раз, дальше владение постоянное (в отличие от заморозок)."""
+    _require_self(current_user, user_id)
+    if code not in FRAME_PRICES:
+        raise HTTPException(status_code=404, detail="Unknown frame")
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    owned = list(user.owned_frames or [])
+    if code in owned:
+        raise HTTPException(status_code=409, detail="Frame already owned")
+    price = FRAME_PRICES[code]
+    if user.cores < price:
+        raise HTTPException(status_code=402, detail="Недостаточно ядер")
+
+    user.cores -= price
+    owned.append(code)
+    user.owned_frames = owned
+    user.equipped_frame = code
+    db.commit()
+    return {"cores": user.cores, "owned_frames": user.owned_frames, "equipped_frame": user.equipped_frame}
+
+
+@app.post("/users/{user_id}/shop/frames/{code}/equip")
+def equip_frame(
+    user_id: int,
+    code: str,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    """code == 'none' снимает рамку."""
+    _require_self(current_user, user_id)
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if code == "none":
+        user.equipped_frame = None
+    else:
+        if code not in (user.owned_frames or []):
+            raise HTTPException(status_code=403, detail="Frame not owned")
+        user.equipped_frame = code
+    db.commit()
+    return {"equipped_frame": user.equipped_frame}
 
 
 @app.post("/users/{user_id}/daily-login-chest")
@@ -1668,6 +1738,7 @@ def get_user_stats(
         "id": user.id,
         "username": user.username,
         "avatar": user.avatar,
+        "equipped_frame": user.equipped_frame,
         "xp": user.xp,
         "streak": user.streak,
         "is_online": _is_online(user),
@@ -1689,6 +1760,7 @@ def get_user_stats(
         result["streak_shield_enabled"] = user.streak_shield_enabled
         result["streak_freezes"] = user.streak_freezes
         result["cores"] = user.cores
+        result["owned_frames"] = user.owned_frames
         result["has_unclaimed_league_chest"] = (
             last_league_result is not None and not last_league_result.chest_claimed
         )
@@ -1769,7 +1841,238 @@ def get_daily_quests(
     if newly_completed:
         db.commit()
 
-    return {"quests": quests, "newly_completed": newly_completed}
+    # Личный рекорд дня — сравниваем сегодняшний XP с лучшим днём за
+    # последние 30 дней (не считая сегодня). Ничего не начисляет и не
+    # хранится отдельно — просто бейдж-мотиватор, пересчитывается на лету.
+    xp_today = progress["xp"]
+    month_ago = today - timedelta(days=30)
+    daily_xp_rows = (
+        db.query(func.date(models.Answer.created_at).label("day"), func.count().label("correct"))
+        .filter(
+            models.Answer.user_id == user_id,
+            models.Answer.is_correct.is_(True),
+            func.date(models.Answer.created_at) >= month_ago,
+            func.date(models.Answer.created_at) < today,
+        )
+        .group_by(func.date(models.Answer.created_at))
+        .all()
+    )
+    previous_best_xp = max((row.correct * XP_PER_CORRECT for row in daily_xp_rows), default=0)
+    personal_best = xp_today > 0 and xp_today > previous_best_xp
+
+    return {
+        "quests": quests,
+        "newly_completed": newly_completed,
+        "xp_today": xp_today,
+        "personal_best": personal_best,
+        "previous_best_xp": previous_best_xp,
+    }
+
+
+def _duel_view(duel: models.Duel, user_id: int, users_by_id: dict[int, models.User]) -> dict:
+    is_challenger = duel.challenger_id == user_id
+    opponent_id = duel.opponent_id if is_challenger else duel.challenger_id
+    opponent = users_by_id.get(opponent_id)
+    my_correct = duel.challenger_correct if is_challenger else duel.opponent_correct
+    my_time_ms = duel.challenger_time_ms if is_challenger else duel.opponent_time_ms
+    opp_correct = duel.opponent_correct if is_challenger else duel.challenger_correct
+    opp_time_ms = duel.opponent_time_ms if is_challenger else duel.challenger_time_ms
+    return {
+        "id": duel.id,
+        "status": duel.status,
+        "role": "challenger" if is_challenger else "opponent",
+        "opponent": {
+            "id": opponent_id,
+            "username": opponent.username if opponent else "Игрок",
+            "avatar": opponent.avatar if opponent else None,
+        },
+        "exercise_count": len(duel.exercise_ids or []),
+        "my_correct": my_correct,
+        "my_time_ms": my_time_ms,
+        "my_finished": my_correct is not None,
+        "opponent_correct": opp_correct,
+        "opponent_time_ms": opp_time_ms,
+        "opponent_finished": opp_correct is not None,
+        "winner_id": duel.winner_id,
+        "is_me_winner": duel.winner_id == user_id if duel.winner_id else None,
+        "cores_awarded": duel.cores_awarded,
+        "created_at": duel.created_at,
+    }
+
+
+@app.post("/users/{user_id}/duels")
+def create_duel(
+    user_id: int,
+    payload: schemas.DuelCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    """Вызов на дуэль — набор упражнений фиксируется сразу, чтобы оба
+    сыграли ровно один и тот же спринт (независимо друг от друга, без
+    real-time синхронизации, см. submit_duel_result)."""
+    _require_self(current_user, user_id)
+    if payload.opponent_id == user_id:
+        raise HTTPException(status_code=400, detail="Cannot duel yourself")
+    opponent = db.query(models.User).filter(models.User.id == payload.opponent_id).first()
+    if opponent is None:
+        raise HTTPException(status_code=404, detail="Opponent not found")
+
+    pool = db.query(models.Exercise).filter(models.Exercise.type != "theory").all()
+    if len(pool) < DUEL_EXERCISE_COUNT:
+        raise HTTPException(status_code=400, detail="Not enough exercises for a duel")
+    exercise_ids = [e.id for e in random.sample(pool, DUEL_EXERCISE_COUNT)]
+
+    duel = models.Duel(
+        challenger_id=user_id,
+        opponent_id=payload.opponent_id,
+        exercise_ids=exercise_ids,
+        status="pending",
+    )
+    db.add(duel)
+    db.flush()
+    db.add(models.Notification(
+        user_id=payload.opponent_id, actor_id=user_id, target_type="duel", target_id=duel.id,
+        type="duel_invite", count=1, read=False,
+    ))
+    db.commit()
+    db.refresh(duel)
+
+    users_by_id = {user_id: current_user, opponent.id: opponent}
+    return _duel_view(duel, user_id, users_by_id)
+
+
+@app.get("/users/{user_id}/duels")
+def get_duels(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    _require_self(current_user, user_id)
+    duels = (
+        db.query(models.Duel)
+        .filter((models.Duel.challenger_id == user_id) | (models.Duel.opponent_id == user_id))
+        .order_by(models.Duel.created_at.desc())
+        .limit(50)
+        .all()
+    )
+    other_ids = {d.opponent_id if d.challenger_id == user_id else d.challenger_id for d in duels}
+    users_by_id = {u.id: u for u in db.query(models.User).filter(models.User.id.in_(other_ids)).all()}
+    return [_duel_view(d, user_id, users_by_id) for d in duels]
+
+
+def _get_duel_for_user(db: Session, duel_id: int, user_id: int) -> models.Duel:
+    duel = db.query(models.Duel).filter(models.Duel.id == duel_id).first()
+    if duel is None:
+        raise HTTPException(status_code=404, detail="Duel not found")
+    if user_id not in (duel.challenger_id, duel.opponent_id):
+        raise HTTPException(status_code=403, detail="Not your duel")
+    return duel
+
+
+@app.get("/users/{user_id}/duels/{duel_id}/exercises", response_model=list[schemas.ReviewExerciseOut])
+def get_duel_exercises(
+    user_id: int,
+    duel_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    _require_self(current_user, user_id)
+    duel = _get_duel_for_user(db, duel_id, user_id)
+    if duel.status == "declined":
+        raise HTTPException(status_code=400, detail="Duel was declined")
+
+    # приглашённый заходит в упражнения — считаем дуэль принятой
+    if duel.status == "pending" and user_id == duel.opponent_id:
+        duel.status = "active"
+        db.commit()
+
+    exercises = (
+        db.query(models.Exercise)
+        .filter(models.Exercise.id.in_(duel.exercise_ids))
+        .all()
+    )
+    by_id = {e.id: e for e in exercises}
+    return [by_id[eid] for eid in duel.exercise_ids if eid in by_id]
+
+
+@app.post("/users/{user_id}/duels/{duel_id}/decline")
+def decline_duel(
+    user_id: int,
+    duel_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    _require_self(current_user, user_id)
+    duel = _get_duel_for_user(db, duel_id, user_id)
+    if user_id != duel.opponent_id or duel.status != "pending":
+        raise HTTPException(status_code=400, detail="Duel cannot be declined")
+    duel.status = "declined"
+    db.commit()
+    return {"status": "ok"}
+
+
+@app.post("/users/{user_id}/duels/{duel_id}/submit")
+def submit_duel_result(
+    user_id: int,
+    duel_id: int,
+    payload: schemas.DuelSubmit,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    """Пишет итог спринта текущего игрока; когда готовы обе стороны —
+    определяет победителя (больше верных, при равенстве — меньше времени)
+    и начисляет ядра сразу (без отдельного claim — награда выдаётся один
+    раз просто потому, что оба submit фиксируют результат необратимо)."""
+    _require_self(current_user, user_id)
+    duel = _get_duel_for_user(db, duel_id, user_id)
+    if duel.status not in ("pending", "active"):
+        raise HTTPException(status_code=400, detail="Duel already finished")
+
+    correct_count = max(0, min(payload.correct_count, len(duel.exercise_ids or [])))
+    is_challenger = user_id == duel.challenger_id
+    if is_challenger:
+        if duel.challenger_correct is not None:
+            raise HTTPException(status_code=400, detail="Result already submitted")
+        duel.challenger_correct = correct_count
+        duel.challenger_time_ms = payload.time_ms
+        duel.challenger_finished_at = datetime.utcnow()
+    else:
+        if duel.opponent_correct is not None:
+            raise HTTPException(status_code=400, detail="Result already submitted")
+        duel.opponent_correct = correct_count
+        duel.opponent_time_ms = payload.time_ms
+        duel.opponent_finished_at = datetime.utcnow()
+        duel.status = "active"
+
+    if duel.challenger_correct is not None and duel.opponent_correct is not None:
+        if duel.challenger_correct != duel.opponent_correct:
+            winner_id = duel.challenger_id if duel.challenger_correct > duel.opponent_correct else duel.opponent_id
+        elif duel.challenger_time_ms != duel.opponent_time_ms:
+            winner_id = duel.challenger_id if duel.challenger_time_ms < duel.opponent_time_ms else duel.opponent_id
+        else:
+            winner_id = None  # честная ничья
+
+        duel.status = "completed"
+        if winner_id is not None:
+            winner = db.query(models.User).filter(models.User.id == winner_id).first()
+            duel.winner_id = winner_id
+            duel.cores_awarded = _award_cores(winner, *CORES_DUEL_WIN)
+
+        # уведомляем именно другую сторону — тот, кто только что отправил
+        # результат, и так видит итог сразу в ответе этого запроса
+        other_side_id = duel.opponent_id if is_challenger else duel.challenger_id
+        db.add(models.Notification(
+            user_id=other_side_id, actor_id=user_id, target_type="duel", target_id=duel.id,
+            type="duel_result", count=1, read=False,
+        ))
+
+    db.commit()
+    db.refresh(duel)
+
+    other_id = duel.opponent_id if is_challenger else duel.challenger_id
+    other = db.query(models.User).filter(models.User.id == other_id).first()
+    users_by_id = {user_id: current_user, other_id: other}
+    return _duel_view(duel, user_id, users_by_id)
 
 
 @app.get("/users/{user_id}/activity")
@@ -2029,6 +2332,7 @@ def get_following(
             "id": u.id,
             "username": u.username,
             "avatar": u.avatar,
+            "equipped_frame": u.equipped_frame,
             "is_following": u.id in viewer_following,
             "is_friend": u.id in viewer_following and u.id in viewer_followers,
             "is_online": _is_online(u),
@@ -2059,6 +2363,7 @@ def get_followers(
             "id": u.id,
             "username": u.username,
             "avatar": u.avatar,
+            "equipped_frame": u.equipped_frame,
             "is_following": u.id in viewer_following,
             "is_friend": u.id in viewer_following and u.id in viewer_followers,
             "is_online": _is_online(u),

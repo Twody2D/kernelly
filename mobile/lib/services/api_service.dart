@@ -197,6 +197,86 @@ Future<Map<String, dynamic>> fetchDailyQuests(int userId) async {
   }
 }
 
+/// Вызов друга на спринт из 5 упражнений — набор фиксируется сразу на
+/// сервере, чтобы оба сыграли один и тот же набор.
+Future<Map<String, dynamic>> createDuel(int userId, int opponentId) async {
+  final response = await http.post(
+    Uri.parse('$apiBaseUrl/users/$userId/duels'),
+    headers: _authHeaders(_jsonHeaders),
+    body: jsonEncode({'opponent_id': opponentId}),
+  );
+
+  if (response.statusCode == 200) {
+    return jsonDecode(utf8.decode(response.bodyBytes));
+  } else {
+    throw Exception('Failed to create duel');
+  }
+}
+
+Future<List<Map<String, dynamic>>> fetchDuels(int userId) async {
+  final response = await http.get(
+    Uri.parse('$apiBaseUrl/users/$userId/duels'),
+    headers: _authHeaders(),
+  );
+
+  if (response.statusCode == 200) {
+    final List<dynamic> data = jsonDecode(utf8.decode(response.bodyBytes));
+    return data.cast<Map<String, dynamic>>();
+  } else {
+    throw Exception('Failed to load duels');
+  }
+}
+
+/// Первый заход в упражнения приглашённого автоматически помечает дуэль
+/// принятой на сервере (см. get_duel_exercises).
+Future<List<Map<String, dynamic>>> fetchDuelExercises(
+  int userId,
+  int duelId,
+) async {
+  final response = await http.get(
+    Uri.parse('$apiBaseUrl/users/$userId/duels/$duelId/exercises'),
+    headers: _authHeaders(),
+  );
+
+  if (response.statusCode == 200) {
+    final List<dynamic> data = jsonDecode(utf8.decode(response.bodyBytes));
+    return data.cast<Map<String, dynamic>>();
+  } else {
+    throw Exception('Failed to load duel exercises');
+  }
+}
+
+Future<void> declineDuel(int userId, int duelId) async {
+  final response = await http.post(
+    Uri.parse('$apiBaseUrl/users/$userId/duels/$duelId/decline'),
+    headers: _authHeaders(),
+  );
+  if (response.statusCode != 200) {
+    throw Exception('Failed to decline duel');
+  }
+}
+
+/// Отправляет итог спринта; если соперник уже сдал результат, ответ сразу
+/// содержит победителя и начисленные ядра (см. submit_duel_result).
+Future<Map<String, dynamic>> submitDuelResult(
+  int userId,
+  int duelId,
+  int correctCount,
+  int timeMs,
+) async {
+  final response = await http.post(
+    Uri.parse('$apiBaseUrl/users/$userId/duels/$duelId/submit'),
+    headers: _authHeaders(_jsonHeaders),
+    body: jsonEncode({'correct_count': correctCount, 'time_ms': timeMs}),
+  );
+
+  if (response.statusCode == 200) {
+    return jsonDecode(utf8.decode(response.bodyBytes));
+  } else {
+    throw Exception('Failed to submit duel result');
+  }
+}
+
 Future<Map<String, dynamic>> fetchUserStats(int userId) async {
   final response = await http.get(
     Uri.parse('$apiBaseUrl/users/$userId/stats'),
