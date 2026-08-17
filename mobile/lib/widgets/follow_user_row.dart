@@ -6,6 +6,7 @@ import 'package:mobile/services/avatars.dart';
 class FollowUserRow extends StatelessWidget {
   final String username;
   final String? avatar;
+  final String? equippedFrame;
   final bool isFollowing;
   final bool isPending;
   final String? subtitle;
@@ -21,6 +22,7 @@ class FollowUserRow extends StatelessWidget {
     required this.isPending,
     required this.onToggleFollow,
     this.avatar,
+    this.equippedFrame,
     this.subtitle,
     this.onTap,
     this.isSelf = false,
@@ -53,12 +55,15 @@ class FollowUserRow extends StatelessWidget {
           Stack(
             clipBehavior: Clip.none,
             children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(color: bg, shape: BoxShape.circle),
-                alignment: Alignment.center,
-                child: Icon(icon, color: fg, size: 20),
+              FramedAvatar(
+                frameCode: equippedFrame,
+                child: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(color: bg, shape: BoxShape.circle),
+                  alignment: Alignment.center,
+                  child: Icon(icon, color: fg, size: 20),
+                ),
               ),
               if (isOnline)
                 Positioned(

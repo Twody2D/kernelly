@@ -148,6 +148,7 @@ class _FollowListScreenState extends State<FollowListScreen> {
                             return FollowUserRow(
                               username: user['username'] as String? ?? 'Игрок',
                               avatar: user['avatar'] as String?,
+                              equippedFrame: user['equipped_frame'] as String?,
                               isFollowing: isFollowing,
                               isPending: _pending.contains(user['id']),
                               isSelf: isSelf,

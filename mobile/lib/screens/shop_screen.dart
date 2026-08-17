@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mobile/services/api_service.dart';
+import 'package:mobile/services/avatars.dart';
 import 'package:mobile/services/user_prefs.dart';
 import 'package:mobile/theme/app_theme.dart';
 
@@ -25,8 +26,11 @@ class _ShopScreenState extends State<ShopScreen> {
   bool shield = false;
   int cores = 0;
   int streakFreezes = 0;
+  List<String> ownedFrames = [];
+  String? equippedFrame;
   bool loading = true;
   bool purchasing = false;
+  String? framePurchasing;
 
   @override
   void initState() {
@@ -46,6 +50,8 @@ class _ShopScreenState extends State<ShopScreen> {
         shield = stats['streak_shield_enabled'] as bool? ?? shield;
         cores = stats['cores'] as int? ?? 0;
         streakFreezes = stats['streak_freezes'] as int? ?? 0;
+        ownedFrames = List<String>.from(stats['owned_frames'] ?? []);
+        equippedFrame = stats['equipped_frame'] as String?;
         loading = false;
       });
     } catch (e) {
@@ -87,6 +93,52 @@ class _ShopScreenState extends State<ShopScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() => purchasing = false);
+      _showSnackBar('Не удалось купить, попробуй ещё раз');
+    }
+  }
+
+  Future<void> _onFrameTap(FrameSpec frame) async {
+    if (framePurchasing != null) return;
+    final owned = ownedFrames.contains(frame.$1);
+    if (owned) {
+      final unequip = equippedFrame == frame.$1;
+      setState(() => framePurchasing = frame.$1);
+      try {
+        await equipFrame(currentUserId, unequip ? 'none' : frame.$1);
+        if (!mounted) return;
+        setState(() {
+          equippedFrame = unequip ? null : frame.$1;
+          framePurchasing = null;
+        });
+      } catch (e) {
+        if (!mounted) return;
+        setState(() => framePurchasing = null);
+        _showSnackBar('Не удалось применить рамку, попробуй ещё раз');
+      }
+      return;
+    }
+
+    if (cores < frame.$3) {
+      _showSnackBar('Не хватает ядер — нужно ${frame.$3}');
+      return;
+    }
+    setState(() => framePurchasing = frame.$1);
+    try {
+      final result = await purchaseFrame(currentUserId, frame.$1);
+      if (!mounted) return;
+      setState(() {
+        cores = result['cores'] as int;
+        ownedFrames = List<String>.from(result['owned_frames'] ?? []);
+        equippedFrame = result['equipped_frame'] as String?;
+        framePurchasing = null;
+      });
+    } on InsufficientCoresException {
+      if (!mounted) return;
+      setState(() => framePurchasing = null);
+      _showSnackBar('Не хватает ядер — нужно ${frame.$3}');
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => framePurchasing = null);
       _showSnackBar('Не удалось купить, попробуй ещё раз');
     }
   }
@@ -176,6 +228,15 @@ class _ShopScreenState extends State<ShopScreen> {
                       loading: purchasing,
                       onTap: _purchaseFreeze,
                     ),
+                    for (final frame in frameCatalog)
+                      _FrameShopTile(
+                        frame: frame,
+                        owned: ownedFrames.contains(frame.$1),
+                        equipped: equippedFrame == frame.$1,
+                        disabled: !ownedFrames.contains(frame.$1) && cores < frame.$3,
+                        loading: framePurchasing == frame.$1,
+                        onTap: () => _onFrameTap(frame),
+                      ),
                   ],
                 ),
                 const SizedBox(height: 20),
@@ -224,6 +285,138 @@ class _ShopScreenState extends State<ShopScreen> {
                 ),
               ],
             ),
+    );
+  }
+}
+
+class _FrameShopTile extends StatelessWidget {
+  final FrameSpec frame;
+  final bool owned;
+  final bool equipped;
+  final bool disabled;
+  final bool loading;
+  final VoidCallback onTap;
+
+  const _FrameShopTile({
+    required this.frame,
+    required this.owned,
+    required this.equipped,
+    required this.disabled,
+    required this.loading,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final String priceLabel;
+    if (equipped) {
+      priceLabel = 'снять';
+    } else if (owned) {
+      priceLabel = 'надеть';
+    } else {
+      priceLabel = '${frame.$3} 📦';
+    }
+
+    return GestureDetector(
+      onTap: disabled || loading ? null : onTap,
+      child: Container(
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          color: colors.card,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: equipped ? frame.$4 : colors.border,
+            width: equipped ? 2 : 1.5,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Container(
+                width: double.infinity,
+                alignment: Alignment.center,
+                color: colors.accentBg,
+                child: FramedAvatar(
+                  frameCode: frame.$1,
+                  child: Container(
+                    width: 46,
+                    height: 46,
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    frame.$2,
+                    style: TextStyle(
+                      fontFamily: 'Fredoka',
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13.5,
+                      color: colors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    equipped ? 'надета' : (owned ? 'куплена' : 'рамка профиля'),
+                    style: TextStyle(
+                      fontFamily: 'JetBrains Mono',
+                      fontSize: 10.5,
+                      color: colors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: disabled
+                            ? colors.lockedBg
+                            : (equipped ? colors.card : colors.accent),
+                        borderRadius: BorderRadius.circular(10),
+                        border: disabled || equipped
+                            ? Border.all(color: colors.border, width: 1.5)
+                            : null,
+                      ),
+                      child: loading
+                          ? SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: disabled ? colors.textSecondary : Colors.white,
+                              ),
+                            )
+                          : Text(
+                              priceLabel,
+                              style: TextStyle(
+                                fontFamily: 'JetBrains Mono',
+                                fontWeight: FontWeight.w600,
+                                fontSize: 11.5,
+                                color: disabled
+                                    ? colors.textSecondary
+                                    : (equipped ? colors.textPrimary : Colors.white),
+                              ),
+                            ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

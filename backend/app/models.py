@@ -81,6 +81,10 @@ class User(Base):
     # Обновляется в get_current_user на каждый авторизованный запрос (с
     # троттлингом) — по нему считается «онлайн ли сейчас» (см. _is_online).
     last_seen_at = Column(DateTime, nullable=True)
+    # Рамки профиля — косметика за ядра (см. FRAME_PRICES в main.py). Список
+    # купленных кодов + какая сейчас надета (null — без рамки).
+    owned_frames = Column(JSON, nullable=False, default=list)
+    equipped_frame = Column(String, nullable=True)
 
 
 class Answer(Base):

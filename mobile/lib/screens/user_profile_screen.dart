@@ -234,15 +234,20 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
             Stack(
               clipBehavior: Clip.none,
               children: [
-                Container(
-                  width: 62,
-                  height: 62,
-                  decoration: BoxDecoration(
-                    color: bg,
-                    borderRadius: BorderRadius.circular(20),
+                FramedAvatar(
+                  frameCode: stats!['equipped_frame'] as String?,
+                  circle: false,
+                  radius: 20,
+                  child: Container(
+                    width: 62,
+                    height: 62,
+                    decoration: BoxDecoration(
+                      color: bg,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    alignment: Alignment.center,
+                    child: Icon(icon, color: fg, size: 30),
                   ),
-                  alignment: Alignment.center,
-                  child: Icon(icon, color: fg, size: 30),
                 ),
                 if (stats!['is_online'] == true)
                   Positioned(

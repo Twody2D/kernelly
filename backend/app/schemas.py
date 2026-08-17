@@ -83,6 +83,7 @@ class UserOut(BaseModel):
     id: int
     username: str | None = None
     avatar: str | None = None
+    equipped_frame: str | None = None
     email: str | None = None
     phone: str | None = None
     xp: int

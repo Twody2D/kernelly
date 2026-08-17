@@ -374,6 +374,36 @@ Future<Map<String, dynamic>> purchaseStreakFreeze(int userId) async {
   }
 }
 
+/// Бросается, когда рамка уже куплена (409) — покупка одноразовая.
+class FrameAlreadyOwnedException implements Exception {}
+
+Future<Map<String, dynamic>> purchaseFrame(int userId, String code) async {
+  final response = await http.post(
+    Uri.parse('$apiBaseUrl/users/$userId/shop/frames/$code/purchase'),
+    headers: _authHeaders(),
+  );
+  if (response.statusCode == 200) {
+    return jsonDecode(utf8.decode(response.bodyBytes));
+  } else if (response.statusCode == 402) {
+    throw InsufficientCoresException();
+  } else if (response.statusCode == 409) {
+    throw FrameAlreadyOwnedException();
+  } else {
+    throw Exception('Failed to purchase frame');
+  }
+}
+
+/// code == 'none' снимает рамку.
+Future<void> equipFrame(int userId, String code) async {
+  final response = await http.post(
+    Uri.parse('$apiBaseUrl/users/$userId/shop/frames/$code/equip'),
+    headers: _authHeaders(),
+  );
+  if (response.statusCode != 200) {
+    throw Exception('Failed to equip frame');
+  }
+}
+
 /// Один сундук в день просто за то, что открыл приложение — {'awarded': false}
 /// если сегодняшний уже забирали.
 Future<Map<String, dynamic>> claimDailyLoginChest(int userId) async {
