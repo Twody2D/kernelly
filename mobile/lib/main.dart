@@ -135,6 +135,7 @@ class _StartupState extends State<_Startup> {
       unawaited(NotificationsService.instance.scheduleDaily(
         time: TimeOfDay(hour: hour, minute: minute),
       ));
+      unawaited(NotificationsService.instance.scheduleStreakAtRisk());
     }
 
     // Только для уже прошедших онбординг — не мешаем сундуком первому

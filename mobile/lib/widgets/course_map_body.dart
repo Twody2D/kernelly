@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:mobile/services/api_service.dart';
 import 'package:mobile/services/user_prefs.dart';
@@ -5,6 +7,7 @@ import 'package:mobile/screens/chest_reward_screen.dart';
 import 'package:mobile/screens/lesson_screen.dart';
 import 'package:mobile/screens/review_screen.dart';
 import 'package:mobile/widgets/course_path_nodes.dart';
+import 'package:mobile/services/notifications_service.dart';
 import 'package:mobile/widgets/daily_quests_card.dart';
 import 'package:mobile/widgets/gradient_banner.dart';
 import 'package:mobile/widgets/review_card.dart';
@@ -41,6 +44,7 @@ class CourseMapBodyState extends State<CourseMapBody> {
   List<Map<String, dynamic>> sections = [];
   List<Map<String, dynamic>> combinedLessons = [];
   List<Map<String, dynamic>> quests = [];
+  bool personalBest = false;
   int reviewDue = 0;
   bool loading = true;
 
@@ -113,7 +117,16 @@ class CourseMapBodyState extends State<CourseMapBody> {
     try {
       final data = await fetchDailyQuests(currentUserId);
       if (!mounted) return;
-      setState(() => quests = List<Map<String, dynamic>>.from(data['quests'] ?? []));
+      final loadedQuests = List<Map<String, dynamic>>.from(data['quests'] ?? []);
+      setState(() {
+        quests = loadedQuests;
+        personalBest = data['personal_best'] == true;
+      });
+
+      final lessonQuest = loadedQuests.where((q) => q['code'] == 'quest_lesson');
+      if (lessonQuest.isNotEmpty && lessonQuest.first['completed'] == true) {
+        unawaited(NotificationsService.instance.cancelTodayReminders());
+      }
 
       final newlyCompleted = List<Map<String, dynamic>>.from(data['newly_completed'] ?? []);
       if (newlyCompleted.isNotEmpty && mounted) {
@@ -179,7 +192,7 @@ class CourseMapBodyState extends State<CourseMapBody> {
         ),
         if (quests.isNotEmpty) ...[
           const SizedBox(height: 14),
-          DailyQuestsSummaryTile(quests: quests),
+          DailyQuestsSummaryTile(quests: quests, personalBest: personalBest),
         ],
         if (reviewDue > 0) ...[
           const SizedBox(height: 14),

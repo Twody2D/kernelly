@@ -12,6 +12,7 @@ class NotificationsService {
   static final instance = NotificationsService._();
 
   static const _dailyReminderId = 1;
+  static const _streakAtRiskId = 2;
   static const _channelId = 'daily_reminder';
   static const _channelName = 'Напоминания';
 
@@ -63,6 +64,45 @@ class NotificationsService {
   Future<void> cancelDaily() async {
     await init();
     await _plugin.cancel(_dailyReminderId);
+  }
+
+  /// Отдельное напоминание за пару часов до полуночи — если вечернее уже
+  /// пропущено, это последний шанс не потерять streak. Время фиксированное
+  /// (22:00), в отличие от [scheduleDaily] не настраивается пользователем.
+  Future<void> scheduleStreakAtRisk() async {
+    await init();
+
+    const androidDetails = AndroidNotificationDetails(
+      _channelId,
+      _channelName,
+      channelDescription: 'Предупреждение о риске потерять streak',
+      importance: Importance.high,
+      priority: Priority.high,
+    );
+    const details = NotificationDetails(android: androidDetails);
+
+    await _plugin.zonedSchedule(
+      _streakAtRiskId,
+      'Streak под угрозой 😱',
+      'До полуночи осталось немного — успей позаниматься',
+      _nextOccurrence(const TimeOfDay(hour: 22, minute: 0)),
+      details,
+      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      matchDateTimeComponents: DateTimeComponents.time,
+    );
+  }
+
+  Future<void> cancelStreakAtRisk() async {
+    await init();
+    await _plugin.cancel(_streakAtRiskId);
+  }
+
+  /// Урок за сегодня уже пройден — оба напоминания на сегодня больше не
+  /// нужны (пользователь уже видел цель выполненной). Снова запланируются
+  /// на следующий холодный старт (см. main.dart), уже на завтра.
+  Future<void> cancelTodayReminders() async {
+    await cancelDaily();
+    await cancelStreakAtRisk();
   }
 
   tz.TZDateTime _nextOccurrence(TimeOfDay time) {

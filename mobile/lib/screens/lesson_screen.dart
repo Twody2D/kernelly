@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lottie/lottie.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mobile/services/api_service.dart';
+import 'package:mobile/services/notifications_service.dart';
 import 'package:mobile/services/user_prefs.dart';
 import 'package:mobile/widgets/animated_mascot.dart';
 import 'package:mobile/widgets/mascot.dart';
@@ -72,6 +75,7 @@ class _LessonScreenState extends State<LessonScreen>
   /// Квесты дня на момент завершения урока — заменили собой прежнюю
   /// «дневную цель N уроков» на экране результата.
   List<Map<String, dynamic>> quests = [];
+  bool personalBest = false;
 
   /// Тумблер «Анимации Kernel» — читается один раз при загрузке урока
   bool mascotAnimations = true;
@@ -228,6 +232,7 @@ class _LessonScreenState extends State<LessonScreen>
       );
       final questsData = await fetchDailyQuests(currentUserId);
       if (!mounted) return;
+      unawaited(NotificationsService.instance.cancelTodayReminders());
       newChests.addAll(
         List<Map<String, dynamic>>.from(questsData['newly_completed'] ?? [])
             .map((q) => {'reason': 'quest', 'amount': q['amount']}),
@@ -235,6 +240,7 @@ class _LessonScreenState extends State<LessonScreen>
       setState(() {
         completion = data;
         quests = List<Map<String, dynamic>>.from(questsData['quests'] ?? []);
+        personalBest = questsData['personal_best'] == true;
         finishing = false;
       });
     } catch (e) {
@@ -504,6 +510,7 @@ class _LessonScreenState extends State<LessonScreen>
       return SectionCompleteScreen(
         completion: completion!,
         quests: quests,
+        personalBest: personalBest,
         xpEarned: isRepeat ? 0 : correctCount * 10,
         accuracyPercent: exercises.isEmpty
             ? 0

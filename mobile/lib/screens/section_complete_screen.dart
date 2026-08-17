@@ -9,6 +9,7 @@ class SectionCompleteScreen extends StatelessWidget {
 
   /// Квесты дня с прогрессом на момент завершения этого урока
   final List<Map<String, dynamic>> quests;
+  final bool personalBest;
 
   final int xpEarned;
   final int accuracyPercent;
@@ -21,6 +22,7 @@ class SectionCompleteScreen extends StatelessWidget {
     super.key,
     required this.completion,
     required this.quests,
+    this.personalBest = false,
     required this.xpEarned,
     required this.accuracyPercent,
     required this.elapsed,
@@ -251,7 +253,7 @@ class SectionCompleteScreen extends StatelessWidget {
                               ),
                               if (quests.isNotEmpty) ...[
                                 const SizedBox(height: 14),
-                                DailyQuestsSummaryTile(quests: quests),
+                                DailyQuestsSummaryTile(quests: quests, personalBest: personalBest),
                               ],
                               if (_next != null) ...[
                                 const SizedBox(height: 14),

@@ -51,8 +51,10 @@ class _SettingsNotificationsScreenState
     await _saveBool(PrefKeys.remind, value, (x) => remind = x);
     if (value) {
       await NotificationsService.instance.scheduleDaily(time: remindTime);
+      await NotificationsService.instance.scheduleStreakAtRisk();
     } else {
       await NotificationsService.instance.cancelDaily();
+      await NotificationsService.instance.cancelStreakAtRisk();
     }
   }
 

@@ -6,8 +6,15 @@ import 'package:flutter/material.dart';
 /// fetchDailyQuests), тут только отрисовка.
 class DailyQuestsSummaryTile extends StatelessWidget {
   final List<Map<String, dynamic>> quests;
+  /// Сегодняшний XP превысил лучший день за последние 30 (см.
+  /// get_daily_quests в backend) — просто бейдж-мотиватор, ничего не начисляет.
+  final bool personalBest;
 
-  const DailyQuestsSummaryTile({super.key, required this.quests});
+  const DailyQuestsSummaryTile({
+    super.key,
+    required this.quests,
+    this.personalBest = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -26,50 +33,81 @@ class DailyQuestsSummaryTile extends StatelessWidget {
             width: 1.5,
           ),
         ),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              width: 34,
-              height: 34,
-              decoration: BoxDecoration(
-                color: allDone ? const Color(0xFF58CC02) : const Color(0xFFE6F8F6),
-                borderRadius: BorderRadius.circular(11),
-              ),
-              alignment: Alignment.center,
-              child: Icon(
-                allDone ? Icons.check : Icons.flag_outlined,
-                size: 18,
-                color: allDone ? Colors.white : const Color(0xFF00A896),
-              ),
-            ),
-            const SizedBox(width: 11),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Цель на день',
-                    style: TextStyle(
-                      fontFamily: 'Fredoka',
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13.5,
-                      color: allDone ? const Color(0xFF3F9200) : const Color(0xFF1B2430),
-                    ),
+            Row(
+              children: [
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: allDone ? const Color(0xFF58CC02) : const Color(0xFFE6F8F6),
+                    borderRadius: BorderRadius.circular(11),
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    allDone ? 'Все квесты выполнены!' : '$completed / ${quests.length} квестов выполнено',
-                    style: TextStyle(
-                      fontFamily: 'JetBrains Mono',
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.w600,
-                      color: allDone ? const Color(0xFF3F9200) : const Color(0xFF5C6B73),
-                    ),
+                  alignment: Alignment.center,
+                  child: Icon(
+                    allDone ? Icons.check : Icons.flag_outlined,
+                    size: 18,
+                    color: allDone ? Colors.white : const Color(0xFF00A896),
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(width: 11),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Цель на день',
+                        style: TextStyle(
+                          fontFamily: 'Fredoka',
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13.5,
+                          color: allDone ? const Color(0xFF3F9200) : const Color(0xFF1B2430),
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        allDone ? 'Все квесты выполнены!' : '$completed / ${quests.length} квестов выполнено',
+                        style: TextStyle(
+                          fontFamily: 'JetBrains Mono',
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w600,
+                          color: allDone ? const Color(0xFF3F9200) : const Color(0xFF5C6B73),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(Icons.chevron_right_rounded, color: const Color(0xFF9AAAAA)),
+              ],
             ),
-            Icon(Icons.chevron_right_rounded, color: const Color(0xFF9AAAAA)),
+            if (personalBest) ...[
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF1DC),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('🔥', style: TextStyle(fontSize: 12)),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Личный рекорд дня по XP!',
+                      style: TextStyle(
+                        fontFamily: 'JetBrains Mono',
+                        fontWeight: FontWeight.w600,
+                        fontSize: 10.5,
+                        color: const Color(0xFF9A6B00),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ],
         ),
       ),
